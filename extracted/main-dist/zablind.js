@@ -11,9 +11,6 @@ window.addEventListener("DOMContentLoaded", () => {
     lastHoveredChatIndex = -1;
   const messageHighlightClass = "highlight-chat-message";
 
-  const richInput = document.getElementById("richInput");
-  let isTypingAllowed = false;
-
   let menuItems = [],
     menuIndex = -1;
   const allowedMenuKeys = new Set([
@@ -109,17 +106,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function disableTyping() {
-    isTypingAllowed = false;
-    richInput?.blur();
-  }
-
-  function enableTyping() {
-    isTypingAllowed = true;
-    richInput?.focus();
-    announce("Enable editing");
-  }
-
   function simulateHover(el) {
     el.dispatchEvent(
       new MouseEvent("mouseover", { bubbles: true, cancelable: true })
@@ -174,22 +160,31 @@ window.addEventListener("DOMContentLoaded", () => {
     const isTextKey =
       e.key.length === 1 || e.key === "Backspace" || e.key === "Enter";
 
-    if (
-      isTextKey &&
-      !isTypingAllowed &&
-      !(e.ctrlKey || e.metaKey || e.altKey)
-    ) {
-      // Allow Space if a message is selected (for NVDA activation)
-      const allowSpace = e.key === " " && chatItems[chatIndex];
-      if (!allowSpace) {
-        e.preventDefault();
-      }
-    }
-
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "e") {
       e.preventDefault();
-      enableTyping();
-      return;
+
+      const chatView = document.getElementById("chatView");
+      const chatInputWrapper = document.getElementById("chatInput");
+      const richInput = document.getElementById("richInput");
+
+      if (chatView && chatInputWrapper && richInput) {
+        // Step 1: Focus chatView to force NVDA into focus mode
+        chatView.setAttribute("tabindex", "0");
+        chatView.focus();
+
+        // Optional: short delay ensures NVDA registers it
+        setTimeout(() => {
+          chatInputWrapper.classList.add("highlight-v3");
+
+          richInput.setAttribute("tabindex", "0");
+          richInput.setAttribute("aria-label", "Type your message.");
+          richInput.focus();
+
+          setTimeout(() => {
+            richInput.setAttribute("tabindex", "1");
+          }, 1000);
+        }, 50);
+      }
     }
 
     if (e.ctrlKey && e.shiftKey && e.key === "M") {
@@ -249,13 +244,43 @@ window.addEventListener("DOMContentLoaded", () => {
 
       if (e.key === "Escape") {
         e.preventDefault();
+
+        const richInput = document.getElementById("richInput");
+        const chatInputWrapper = document.getElementById("chatInput");
+
+        if (richInput && richInput === document.activeElement) {
+          // ⚠️ Force focus to a neutral element first
+          const dummy = document.createElement("div");
+          dummy.setAttribute("tabindex", "-1");
+          document.body.appendChild(dummy);
+          dummy.focus();
+
+          // Then remove dummy and blur
+          setTimeout(() => {
+            dummy.remove();
+            richInput.blur();
+
+            chatInputWrapper?.classList.remove("highlight-v3");
+            richInput.setAttribute("tabindex", "1");
+          }, 10);
+        }
+
+        if (chatIndex !== -1 && chatItems[chatIndex]) {
+          const el = chatItems[chatIndex];
+          el.setAttribute("tabindex", "0");
+          el.focus();
+          simulateHover(el);
+        }
+
         menuItems = [];
         menuIndex = -1;
-        announce("Menu closed");
+
         const moreButton = document.querySelector(
           '[data-translate-title="STR_MORE_OPTIONS"]'
         );
         if (moreButton) moreButton.setAttribute("aria-expanded", "false");
+
+        announce("Menu closed");
         return;
       }
     }
@@ -274,7 +299,6 @@ window.addEventListener("DOMContentLoaded", () => {
       if (e.key === "L")
         chatIndex = Math.min(chatItems.length - 1, chatIndex + 1);
       highlightChatMessage(chatIndex);
-      disableTyping();
       return;
     } else if (["R", "K", "L"].includes(e.key)) {
       announce("Press ESC to close menu first.");
@@ -303,7 +327,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
         moreButton.setAttribute("role", "button");
         moreButton.setAttribute("tabindex", "0");
+        moreButton.focus();
         moreButton.click();
+
+        // ⬇️ Delay a bit to allow the menu to open, then focus first item
+        setTimeout(() => {
+          menuItems = getAllowedMenuItems();
+          if (menuItems.length > 0) {
+            menuIndex = 0;
+            highlightMenuItem(menuIndex);
+            announce("Menu opened");
+          } else {
+            announce("No valid menu items");
+          }
+        }, 150);
       }, 100);
 
       return;
@@ -351,11 +388,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     updateChatItems();
 
-    // Only disable typing if not currently navigating messages
-    if (chatIndex === -1 || !chatItems[chatIndex]) {
-      disableTyping();
-    }
-
     const pop = document.querySelector(".popover-v3");
     if (pop && pop.style.display !== "none") {
       announce("Menu opening");
@@ -369,21 +401,11 @@ window.addEventListener("DOMContentLoaded", () => {
         highlightItem(selectedIndex);
       }
       updateChatItems();
-
-      if (chatIndex === -1 || !chatItems[chatIndex]) {
-        disableTyping();
-      }
     }
 
     const pop = document.querySelector(".popover-v3");
     if (pop && pop.style.display !== "none") {
       announce("Menu opening");
-    }
-  });
-
-  document.addEventListener("click", (ev) => {
-    if (richInput && !richInput.contains(ev.target)) {
-      disableTyping();
     }
   });
 
@@ -399,6 +421,4 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   `;
   document.head.appendChild(style);
-
-  disableTyping();
 });
