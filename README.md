@@ -6,6 +6,8 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 
 ---
 
+✅ Latest Supported Zalo Version: 25.7.1
+
 ✅ What It Currently Supports
 
 - Press <code>Ctrl + Shift + M</code> / <code>Ctrl + Shift + N</code> to navigate forward / backward through recent contacts.
@@ -27,6 +29,8 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 
 ## 🧪 How to Test
 
+Update Zalo to the latest supported version.
+
 Clone the repository:
 
 ```bash
@@ -39,7 +43,7 @@ Navigate to:
 C:\Users\<your-user-name>\AppData\Local\Programs\Zalo\<latest-Zalo-version>\resources
 ```
 
-Copy the `app.asar` file found in that folder into a new folder called `original` in the root of this project (create one first).
+Copy the `app.asar` file and `app.asar.unpacked` folder found in that `resources` folder into a new folder called `original` in the root of this project (create one first).
 
 Move `zablind.js` and `preload-wrapper.js` from `extracted/main-dist/` into the project root.
 
