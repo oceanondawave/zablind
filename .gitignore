@@ -4,6 +4,7 @@
 # Allow git config files and license
 !.gitignore
 !LICENSE
+!README.md
 
 # Unignore folder chain explicitly
 !extracted/

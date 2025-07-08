@@ -85,6 +85,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     el.classList.add(messageHighlightClass);
+
     el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     const content = el.querySelector(".message-content-render");
@@ -92,18 +93,187 @@ window.addEventListener("DOMContentLoaded", () => {
 
     lastHoveredChatIndex = i;
 
-    const isItem = el.classList.contains("chat-item");
-    if (isItem) {
-      const text = el.querySelector(".text")?.textContent.trim() || "";
-      const time =
-        el.querySelector(".card-send-time__sendTime")?.textContent.trim() || "";
-      announce(time ? `${text}. Sent at ${time}` : text);
+    // Common helpers
+    const isSent = el.classList.contains("me");
+    const time =
+      el.querySelector(".card-send-time__sendTime")?.textContent.trim() || "";
+    const status = isSent ? "Sent at" : "Received at";
+
+    function extractCaptionWithShortenedLink(container) {
+      if (!container) return "";
+
+      const linkEl = container.querySelector("a.text-is-link");
+      let linkHost = "";
+
+      if (linkEl && linkEl.dataset.content) {
+        try {
+          linkHost = new URL(linkEl.dataset.content).hostname;
+        } catch {
+          linkHost = linkEl.textContent.trim(); // fallback to displayed link text
+        }
+      }
+
+      // Get all visible text, even if not inside .text class
+      let allText = container.textContent.trim();
+
+      // Remove link text from overall text if duplicated
+      if (linkEl && allText.includes(linkEl.textContent.trim())) {
+        allText = allText.replace(linkEl.textContent.trim(), "").trim();
+      }
+
+      return linkHost
+        ? `Link ${linkHost}${allText ? " " + allText : ""}`
+        : allText || "(no text)";
+    }
+
+    // Sender & Mention
+    const sender =
+      el.querySelector(".message-sender-name-content")?.textContent.trim() ||
+      "";
+    const mention = el.querySelector(".mention-name")?.textContent.trim() || "";
+    const namePrefix = [sender, mention].filter(Boolean).join(" ");
+
+    let message = "";
+
+    // Quoted message
+    const quoteTitle = el
+      .querySelector(".message-quote-fragment__title")
+      ?.textContent.trim();
+    const quoteContent = el
+      .querySelector(".message-quote-fragment__description")
+      ?.textContent.trim();
+
+    if (el.querySelector(".text-message__container")) {
+      const text =
+        el
+          .querySelector(".text-message__container .text")
+          ?.textContent.trim() || "(no text)";
+      message = text;
+
+      if (quoteTitle && quoteContent) {
+        message += ` replied to ${quoteTitle} ${quoteContent}`;
+      }
+    } else if (el.querySelector(".img-msg-v2.photo-message-v2")) {
+      const captionContainer = el.querySelector(".img-msg-v2__cap");
+      const caption = captionContainer
+        ? extractCaptionWithShortenedLink(captionContainer)
+        : "";
+      message = caption ? `Photo with caption ${caption}` : "Photo";
+    } else if (
+      el.querySelector(".video-message__non-caption-wrapper") ||
+      el.querySelector(".video-message__w-caption-wrapper")
+    ) {
+      const captionContainer = el.querySelector(
+        ".video-message__w-caption-wrapper"
+      );
+      const caption = captionContainer
+        ? extractCaptionWithShortenedLink(captionContainer)
+        : "";
+
+      // Get duration
+      const rawDuration =
+        el
+          .querySelector(".video-message__floaty-duration-wrapper")
+          ?.textContent.trim() || "";
+
+      let spokenDuration = "";
+      if (rawDuration) {
+        const parts = rawDuration.split(":").map(Number);
+        const [h, m, s] =
+          parts.length === 3
+            ? parts
+            : parts.length === 2
+            ? [0, ...parts]
+            : [0, 0, ...parts];
+
+        const hText = h ? `${h} hour${h !== 1 ? "s" : ""}` : "";
+        const mText = m ? `${m} minute${m !== 1 ? "s" : ""}` : "";
+        const sText = s ? `${s} second${s !== 1 ? "s" : ""}` : "";
+
+        spokenDuration = [hText, mText, sText].filter(Boolean).join(" ");
+      }
+
+      message = caption
+        ? `Video with caption ${caption}${
+            spokenDuration ? `, ${spokenDuration}` : ""
+          }`
+        : `Video${spokenDuration ? `, ${spokenDuration}` : ""}`;
+    } else if (el.querySelector(".card--group-photo")) {
+      const items = el.querySelectorAll(".album__item");
+      const count = items.length;
+      message = `${count} photos/videos`;
+    } else if (el.querySelector(".link-message-v2")) {
+      const container = el.querySelector(".link-message-v2");
+      const caption = extractCaptionWithShortenedLink(container);
+      message = caption || "(no content)";
+    } else if (el.querySelector(".file-message__container")) {
+      const titleNode = el.querySelector(".file-message__content-title");
+      let filename = "";
+      if (titleNode) {
+        const parts = Array.from(titleNode.querySelectorAll("div"));
+        filename = parts.map((div) => div.textContent.trim()).join("");
+      }
+      const size =
+        el
+          .querySelector(".file-message__content-info-size")
+          ?.textContent.trim() || "";
+      message = `File ${filename}${size ? ", size " + size : ""}`;
+    } else if (el.querySelector(".voice-message")) {
+      const rawDuration = el
+        .querySelector(".voice-message-normal__duration-wrapper")
+        ?.textContent.trim();
+      let spokenDuration = "";
+      if (rawDuration) {
+        const [min, sec] = rawDuration.split(":").map(Number);
+        if (min === 0) {
+          spokenDuration = `${sec} second${sec !== 1 ? "s" : ""}`;
+        } else {
+          const minText = `${min} minute${min !== 1 ? "s" : ""}`;
+          const secText =
+            sec > 0 ? ` ${sec} second${sec !== 1 ? "s" : ""}` : "";
+          spokenDuration = `${minText}${secText}`;
+        }
+      }
+      message = `Voice message, ${spokenDuration}`;
+    } else if (el.querySelector(".call-message")) {
+      const title =
+        el.querySelector(".call-message__title-wrapper")?.textContent.trim() ||
+        "";
+      const callContent =
+        el
+          .querySelector(".call-message__content-txt-wrapper")
+          ?.textContent.trim() || "";
+      message = `${title}. ${callContent}`;
     } else {
-      liveRegion.textContent =
+      message =
         el
           .querySelector('[data-translate-inner="STR_DATE_TIME"]')
           ?.textContent.trim() || "";
     }
+
+    const fullMessage = namePrefix ? `${namePrefix} ${message}` : message;
+    const announcement = time
+      ? `${fullMessage}. ${status} ${time}`
+      : fullMessage;
+
+    // Create or update NVDA focus region
+    let focusRegion = el.querySelector(".nvda-focus-region");
+    if (!focusRegion) {
+      focusRegion = document.createElement("div");
+      focusRegion.tabIndex = -1;
+      focusRegion.className = "nvda-focus-region";
+      focusRegion.style.cssText = `
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      `;
+      el.prepend(focusRegion);
+    }
+    focusRegion.textContent = announcement;
+    focusRegion.focus();
   }
 
   function simulateHover(el) {
@@ -330,13 +500,12 @@ window.addEventListener("DOMContentLoaded", () => {
         moreButton.focus();
         moreButton.click();
 
-        // ⬇️ Delay a bit to allow the menu to open, then focus first item
         setTimeout(() => {
           menuItems = getAllowedMenuItems();
           if (menuItems.length > 0) {
+            announce("Menu opened");
             menuIndex = 0;
             highlightMenuItem(menuIndex);
-            announce("Menu opened");
           } else {
             announce("No valid menu items");
           }
@@ -357,17 +526,18 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Fix: Enter on selected contact (more robust after refocus)
+    // Enter on selected contact (more robust after refocus)
     if (e.key === "Enter" && selectedIndex !== -1 && items[selectedIndex]) {
       e.preventDefault();
+
       const el = items[selectedIndex];
 
-      // Re-query item to ensure it's the freshest DOM node
+      // Re-query item to ensure it's fresh
       updateItems();
       const updatedEl = items[selectedIndex];
       if (!updatedEl) return;
 
-      // Stronger interaction chain
+      // Simulate click interaction
       updatedEl.focus();
       updatedEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
       updatedEl.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
@@ -377,7 +547,46 @@ window.addEventListener("DOMContentLoaded", () => {
 
       liveRegion.textContent =
         updatedEl.textContent.trim() || "Contact activated";
+
+      selectedIndex = -1;
       return;
+    }
+
+    // Tab for playing/pausing voice message/video
+    if (e.key === "Tab") {
+      const isTyping =
+        document.activeElement.tagName === "INPUT" ||
+        document.activeElement.tagName === "TEXTAREA" ||
+        document.activeElement.isContentEditable;
+
+      if (isTyping) return;
+
+      const current = chatItems[lastHoveredChatIndex];
+      if (!current) return;
+
+      const voiceMessage = current.querySelector(".voice-message");
+      let control = null;
+
+      if (voiceMessage) {
+        control = voiceMessage.querySelector(
+          ".voice-message-normal__player-control-wrapper"
+        );
+      } else {
+        // Try to get video play button
+        control = current.querySelector(".video-message__floaty-icon-wrapper");
+      }
+
+      if (!control) return;
+
+      // Ensure it's focusable and recognized by screen readers
+      control.setAttribute("role", "button");
+      control.setAttribute("tabindex", "0");
+
+      e.preventDefault();
+      control.focus();
+
+      // Trigger play
+      control.click();
     }
   });
 
