@@ -1,11 +1,12 @@
 # Ignore everything
 *
 
-# But NOT these files
-!LICENSE
+# Allow git config files and license
 !.gitignore
+!LICENSE
+
+# Unignore folder chain explicitly
+!extracted/
+!extracted/main-dist/
 !extracted/main-dist/zablind.js
 !extracted/main-dist/preload-wrapper.js
-
-# Also include folders leading to the scripts
-!extracted/main-dist
