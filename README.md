@@ -98,8 +98,8 @@ k = new s(this.mainOpts),
 k.webContents.openDevTools({ mode: "detach" }),
 ```
 
-d `popup-viewer.html` as needed, then save the files.
-Make changes to `zablind.js` an
+Make changes to `zablind.js` and `popup-viewer.html` as needed, then save the files.
+
 Repack the `app.asar` using:
 
 ```bash
