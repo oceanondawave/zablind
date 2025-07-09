@@ -1,6 +1,6 @@
-# Zablind (Beta version 1.2)
+# Zablind (Beta version 1.3)
 
-_A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows._
+_A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows (only supports NVDA)._
 
 > ⚠️ **Disclaimer**: This tool modifies internal files of the Zalo desktop app. Use at your own risk. Always back up your original `app.asar` file before proceeding.
 
@@ -10,24 +10,24 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 
 ✅ What It Currently Supports
 
-- Press <code>Ctrl + Shift + M</code> / <code>Ctrl + Shift + N</code> to navigate forward / backward through recent contacts.
+- Press <code>Ctrl + Shift + M</code> / <code>Ctrl + Shift + N</code> to navigate forward / backward through recent contacts. ⚠️ Avoid pressing too quickly. Zalo may load older contacts, causing lag. If this happens, press <code>Ctrl + Shift + 1</code> to jump to the first contact and try again.
 - Press <code>Enter</code> to jump to that chat window.
 - Press <code>Ctrl + Shift + R</code> to read the latest message.
 - Press <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to read the previous / next message.
-- If the message is a voice or video message, press <code>Tab</code> to play it.
-- For video messages, NVDA may read additional file path information. You can ignore it or mute NVDA temporarily.
-- Press <code>ESC</code> to stop watching the video.
+- If the message is a voice or video message, press <code>Tab</code> to play it. If it's a video message, after pressing <code>Tab</code> to play, you can press <code>Space</code> once then press <code>Space</code> one more time to pause/play the video. If it's a photo, you can also press <code>Tab</code> to view it. This also works for an album (which contains many photos/videos), but you can only view the first photo/video in the album for now.
+- Press <code>ESC</code> to stop watching/viewing the photos/videos.
 - Press the <code>Application</code> / <code>Context Menu</code> key to open the menu for each message.
 - Use <code>Up</code> / <code>Down</code> arrow keys to navigate options.
 - Press <code>Enter</code> to choose an option.
-- Press <code>ESC</code> to exit the menu (note: while in the menu, you cannot read messages).
+- Press <code>ESC</code> to exit the menu (note: while in the menu, you cannot navigate messages).
 - Press <code>Ctrl + Shift + E</code> to jump to the typing section to write a message.
+- You can reply to an message (if you choose that option in the menu, you'll jump to the typing section automatically). When you're replying to a message, if you want to cancel, press <code>ESC</code> once then press <code>ESC</code> one more time to go back to the typing section.
 - ⚠️ While using <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to navigate messages, avoid pressing too quickly. Zalo may load older messages, causing lag or misreads. If this happens, press <code>Ctrl + Shift + R</code> to reset and return to the latest message.
 - More features coming soon!
 
 ---
 
-## 🧪 How to Test
+## 🧪 How to Build and Test
 
 Update Zalo to the latest supported version.
 
@@ -45,7 +45,7 @@ C:\Users\<your-user-name>\AppData\Local\Programs\Zalo\<latest-Zalo-version>\reso
 
 Copy the `app.asar` file and `app.asar.unpacked` folder found in that `resources` folder into a new folder called `original` in the root of this project (create one first).
 
-Move `zablind.js` and `preload-wrapper.js` from `extracted/main-dist/` into the project root.
+Move `zablind.js` and `preload-wrapper.js` from `extracted/main-dist/` and `popup-viewer.html` from `extracted/pc-dist/` into the project root.
 
 Install the `asar` tool globally using npm:
 
@@ -65,6 +65,12 @@ Move `zablind.js` and `preload-wrapper.js` into:
 
 ```
 extracted/main-dist/
+```
+
+Move `popup-viewer.html` into:
+
+```
+extracted/pc-dist/
 ```
 
 Open `extracted/main-dist/main.js` and find the line:
@@ -92,9 +98,9 @@ k = new s(this.mainOpts),
 k.webContents.openDevTools({ mode: "detach" }),
 ```
 
-Make changes to `zablind.js` as needed, then save the file.
-
-Repack the app using:
+d `popup-viewer.html` as needed, then save the files.
+Make changes to `zablind.js` an
+Repack the `app.asar` using:
 
 ```bash
 asar pack extracted app.asar

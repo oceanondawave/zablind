@@ -8,6 +8,11 @@
 
 # Unignore folder chain explicitly
 !extracted/
+
 !extracted/main-dist/
 !extracted/main-dist/zablind.js
 !extracted/main-dist/preload-wrapper.js
+
+!extracted/pc-dist/
+!extracted/pc-dist/popup-viewer.html
+
