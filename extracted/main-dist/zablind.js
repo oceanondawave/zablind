@@ -11,6 +11,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const HIGHLIGHT_CLASS = "custom-hover-highlight";
   const MESSAGE_HIGHLIGHT_CLASS = "highlight-chat-message";
   const ALLOWED_MENU_KEYS = new Set([
+    // Context Menu of a message
     "STR_REPLY_MSG",
     // "STR_FORWARD_MSG",
     "STR_COPY_TEXT",
@@ -19,6 +20,9 @@ window.addEventListener("DOMContentLoaded", () => {
     "STR_DELETE_MSG_FOR_ME",
     "STR_DELETE_MSG",
     "STR_RECALL_MSG",
+    // Attachment Menu
+    "STR_CHOOSE_FILE_COMPUTER",
+    "STR_CHOOSE_FOLDER_COMPUTER",
   ]);
 
   // ======================
@@ -449,6 +453,13 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Open attachment menu
+    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      openAttachmentMenu(event);
+      return;
+    }
+
     // Activate conversation (Enter)
     if (
       event.key === "Enter" &&
@@ -666,6 +677,38 @@ window.addEventListener("DOMContentLoaded", () => {
     }, 100);
   }
 
+  function openAttachmentMenu(event) {
+    const attachmentBtn = document.querySelector(
+      '[data-translate-title="STR_TIP_ATTACH_FILE"]'
+    );
+
+    if (!attachmentBtn) {
+      announce("Attachment button not found.");
+      return;
+    }
+
+    event.preventDefault();
+
+    // Focus NVDA on it
+    attachmentBtn.style.pointerEvents = "auto";
+    attachmentBtn.setAttribute("tabindex", "0");
+    attachmentBtn.focus();
+
+    // Stimulate hover
+    simulateHover(attachmentBtn);
+
+    attachmentBtn.click();
+    setTimeout(() => {
+      state.menu.items = getAllowedMenuItems();
+      if (state.menu.items.length) {
+        state.menu.currentIndex = 0;
+        highlightMenuItem(state.menu.currentIndex);
+      } else {
+        announce("No valid menu items");
+      }
+    }, 100);
+  }
+
   function activateConversation() {
     updateConversationItems();
     const conversation =
@@ -690,22 +733,9 @@ window.addEventListener("DOMContentLoaded", () => {
       state.messages.items[state.messages.lastHoveredIndex];
     if (!currentMessage) return;
 
-    // // 1. First check for PHOTO message control
+    // // 1. First check for PHOTOS/VIDEOS message control
     let control = currentMessage.querySelector(".img-center-box");
 
-    // // 2. If no photo control, check for VIDEO message control
-    // if (!control) {
-    //   control = currentMessage.querySelector(
-    //     ".video-message__floaty-icon-wrapper"
-    //   );
-    // }
-
-    // 3. If neither photo nor video, check for an album (many photos/videos) to open the first photo/video
-    // if (!control) {
-    //   control = currentMessage.querySelector(".img-center-box");
-    // }
-
-    // 4. None of above, check for VOICE message control
     if (!control) {
       const voiceMessage = currentMessage.querySelector(".voice-message");
       control = voiceMessage?.querySelector(

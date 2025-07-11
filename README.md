@@ -1,4 +1,4 @@
-# Zablind (Beta version 1.3)
+# Zablind (Beta version 1.3.1)
 
 _A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows (only supports NVDA)._
 
@@ -17,6 +17,7 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 - If the message is a voice or video message, press <code>Tab</code> to play it. If it's a video message, after pressing <code>Tab</code> to play, you can press <code>Space</code> once then press <code>Space</code> one more time to pause/play the video. If it's a photo, you can also press <code>Tab</code> to view it. This also works for an album (which contains many photos/videos), but you can only view the first photo/video in the album for now.
 - Press <code>ESC</code> to stop watching/viewing the photos/videos.
 - Press the <code>Application</code> / <code>Context Menu</code> key to open the menu for each message.
+- Press <code>Ctrl + Shift + A</code> to open the attachment menu to send files/folders.
 - Use <code>Up</code> / <code>Down</code> arrow keys to navigate options.
 - Press <code>Enter</code> to choose an option.
 - Press <code>ESC</code> to exit the menu (note: while in the menu, you cannot navigate messages).
@@ -85,21 +86,14 @@ Replace it with:
 u.join(__dirname, "preload-wrapper.js");
 ```
 
-(Optional) To open Dev Tools by default, locate the line:
+(Optional) To open Dev Tools by default, uncomment the below line:
 
 ```js
-k = new s(this.mainOpts),
+// k.webContents.openDevTools({ mode: "detach" }),
 ```
 
-And change it to:
+Make changes to `zablind.js` and `popup-viewer.html` as needed, then save the files.
 
-```js
-k = new s(this.mainOpts),
-k.webContents.openDevTools({ mode: "detach" }),
-```
-
-d `popup-viewer.html` as needed, then save the files.
-Make changes to `zablind.js` an
 Repack the `app.asar` using:
 
 ```bash
