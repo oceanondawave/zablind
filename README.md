@@ -1,4 +1,4 @@
-# Zablind (Beta version 1.3.1)
+# Zablind (Beta version 1.4)
 
 _A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows (only supports NVDA)._
 
@@ -10,7 +10,7 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 
 ✅ What It Currently Supports
 
-- Press <code>Ctrl + Shift + M</code> / <code>Ctrl + Shift + N</code> to navigate forward / backward through recent contacts. ⚠️ Avoid pressing too quickly. Zalo may load older contacts, causing lag. If this happens, press <code>Ctrl + Shift + 1</code> to jump to the first contact and try again.
+- Press <code>Ctrl + Shift + M</code> / <code>Ctrl + Shift + N</code> to navigate forward / backward through recent contacts. ⚠️ Avoid pressing too quickly. Zalo may load older contacts, causing lag.
 - Press <code>Enter</code> to jump to that chat window.
 - Press <code>Ctrl + Shift + R</code> to read the latest message.
 - Press <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to read the previous / next message.
@@ -23,7 +23,7 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 - Press <code>ESC</code> to exit the menu (note: while in the menu, you cannot navigate messages).
 - Press <code>Ctrl + Shift + E</code> to jump to the typing section to write a message.
 - You can reply to an message (if you choose that option in the menu, you'll jump to the typing section automatically). When you're replying to a message, if you want to cancel, press <code>ESC</code> once then press <code>ESC</code> one more time to go back to the typing section.
-- ⚠️ While using <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to navigate messages, avoid pressing too quickly. Zalo may load older messages, causing lag or misreads. If this happens, press <code>Ctrl + Shift + R</code> to reset and return to the latest message.
+- ⚠️ While using <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to navigate messages, avoid pressing too quickly. Zalo may load older messages, causing lag or misreads.
 - More features coming soon!
 
 ---
