@@ -31,12 +31,16 @@ window.addEventListener("DOMContentLoaded", () => {
   let state = {
     conversations: {
       items: [],
-      selectedIndex: -1,
+      ids: [],
+      map: new Map(),
+      currentId: null,
     },
     messages: {
       items: [],
-      currentIndex: -1,
-      lastHoveredIndex: -1,
+      ids: [],
+      map: new Map(),
+      currentId: null,
+      lastHoveredId: null,
     },
     menu: {
       items: [],
@@ -88,37 +92,75 @@ window.addEventListener("DOMContentLoaded", () => {
   // Conversation List Functions
   // ======================
   function updateConversationItems() {
-    state.conversations.items = Array.from(
-      document.querySelectorAll(".conv-item")
-    );
-    state.conversations.items.forEach((item) => {
+    const items = Array.from(document.querySelectorAll(".conv-item"));
+    const ids = [];
+    const map = new Map();
+
+    items.forEach((item) => {
+      const parent = item.closest("[anim-data-id]");
+      const id = parent?.getAttribute("anim-data-id");
+      if (!id) return;
+
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "button");
+
       const name = item.querySelector(".truncate")?.textContent.trim();
       if (name) item.setAttribute("aria-label", name);
+
+      ids.push(id);
+      map.set(id, item);
     });
+
+    state.conversations.items = items;
+    state.conversations.ids = ids;
+    state.conversations.map = map;
   }
 
-  function highlightConversation(index) {
+  function highlightConversationById(id) {
     state.conversations.items.forEach((item) =>
       item.classList.remove(HIGHLIGHT_CLASS)
     );
 
-    const item = state.conversations.items[index];
+    const item = state.conversations.map.get(id);
     if (!item) return;
 
     item.classList.add(HIGHLIGHT_CLASS);
     item.focus();
     item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    state.conversations.currentId = id;
   }
 
   // ======================
   // Message Functions
   // ======================
   function updateMessageItems() {
-    state.messages.items = Array.from(
+    const elements = Array.from(
       document.querySelectorAll(".chat-item, .chat-date")
     );
+    state.messages.items = elements;
+    state.messages.map = new Map();
+    state.messages.ids = [];
+
+    for (const el of elements) {
+      let id = null;
+
+      if (el.classList.contains("chat-item")) {
+        const innerDiv = el.querySelector("div[id^='bb_msg_id_']");
+        if (innerDiv) {
+          id = innerDiv.id; // Use full id, e.g., "bb_msg_id_1752322227848"
+          el.setAttribute("data-id", id); // Optional: store on element for clarity
+        }
+      }
+
+      if (!id) {
+        // Fallback for chat-date or items without ID — use fallback hash or skip
+        id = `auto_${state.messages.ids.length}`; // Simple fallback
+      }
+
+      state.messages.map.set(id, el);
+      state.messages.ids.push(id);
+    }
   }
 
   function extractCaptionWithShortenedLink(container) {
@@ -141,8 +183,8 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     return linkHost
-      ? `Link ${linkHost}${allText ? " " + allText : ""}`
-      : allText || "(no text)";
+      ? `Liên kết ${linkHost}${allText ? " " + allText : ""}`
+      : allText || "(không có nội dung)";
   }
 
   function formatDuration(rawDuration) {
@@ -156,11 +198,7 @@ window.addEventListener("DOMContentLoaded", () => {
         ? [0, ...parts]
         : [0, 0, ...parts];
 
-    return [
-      h && `${h} hour${h !== 1 ? "s" : ""}`,
-      m && `${m} minute${m !== 1 ? "s" : ""}`,
-      s && `${s} second${s !== 1 ? "s" : ""}`,
-    ]
+    return [h && `${h} giờ`, m && `${m} phút`, s && `${s} giây`]
       .filter(Boolean)
       .join(" ");
   }
@@ -171,7 +209,7 @@ window.addEventListener("DOMContentLoaded", () => {
       messageElement
         .querySelector(".card-send-time__sendTime")
         ?.textContent.trim() || "";
-    const status = isSent ? "Sent at" : "Received at";
+    const status = isSent ? "Gửi vào lúc" : "Nhận vào lúc";
 
     // Get sender information
     const sender =
@@ -188,7 +226,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const text =
           messageElement
             .querySelector(".text-message__container .text")
-            ?.textContent.trim() || "(no text)";
+            ?.textContent.trim() || "(không có nội dung)";
         const quoteTitle = messageElement
           .querySelector(".message-quote-fragment__title")
           ?.textContent.trim();
@@ -197,14 +235,14 @@ window.addEventListener("DOMContentLoaded", () => {
           ?.textContent.trim();
 
         return quoteTitle && quoteContent
-          ? `${text} replied to ${quoteTitle} ${quoteContent}`
+          ? `${text} đã trả lời ${quoteTitle} ${quoteContent}`
           : text;
       },
       photo: () => {
         const caption = extractCaptionWithShortenedLink(
           messageElement.querySelector(".img-msg-v2__cap")
         );
-        return caption ? `Photo with caption ${caption}` : "Photo";
+        return caption ? `Hình ảnh với tiêu đề ${caption}` : "Hình ảnh";
       },
       video: () => {
         const caption = extractCaptionWithShortenedLink(
@@ -217,18 +255,18 @@ window.addEventListener("DOMContentLoaded", () => {
         const duration = formatDuration(rawDuration);
 
         return caption
-          ? `Video with caption ${caption}${duration ? `, ${duration}` : ""}`
+          ? `Video với tiêu đề ${caption}${duration ? `, ${duration}` : ""}`
           : `Video${duration ? `, ${duration}` : ""}`;
       },
       album: () => {
         const count = messageElement.querySelectorAll(".album__item").length;
-        return `${count} photos/videos`;
+        return `Album có ${count} ảnh hoặc video`;
       },
       link: () => {
         return (
           extractCaptionWithShortenedLink(
             messageElement.querySelector(".link-message-v2")
-          ) || "(no content)"
+          ) || "(không có nội dung)"
         );
       },
       file: () => {
@@ -244,14 +282,14 @@ window.addEventListener("DOMContentLoaded", () => {
           messageElement
             .querySelector(".file-message__content-info-size")
             ?.textContent.trim() || "";
-        return `File ${filename}${size ? ", size " + size : ""}`;
+        return `Tệp hoặc thư mục ${filename}${size ? ", kích cỡ " + size : ""}`;
       },
       voice: () => {
         const rawDuration = messageElement
           .querySelector(".voice-message-normal__duration-wrapper")
           ?.textContent.trim();
         const duration = formatDuration(rawDuration);
-        return `Voice message${duration ? `, ${duration}` : ""}`;
+        return `Tin nhắn thoại ${duration ? `, ${duration}` : ""}`;
       },
       call: () => {
         const title =
@@ -312,18 +350,18 @@ window.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  function highlightMessage(index) {
-    // Remove highlight from all messages
-    state.messages.items.forEach((item) => {
-      item.classList.remove(MESSAGE_HIGHLIGHT_CLASS);
-    });
+  function highlightMessageById(id) {
+    const el = state.messages.map.get(id);
+    if (!el) return;
 
-    const messageElement = state.messages.items[index];
-    if (!messageElement) return;
+    // Remove highlight from all
+    state.messages.items.forEach((item) =>
+      item.classList.remove(MESSAGE_HIGHLIGHT_CLASS)
+    );
 
-    // Simulate hover out for previous message's text (right-clickable object)
-    if (state.messages.lastHoveredIndex >= 0) {
-      const prev = state.messages.items[state.messages.lastHoveredIndex];
+    // Simulate mouseout for previous
+    if (state.messages.lastHoveredId) {
+      const prev = state.messages.map.get(state.messages.lastHoveredId);
       prev
         ?.querySelector('[data-id="div_DisabledTargetEventLayer"]')
         ?.dispatchEvent(
@@ -331,17 +369,13 @@ window.addEventListener("DOMContentLoaded", () => {
         );
     }
 
-    state.messages.lastHoveredIndex = index;
+    state.messages.lastHoveredId = id;
 
-    // Create announcement
-    const { announcement } = getMessageContent(messageElement);
+    el.classList.add(MESSAGE_HIGHLIGHT_CLASS);
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-    // Apply visual highlight
-    messageElement.classList.add(MESSAGE_HIGHLIGHT_CLASS);
-    messageElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-    // Create focus region for NVDA
-    let focusRegion = messageElement.querySelector(".nvda-focus-region");
+    // NVDA focus
+    let focusRegion = el.querySelector(".nvda-focus-region");
     if (!focusRegion) {
       focusRegion = document.createElement("div");
       Object.assign(focusRegion, {
@@ -356,23 +390,39 @@ window.addEventListener("DOMContentLoaded", () => {
           white-space: nowrap;
         `,
       });
-      messageElement.prepend(focusRegion);
+      el.prepend(focusRegion);
     }
 
-    focusRegion.textContent = announcement;
+    focusRegion.textContent = getMessageContent(el).announcement;
     focusRegion.focus();
   }
 
   // ======================
   // Menu Functions
   // ======================
-  function getAllowedMenuItems() {
-    const popup = document.querySelector(".popover-v3");
+  async function getAllowedMenuItems(timeout = 1000) {
+    const start = Date.now();
+    let popup = null;
+
+    while (!popup && Date.now() - start < timeout) {
+      popup = document.querySelector(".popover-v3");
+      if (popup) break;
+      await new Promise((r) => setTimeout(r, 30));
+    }
+
     if (!popup) return [];
+
+    // Wait for zmenu-items to load
+    let items = [];
+    while (items.length === 0 && Date.now() - start < timeout) {
+      items = Array.from(popup.querySelectorAll(".zmenu-item"));
+      if (items.length > 0) break;
+      await new Promise((r) => setTimeout(r, 30));
+    }
 
     popup.setAttribute("role", "menu");
 
-    return Array.from(popup.querySelectorAll(".zmenu-item")).filter((item) => {
+    return items.filter((item) => {
       const key =
         item
           .querySelector("span[data-translate-inner]")
@@ -428,7 +478,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // Menu navigation (when menu is open)
-    state.menu.items = getAllowedMenuItems();
     if (state.menu.items.length) {
       handleMenuNavigation(event);
       return;
@@ -461,11 +510,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // Activate conversation (Enter)
-    if (
-      event.key === "Enter" &&
-      state.conversations.selectedIndex !== -1 &&
-      !isTyping
-    ) {
+    if (event.key === "Enter" && state.conversations.currentId && !isTyping) {
       event.preventDefault();
       activateConversation();
       return;
@@ -492,7 +537,7 @@ window.addEventListener("DOMContentLoaded", () => {
         chatInput.classList.add("highlight-v3");
         Object.assign(richInput, {
           tabIndex: 0,
-          "aria-label": "Type your message.",
+          "aria-label": "Nhập tin nhắn.",
         });
         richInput.focus();
         setTimeout(() => (richInput.tabIndex = 1), 1000);
@@ -502,17 +547,23 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function navigateConversations(key) {
     updateConversationItems();
-    state.conversations.selectedIndex =
-      key === "1" || key === "!"
-        ? 0
-        : key === "M"
-        ? (state.conversations.selectedIndex + 1) %
-          state.conversations.items.length
-        : (state.conversations.selectedIndex -
-            1 +
-            state.conversations.items.length) %
-          state.conversations.items.length;
-    highlightConversation(state.conversations.selectedIndex);
+
+    const { ids, currentId } = state.conversations;
+
+    if (ids.length === 0) return;
+
+    let index = ids.indexOf(currentId);
+
+    if (key === "1" || key === "!") {
+      index = 0;
+    } else if (key === "M") {
+      index = (index + 1) % ids.length;
+    } else {
+      index = (index - 1 + ids.length) % ids.length;
+    }
+
+    const newId = ids[index];
+    highlightConversationById(newId);
   }
 
   function handleMenuNavigation(event) {
@@ -563,6 +614,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const richInput = document.getElementById("richInput");
     const chatInput = document.getElementById("chatInput");
 
+    // Shift focus off richInput temporarily
     if (richInput === document.activeElement) {
       const dummy = document.createElement("div");
       dummy.tabIndex = -1;
@@ -577,62 +629,61 @@ window.addEventListener("DOMContentLoaded", () => {
       }, 10);
     }
 
-    if (
-      state.messages.currentIndex !== -1 &&
-      state.messages.items[state.messages.currentIndex]
-    ) {
-      const message = state.messages.items[state.messages.currentIndex];
+    const currentId = state.messages.currentId;
+    const message = state.messages.map.get(currentId);
+
+    if (message) {
       message.tabIndex = 0;
       message.focus();
-      simulateHover(message);
     }
 
     state.menu.items = [];
     state.menu.currentIndex = -1;
-    announce("Menu closed");
+    announce("Menu đã đóng");
   }
 
   function navigateMessages(key) {
-    updateMessageItems();
+    updateMessageItems(); // Refresh DOM map
+
+    const { ids, map, currentId } = state.messages;
+
+    // Determine current index based on ID
+    let currentIndex = currentId ? ids.indexOf(currentId) : -1;
 
     if (key === "R") {
-      state.messages.currentIndex = state.messages.items.length - 1;
+      currentIndex = ids.length - 1;
     } else if (key === "K") {
-      state.messages.currentIndex = Math.max(
-        0,
-        state.messages.currentIndex - 1
-      );
+      currentIndex = Math.max(0, currentIndex - 1);
     } else if (key === "L") {
-      state.messages.currentIndex = Math.min(
-        state.messages.items.length - 1,
-        state.messages.currentIndex + 1
-      );
+      currentIndex = Math.min(ids.length - 1, currentIndex + 1);
     }
 
-    if (state.messages.currentIndex !== -1) {
-      const prevMessage = state.messages.items[state.messages.currentIndex];
-      if (prevMessage) {
-        const prevContent = prevMessage.querySelector(
-          ".message-content-render"
-        );
-        if (prevContent) {
-          prevContent.removeAttribute("role");
-          prevContent.removeAttribute("tabindex");
-        }
+    const newId = ids[currentIndex];
+    if (!newId) return;
+
+    // Remove tabindex/role from previously focused message
+    const prevMessage = map.get(state.messages.currentId);
+    if (prevMessage) {
+      const prevContent = prevMessage.querySelector(".message-content-render");
+      if (prevContent) {
+        prevContent.removeAttribute("role");
+        prevContent.removeAttribute("tabindex");
       }
     }
 
-    highlightMessage(state.messages.currentIndex);
+    state.messages.currentId = newId;
+    highlightMessageById(newId);
   }
 
-  function openContextMenu(event) {
-    const message = state.messages.items[state.messages.currentIndex];
+  async function openContextMenu(event) {
+    const currentId = state.messages.currentId;
+    const message = state.messages.map.get(currentId);
     const content = message.querySelector(
       '[data-id="div_DisabledTargetEventLayer"]'
     );
 
     if (!content) {
-      announce("Message content not found.");
+      announce("Không có nội dung tin nhắn.");
       return;
     }
 
@@ -643,47 +694,44 @@ window.addEventListener("DOMContentLoaded", () => {
     content.setAttribute("tabindex", "0");
     content.focus();
 
-    // 2. Get coordinates (slightly offset from center for better reliability)
+    // 2. Get coordinates
     const rect = content.getBoundingClientRect();
     const clickX = rect.left + 10;
     const clickY = rect.top + 10;
 
-    // 3. Create the complete right-click sequence
-    const triggerRightClick = () => {
-      content.dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          cancelable: true,
-          button: 2,
-          clientX: clickX,
-          clientY: clickY,
-        })
-      );
-    };
-
-    // 4. First simulate hover
+    // 3. Trigger hover
     simulateHover(content);
 
-    // 5. Then trigger right-click with slight delay
-    setTimeout(triggerRightClick, 30);
-    setTimeout(() => {
-      state.menu.items = getAllowedMenuItems();
-      if (state.menu.items.length) {
-        state.menu.currentIndex = 0;
-        highlightMenuItem(state.menu.currentIndex);
-      } else {
-        announce("No valid menu items");
-      }
-    }, 100);
+    // 4. Trigger right-click
+    await new Promise((r) => setTimeout(r, 30));
+    content.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        clientX: clickX,
+        clientY: clickY,
+      })
+    );
+
+    // 5. Wait and get allowed items
+    state.menu.items = await getAllowedMenuItems();
+
+    if (state.menu.items.length) {
+      state.menu.currentIndex = 0;
+      highlightMenuItem(state.menu.currentIndex);
+    } else {
+      announce("Không có mục chọn hợp lệ trong menu.");
+    }
   }
 
-  function openAttachmentMenu(event) {
+  async function openAttachmentMenu(event) {
     const attachmentBtn = document.querySelector(
       '[data-translate-title="STR_TIP_ATTACH_FILE"]'
     );
 
     if (!attachmentBtn) {
-      announce("Attachment button not found.");
+      announce("Không có nút chọn tệp/thư mục.");
       return;
     }
 
@@ -697,22 +745,23 @@ window.addEventListener("DOMContentLoaded", () => {
     // Stimulate hover
     simulateHover(attachmentBtn);
 
+    await new Promise((r) => setTimeout(r, 30));
     attachmentBtn.click();
-    setTimeout(() => {
-      state.menu.items = getAllowedMenuItems();
-      if (state.menu.items.length) {
-        state.menu.currentIndex = 0;
-        highlightMenuItem(state.menu.currentIndex);
-      } else {
-        announce("No valid menu items");
-      }
-    }, 100);
+    await new Promise((r) => setTimeout(r, 30));
+    state.menu.items = await getAllowedMenuItems();
+    if (state.menu.items.length) {
+      state.menu.currentIndex = 0;
+      highlightMenuItem(state.menu.currentIndex);
+    } else {
+      announce("Không có mục chọn hợp lệ trong menu.");
+    }
   }
 
   function activateConversation() {
     updateConversationItems();
-    const conversation =
-      state.conversations.items[state.conversations.selectedIndex];
+
+    const id = state.conversations.currentId;
+    const conversation = state.conversations.map.get(id);
 
     if (!conversation) return;
 
@@ -724,13 +773,15 @@ window.addEventListener("DOMContentLoaded", () => {
     );
 
     liveRegion.textContent =
-      conversation.textContent.trim() || "Contact activated";
-    state.conversations.selectedIndex = -1;
+      conversation.textContent.trim() || "Đã chọn liên hệ";
+
+    state.conversations.currentId = null;
   }
 
   function playMedia() {
-    const currentMessage =
-      state.messages.items[state.messages.lastHoveredIndex];
+    const currentId = state.messages.currentId;
+    const message = state.messages.map.get(currentId);
+    const currentMessage = message;
     if (!currentMessage) return;
 
     // // 1. First check for PHOTOS/VIDEOS message control
@@ -760,14 +811,14 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function refreshAll() {
     updateConversationItems();
-    if (state.conversations.selectedIndex >= 0) {
-      highlightConversation(state.conversations.selectedIndex);
+    if (state.conversations.currentId) {
+      highlightConversationById(state.conversations.currentId);
     }
     updateMessageItems();
 
     const popup = document.querySelector(".popover-v3");
     if (popup && popup.style.display !== "none") {
-      announce("Menu opening");
+      announce("Menu đang mở.");
     }
   }
 
