@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zablind</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+
+        h1 {
+            color: #3366cc;
+        }
+
+        .release {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .asset {
+            margin-left: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Zablind - Nâng tầm trải nghiệm dùng Zalo PC trên Windows cho người khiếm thị</h1>
+    <h1>Lưu ý: Chỉ hỗ trợ trình đọc màn hình NVDA.</h1>
+    <h3>Được phát triển bởi Nguyễn Trí Minh (Ocean Kid) - hãy để lại nguồn khi chia sẻ, xin cảm ơn!</h3>
+    <div id="releases">Đang tải...</div>
+
+    <script>
+        const API_URL = "https://api.github.com/repos/oceanondawave/zablind/releases";
+        const container = document.getElementById("releases");
+
+        fetch(API_URL)
+            .then(res => res.json())
+            .then(releases => {
+                if (!Array.isArray(releases)) {
+                    container.innerHTML = "Error fetching releases.";
+                    return;
+                }
+
+                if (releases.length === 0) {
+                    container.innerHTML = "No releases found.";
+                    return;
+                }
+
+                container.innerHTML = ""; // Clear loading
+
+                releases.forEach(release => {
+                    const div = document.createElement("div");
+                    div.className = "release";
+
+                    const date = new Date(release.published_at).toLocaleDateString();
+
+                    div.innerHTML = `
+            <h2>${release.name || release.tag_name}</h2>
+            <p><strong>Version:</strong> ${release.tag_name}</p>
+            <p><strong>Published:</strong> ${date}</p>
+            <p>${release.body ? release.body.replace(/\n/g, "<br>") : ""}</p>
+          `;
+
+                    if (release.assets.length > 0) {
+                        const ul = document.createElement("ul");
+                        release.assets.forEach(asset => {
+                            const li = document.createElement("li");
+                            li.className = "asset";
+                            li.innerHTML = `
+                Tải về: <a href="${asset.browser_download_url}" target="_blank">${asset.name}</a>
+                (${asset.download_count} downloads)
+              `;
+                            ul.appendChild(li);
+                        });
+                        div.appendChild(ul);
+                    }
+
+                    container.appendChild(div);
+                });
+            })
+            .catch(err => {
+                container.innerHTML = "Failed to load releases.";
+                console.error(err);
+            });
+    </script>
+</body>
+
+</html>
