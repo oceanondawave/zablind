@@ -71,14 +71,15 @@
                     if (release.assets.length > 0) {
                         const ul = document.createElement("ul");
                         release.assets.forEach(asset => {
-                            const li = document.createElement("li");
-                            li.className = "asset";
-                            li.innerHTML = `
-                Tải về: <a href="${asset.browser_download_url}" target="_blank">${asset.name}</a>
-                (${asset.download_count} downloads)
-              `;
-                            ul.appendChild(li);
+                            const assetDiv = document.createElement("div");
+                            assetDiv.className = "asset";
+                            assetDiv.innerHTML = `
+        Tải về: <a href="${asset.browser_download_url}" target="_blank">${asset.name}</a>
+        (${asset.download_count} downloads)
+    `;
+                            div.appendChild(assetDiv);
                         });
+
                         div.appendChild(ul);
                     }
 
