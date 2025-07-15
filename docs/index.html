@@ -32,17 +32,25 @@
 
 <body>
     <h1>Zablind - Nâng tầm trải nghiệm dùng Zalo PC trên Windows cho người khiếm thị</h1>
-    <h2>Lưu ý: Hỗ trợ tốt với trình đọc màn hình NVDA. Nếu bạn dùng JAWS thì thử cách sau: Sau khi vào Zalo thì bạn chỉ
+    <h2>Lưu ý dành cho người dùng NVDA và JAWS</h2>
+    <p><strong>Lưu ý:</strong> Hỗ trợ tốt với trình đọc màn hình NVDA. Nếu bạn dùng JAWS thì khi vào
+        Zalo bạn chỉ
         cần bấm Insert + Z để tắt con trỏ ảo của JAWS là có thể sử dụng Zablind được như bình
-        thường (cảm ơn bạn Lê Tú vì đã chia sẻ hướng dẫn này).</h2>
-    <h2>Xem video hướng dẫn tại đây: <a href="https://youtu.be/6BVNAWVjK1s?si=LSD2Ra-vx8V-WRX1">Link trên YouTube</a>
-    </h2>
-    <h3>Trong lần đầu cài đặt, bạn chạy file .exe lên và nhấn "Install" để cài. Nếu bạn muốn gỡ cài đặt Zablind, chạy
+        thường (cảm ơn bạn Lê Tú vì đã chia sẻ hướng dẫn này).</p>
+    <p><strong>Xem video hướng dẫn tại đây:</strong><a href="https://youtu.be/6BVNAWVjK1s?si=LSD2Ra-vx8V-WRX1"> Link
+            trên YouTube</a>
+    </p>
+    <h2>Lưu ý khi cài đặt</h2>
+    <p>Hãy cập nhật lên bản Zalo mới nhất được hỗ trợ bởi Zablind (vào trang này để tải: <a href="https://zalo.me/pc">
+            Link
+            tải Zalo</a>) Trong lần đầu cài đặt, bạn chạy file .exe lên và nhấn "Install" để cài. Nếu bạn muốn gỡ cài
+        đặt Zablind, chạy
         lại
         file .exe và chọn "Yes". Nếu bạn muốn cập nhật Zablind hoặc cài đặt lại thì chạy file .exe (chọn file có phiên
         bản
         mới nhất nếu cập nhật) và chọn "No" rồi nhấn "Install". Hãy luôn cập nhật Zablind khi bạn cài đặt lại hoặc cập
-        nhật Zalo.</h3>
+        nhật Zalo.</p>
+    <h2>Lưu ý về bản beta</h2>
     <p>Hiện tại Zablind mới chỉ mở bản beta nên tính năng vẫn chưa được đầy đủ, mình cũng đã nhận ra thiếu sót về phím
         Application (hay menu ngữ cảnh) trên một số máy không có phím này nên một số bạn sẽ không dùng được. Các bạn hãy
         thử giúp mình tổ hợp phím Shift + F10 để thay thế cho
@@ -60,8 +68,10 @@
         bạn đã gán
         cho
         phím Application để thử lại nhé.</p>
-    <h3>Được phát triển bởi Nguyễn Trí Minh (Ocean Kid) - hãy để lại nguồn khi chia sẻ, xin cảm ơn! Liên hệ với tác giả
-        qua email: minh.ngntri@gmail.com.</h3>
+    <h2>Thông tin và liên hệ với tác giả</h2>
+    <p>Được phát triển bởi <strong>Nguyễn Trí Minh (Ocean Kid)</strong> - hãy để lại nguồn khi chia sẻ, xin cảm ơn! Liên
+        hệ với tác giả
+        qua email: <strong>minh.ngntri@gmail.com</strong>.</p>
     <div id="releases">Đang tải, vui lòng chờ...</div>
 
     <script>
@@ -91,8 +101,8 @@
 
                     div.innerHTML = `
             <h2>${release.name || release.tag_name}</h2>
-            <p><strong>Version:</strong> ${release.tag_name}</p>
-            <p><strong>Published:</strong> ${date}</p>
+            <p><strong>Phiên bản:</strong> ${release.tag_name}</p>
+            <p><strong>Đã phát hành:</strong> ${date}</p>
             <p>${release.body ? release.body.replace(/\n/g, "<br>") : ""}</p>
           `;
 
