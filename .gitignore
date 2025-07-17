@@ -11,10 +11,16 @@
 
 !extracted/main-dist/
 !extracted/main-dist/zablind.js
+!extracted/main-dist/zbimage_api.js
 !extracted/main-dist/preload-wrapper.js
 
 !extracted/pc-dist/
 !extracted/pc-dist/popup-viewer.html
+!extracted/pc-dist/index.html
+!extracted/pc-dist/child.html
 
 !docs/
 !docs/index.html
+
+!installer/
+!installer/zablind.iss

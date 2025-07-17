@@ -1,4 +1,24 @@
+const { describeImageFromPath } = require("./zbimage_api.js");
+
 window.addEventListener("DOMContentLoaded", () => {
+  // ======================
+  // Welcome Message
+  // ======================
+  window.speechSynthesis.onvoiceschanged = () => {
+    const voices = speechSynthesis.getVoices();
+    const englishVoice =
+      voices.find((voice) => voice.lang.startsWith("en")) || voices[0]; // fallback
+
+    const msg = new SpeechSynthesisUtterance();
+    msg.lang = "en-GB";
+    msg.voice = englishVoice;
+    msg.text = "Zablind Beta version 1.5 - by Ocean Kid.";
+    msg.volume = 1.0;
+    msg.rate = 1.0;
+
+    window.speechSynthesis.speak(msg);
+  };
+
   // ======================
   // Initial Setup
   // ======================
@@ -262,6 +282,12 @@ window.addEventListener("DOMContentLoaded", () => {
         const count = messageElement.querySelectorAll(".album__item").length;
         return `Album có ${count} ảnh hoặc video`;
       },
+      sticker: () => {
+        const stickerMessage = messageElement.querySelector(".sticker");
+        return stickerMessage
+          ? "Nhãn dán. Có thể mô tả nhãn dán"
+          : "Không có nội dung";
+      },
       link: () => {
         return (
           extractCaptionWithShortenedLink(
@@ -323,6 +349,7 @@ window.addEventListener("DOMContentLoaded", () => {
         handler: handlers.video,
       },
       { selector: ".card--group-photo", handler: handlers.album },
+      { selector: ".sticker", handler: handlers.sticker },
       { selector: ".link-message-v2", handler: handlers.link },
       { selector: ".file-message__container", handler: handlers.file },
       { selector: ".voice-message", handler: handlers.voice },
@@ -395,6 +422,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
     focusRegion.textContent = getMessageContent(el).announcement;
     focusRegion.focus();
+
+    // Check if message has a image that can be describable
+    let imagePath = getImagePath(el);
+    if (imagePath) {
+      announce("Có thể mô tả hình ảnh");
+    }
   }
 
   // ======================
@@ -449,6 +482,38 @@ window.addEventListener("DOMContentLoaded", () => {
         item.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     });
+  }
+  // ======================
+  // Get image's path function
+  // ======================
+  function getImagePath(item) {
+    // Get all image elements within the provided item
+    const imgs = item.querySelectorAll("img");
+
+    // Loop through each image to find one with a local file path
+    for (const img of imgs) {
+      // Check if the src attribute exists and is a file URI
+      if (img.src && img.src.startsWith("file://")) {
+        try {
+          const url = new URL(img.src);
+          let path = decodeURIComponent(url.pathname);
+
+          // FIX: Correctly handle Windows paths (e.g., /C:/Users/...)
+          // without breaking macOS/Linux paths (e.g., /Users/...).
+          if (/^\/[a-zA-Z]:/.test(path)) {
+            // Remove the leading slash ONLY for Windows-style paths
+            path = path.substring(1);
+          }
+          return path;
+        } catch (error) {
+          console.error("❌ Failed to parse img.src:", img.src, error);
+          // If parsing this src fails, continue to the next image
+        }
+      }
+    }
+
+    // If the loop completes, no suitable image was found
+    return null;
   }
 
   // ======================
@@ -520,6 +585,18 @@ window.addEventListener("DOMContentLoaded", () => {
     if (event.key === "Tab" && !isTyping) {
       event.preventDefault();
       playMedia();
+      return;
+    }
+
+    // Describe image (Ctrl+Shift +I)
+    if (
+      event.ctrlKey &&
+      event.shiftKey &&
+      event.key.toLowerCase() === "d" &&
+      !isTyping
+    ) {
+      event.preventDefault();
+      describeImage();
       return;
     }
   }
@@ -807,6 +884,55 @@ window.addEventListener("DOMContentLoaded", () => {
       control.focus();
       control.click();
     }, 50);
+  }
+
+  function describeImage() {
+    const currentId = state.messages.currentId;
+    const message = state.messages.map.get(currentId);
+    const currentMessage = message;
+    if (!currentMessage) return;
+
+    let imagePath = null;
+
+    // =============================
+    // 🔹 Case 1: Sticker
+    // =============================
+    const sticker = currentMessage.querySelector(".sticker");
+    if (sticker) {
+      const bgStyle = window.getComputedStyle(sticker);
+      const bgImage = bgStyle.getPropertyValue("background-image");
+
+      const match = bgImage.match(/url\("file:\/\/\/(.+?)"\)/);
+      if (match && match[1]) {
+        imagePath = decodeURIComponent(match[1].replace(/\\/g, "/"));
+      }
+    }
+
+    // =============================
+    // 🔹 Case 2: <img> element (includes raw cache fallback)
+    // =============================
+    if (!imagePath) {
+      imagePath = getImagePath(currentMessage);
+    }
+
+    // =============================
+    // 🔹 Send to API
+    // =============================
+    if (imagePath) {
+      describeImageFromPath(imagePath)
+        .then((caption) => {
+          if (caption) {
+            console.log(caption);
+          } else {
+            console.log("Failed to get caption.");
+          }
+        })
+        .catch((err) => {
+          console.error("❌ API error", err);
+        });
+    } else {
+      console.warn("🚫 No image found to describe.");
+    }
   }
 
   function refreshAll() {

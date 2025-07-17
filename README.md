@@ -1,6 +1,6 @@
-# Zablind (Beta version 1.4)
+# Zablind (Beta version 1.5)
 
-_A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows (only supports NVDA)._
+_A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows._
 
 > ⚠️ **Disclaimer**: This tool modifies internal files of the Zalo desktop app. Use at your own risk. Always back up your original `app.asar` file before proceeding.
 
@@ -16,6 +16,7 @@ _A lightweight tool designed to assist visually impaired users in navigating Zal
 - Press <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to read the previous / next message.
 - If the message is a voice or video message, press <code>Tab</code> to play it. If it's a video message, after pressing <code>Tab</code> to play, you can press <code>Space</code> once then press <code>Space</code> one more time to pause/play the video. If it's a photo, you can also press <code>Tab</code> to view it. This also works for an album (which contains many photos/videos), but you can only view the first photo/video in the album for now.
 - Press <code>ESC</code> to stop watching/viewing the photos/videos.
+- Press <code>Ctrl + Shift + I</code> to listen to an image's description from <code>Zablind Image</code>.
 - Press the <code>Application</code> / <code>Context Menu</code> key to open the menu for each message.
 - Press <code>Ctrl + Shift + A</code> to open the attachment menu to send files/folders.
 - Use <code>Up</code> / <code>Down</code> arrow keys to navigate options.
@@ -46,7 +47,7 @@ C:\Users\<your-user-name>\AppData\Local\Programs\Zalo\<latest-Zalo-version>\reso
 
 Copy the `app.asar` file and `app.asar.unpacked` folder found in that `resources` folder into a new folder called `original` in the root of this project (create one first).
 
-Move `zablind.js` and `preload-wrapper.js` from `extracted/main-dist/` and `popup-viewer.html` from `extracted/pc-dist/` into the project root.
+Move `zablind.js`, `zbimage_api.js` and `preload-wrapper.js` from `extracted/main-dist/` and `popup-viewer.html`, `child.html` and `index.html` from `extracted/pc-dist/` into the project root.
 
 Install the `asar` tool globally using npm:
 
@@ -62,13 +63,13 @@ Extract the original `app.asar` using:
 asar extract original/app.asar extracted
 ```
 
-Move `zablind.js` and `preload-wrapper.js` into:
+Move `zablind.js`, `zbimage_api.js` and `preload-wrapper.js` into:
 
 ```
 extracted/main-dist/
 ```
 
-Move `popup-viewer.html` into:
+Move `popup-viewer.html`, `child.html` and `index.html` into:
 
 ```
 extracted/pc-dist/
@@ -86,13 +87,14 @@ Replace it with:
 u.join(__dirname, "preload-wrapper.js");
 ```
 
-(Optional) To open Dev Tools by default, uncomment the below line:
+(Optional) To open Dev Tools by default, find `k = new s(this.mainOpts)` and replace it with:
 
 ```js
-// k.webContents.openDevTools({ mode: "detach" }),
+(k = new s(this.mainOpts)),
+k.webContents.openDevTools({ mode: "detach" }),
 ```
 
-Make changes to `zablind.js` and `popup-viewer.html` as needed, then save the files.
+Make changes to the files as needed, then save the files.
 
 Repack the `app.asar` using:
 
@@ -105,6 +107,8 @@ A new `app.asar` will appear in the root directory.
 Replace the original `app.asar` file in the Zalo directory with the one you just created.
 
 Run Zalo to test the changes.
+
+You don't need to care about the `installer/zablind.iss` since I store this script for buiding the installer. But you can take it as a reference.
 
 ---
 
