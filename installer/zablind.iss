@@ -1,54 +1,163 @@
+﻿// ✅ Define constants at the very top
+#define UseDefaultRegistry true
+#define MyAppName "Zablind Patcher"
+#define MyAppVersion "1.0" 
+#define GitHubUser "oceanondawave"
+#define GitHubRepo "zablind_demo_download"
+#define AppAsarFile "app.asar"
+#define GuideFile "huong_dan_zablind.txt"
+
 [Setup]
-AppName=Bộ cài Zablind
-AppVersion=b1.5
-DiskSpanning=yes
+AppId={{26D55B71-4479-4B5B-9B2F-65E8A83E5528}}
+AppName={#MyAppName}
+AppVersion=1.0-installer
 PrivilegesRequired=admin
-DefaultDirName={autopf}\Zablind
+DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=.
-OutputBaseFilename=Zablind_b1.5
+OutputBaseFilename=Zablind_Installer
 Compression=lzma
 SolidCompression=yes
+ShowLanguageDialog=yes
 
-#define WatcherFileName "zablind_watcher.vbs"
 
 [Languages]
 Name: "vi"; MessagesFile: "compiler:Languages\Vietnamese.isl"
+Name: "en"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+// English Translations
+en.ZaloNotFound=Could not find the Zalo installation directory. You must install Zalo first.
+en.ZaloNotFoundTitle=Error
+en.AlreadyInstalled=Zablind Patcher is already installed.
+en.UninstallOption=Do you want to UNINSTALL the existing version?
+en.ActionChoiceTitle=Choose Action
+en.UninstallSuccess=Zablind Patcher has been uninstalled. Zalo has been restored.
+en.UninstallFailed=Uninstall failed. Could not delete the old patch.
+en.RestoreFailed=CRITICAL ERROR: Could not restore Zalo's original file. Please reinstall Zalo.
+en.UpdateAvailable=A new version (%1) is available. You are using version %2. Update now?
+en.UpdateAvailableTitle=Update Available
+en.LatestVersion=You already have the latest version (%1).
+en.LatestVersionTitle=Information
+en.DownloadAndInstall=The installer will download and install Zablind Patcher version %1.
+en.DownloadAndInstallTitle=Begin Installation
+en.ConnectionError=Could not connect to the update server. Please check your internet connection.
+en.FileError=Error: Could not find core files on the GitHub release.
+en.Downloading=Downloading required files...
+en.Finalizing=Finalizing installation...
+
+// Vietnamese Translations
+vi.ZaloNotFound=Không thể tìm thấy nơi cài đặt Zalo. Bạn phải tải và cài đặt Zalo trước.
+vi.ZaloNotFoundTitle=Lỗi
+vi.AlreadyInstalled=Zablind Patcher đã được cài đặt.
+vi.UninstallOption=Bạn có muốn GỠ CÀI ĐẶT phiên bản hiện tại không?
+vi.ActionChoiceTitle=Lựa chọn hành động
+vi.UninstallSuccess=Zablind Patcher đã được gỡ cài đặt. Zalo đã được khôi phục.
+vi.UninstallFailed=Gỡ cài đặt thất bại. Không thể xoá bản vá cũ.
+vi.RestoreFailed=LỖI NGHIÊM TRỌNG: Không thể khôi phục tệp gốc của Zalo. Hãy cài đặt lại Zalo.
+vi.UpdateAvailable=Đã có phiên bản mới (%1). Bạn đang dùng bản %2. Cập nhật ngay?
+vi.UpdateAvailableTitle=Có bản cập nhật
+vi.LatestVersion=Bạn đã có phiên bản mới nhất (%1).
+vi.LatestVersionTitle=Thông báo
+vi.DownloadAndInstall=Bộ cài sẽ tải và cài đặt Zablind Patcher phiên bản %1.
+vi.DownloadAndInstallTitle=Bắt đầu cài đặt
+vi.ConnectionError=Không thể kết nối đến máy chủ cập nhật. Vui lòng kiểm tra mạng.
+vi.FileError=Lỗi: Không tìm thấy các tệp lõi trên bản phát hành GitHub.
+vi.Downloading=Đang tải về các tệp cần thiết...
+vi.Finalizing=Đang hoàn tất cài đặt...
 
 [Files]
-Source: "app.asar"; DestDir: "{tmp}"; DestName: "patched.asar"; Flags: ignoreversion
-Source: "huong_dan_zablind.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "Zablind Image.exe"; DestDir: "{app}"; Flags: ignoreversion nocompression
-
-[Icons]
-Name: "{group}\Zablind Installer"; Filename: "{app}\ZablindInstaller.exe"
-
-[Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
-    ValueName: "ZablindWatcher"; ValueType: string; \
-    ValueData: "wscript.exe ""{app}\{#WatcherFileName}"""; Flags: uninsdeletevalue
+// This section is intentionally empty. No DLLs are needed.
 
 [UninstallDelete]
-Type: files; Name: "{app}\*"
-Type: files; Name: "{app}\{#WatcherFileName}"
-Type: dirifempty; Name: "{app}"
+Type: files; Name: "{app}\uninstall.exe"
+Type: files; Name: "{app}\uninstall.dat"
+Type: filesandordirs; Name: "{app}"
+
+
+[Registry]
+Root: HKLM; Subkey: "Software\Wow6432Node\Zablind Patcher"; \
+    ValueType: string; ValueName: "Version"; ValueData: "{#MyAppVersion}"; \
+    Flags: uninsdeletekey
 
 [Code]
-// --- Windows API for Centering Forms ---
+// --- 1. CONSTANTS (must be first) ---
 const
   SM_CXSCREEN = 0;
   SM_CYSCREEN = 1;
+
+// --- 2. GLOBAL VARIABLES (must be second) ---
+var
+  LatestVersion: string;
+  LatestReleaseJson: AnsiString;
+  PerformInstall: Boolean;
+  ResultCode: Integer;
+  latestZaloPath: string;
+
+// --- 3. FUNCTIONS and PROCEDURES (must be last) ---
+
+// --- External DLL Imports ---
 function GetSystemMetrics(nIndex: Integer): Integer;
   external 'GetSystemMetrics@user32.dll stdcall';
-  
+
+// --- PowerShell Download Function ---
+function DownloadFilePS(const URL, FileName: string): Boolean;
 var
-  latestZaloPath: string;
+  Command: string;
   ResultCode: Integer;
-  WasReinstall: Boolean;
+  ErrorLog: AnsiString; // Changed to AnsiString
+  TempErrorFile: string;
+begin
+  TempErrorFile := ExpandConstant('{tmp}\ps_error.log');
+  
+  // Delete any existing error file
+  if FileExists(TempErrorFile) then
+    DeleteFile(TempErrorFile);
+
+  Command :=
+    '$ErrorActionPreference = ''Stop''; ' +
+    '$ProgressPreference = ''SilentlyContinue''; ' +
+    'try { ' +
+    '  [Net.ServicePointManager]::SecurityProtocol = ' +
+    '    [Net.SecurityProtocolType]::Tls12 -bor ' +
+    '    [Net.SecurityProtocolType]::Tls13; ' +
+    '  $client = New-Object System.Net.WebClient; ' +
+    '  $client.Headers.Add(''User-Agent'', ''InnoSetup-Updater''); ' +
+    '  $client.DownloadFile(''' + URL + ''', ''' + FileName + '''); ' +
+    '  exit 0 ' +
+    '} ' +
+    'catch { ' +
+    '  $_.Exception | Out-File -FilePath ''' + TempErrorFile + ''' -Encoding UTF8; ' +
+    '  exit 1 ' +
+    '}';
+
+  Result := Exec('powershell.exe', 
+               '-NoProfile -ExecutionPolicy Bypass -Command "' + Command + '"', 
+               '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+
+  // Check results and log details
+  if not Result then
+  begin
+    Log('PowerShell download failed. Code: ' + IntToStr(ResultCode));
+    
+    // Read error details with proper AnsiString type
+    if FileExists(TempErrorFile) then
+    begin
+      if LoadStringFromFile(TempErrorFile, ErrorLog) then
+      begin
+        Log('PowerShell error details:');
+        Log(string(ErrorLog)); // Convert to string for logging
+      end;
+      DeleteFile(TempErrorFile);
+    end
+    else
+    begin
+      Log('No error details file found');
+    end;
+  end;
+end;
 
 // --- Custom Accessible Dialog Functions ---
-
-// An accessible message box with a single "OK" button.
 procedure AccessibleMessageBox(Message, Title: string);
 var
   Form: TSetupForm;
@@ -61,7 +170,6 @@ begin
     Form.SetBounds(0, 0, 400, 150);
     Form.Left := (GetSystemMetrics(SM_CXSCREEN) - Form.Width) div 2;
     Form.Top := (GetSystemMetrics(SM_CYSCREEN) - Form.Height) div 2;
-
     MessageMemo := TMemo.Create(Form);
     MessageMemo.Parent := Form;
     MessageMemo.SetBounds(15, 15, 370, 50);
@@ -70,28 +178,22 @@ begin
     MessageMemo.Color := Form.Color;
     MessageMemo.BorderStyle := bsNone;
     MessageMemo.WantTabs := False;
-
     OKButton := TButton.Create(Form);
     OKButton.Parent := Form;
     OKButton.SetBounds(Form.ClientWidth - 90, Form.ClientHeight - 40, 75, 25);
-    OKButton.Caption := 'Đồng ý';
+    OKButton.Caption := SetupMessage(msgButtonOK);
     OKButton.ModalResult := mrOk;
     OKButton.Default := True;
     OKButton.Cancel := True;
-    
     Form.ActiveControl := MessageMemo;
-
-    // ✅ ADD THIS LINE: Select all text to encourage the screen reader to read it all.
     MessageMemo.SelectAll;
-
     Form.ShowModal();
   finally
     Form.Free;
   end;
 end;
 
-// An accessible choice box with Vietnamese buttons that returns IDYES, IDNO, or IDCANCEL.
-function AccessibleChoiceBox(Message, Title: string): Integer;
+function AccessibleChoiceBox(Message, Title: string; UseCancel: Boolean): Integer;
 var
   Form: TSetupForm;
   MessageMemo: TMemo;
@@ -104,7 +206,6 @@ begin
     Form.SetBounds(0, 0, 400, 170);
     Form.Left := (GetSystemMetrics(SM_CXSCREEN) - Form.Width) div 2;
     Form.Top := (GetSystemMetrics(SM_CYSCREEN) - Form.Height) div 2;
-
     MessageMemo := TMemo.Create(Form);
     MessageMemo.Parent := Form;
     MessageMemo.SetBounds(15, 15, 370, 70);
@@ -113,47 +214,47 @@ begin
     MessageMemo.Color := Form.Color;
     MessageMemo.BorderStyle := bsNone;
     MessageMemo.WantTabs := False;
-
     YesButton := TButton.Create(Form);
     YesButton.Parent := Form;
-    YesButton.SetBounds(Form.ClientWidth - 270, Form.ClientHeight - 45, 75, 25);
-    YesButton.Caption := 'Có';
+    YesButton.Caption := SetupMessage(msgButtonYes);
     YesButton.ModalResult := mrYes;
-
+    YesButton.Default := True;
     NoButton := TButton.Create(Form);
     NoButton.Parent := Form;
-    NoButton.SetBounds(Form.ClientWidth - 185, Form.ClientHeight - 45, 75, 25);
-    NoButton.Caption := 'Không';
+    NoButton.Caption := SetupMessage(msgButtonNo);
     NoButton.ModalResult := mrNo;
-
-    CancelButton := TButton.Create(Form);
-    CancelButton.Parent := Form;
-    CancelButton.SetBounds(Form.ClientWidth - 100, Form.ClientHeight - 45, 75, 25);
-    CancelButton.Caption := 'Huỷ';
-    CancelButton.ModalResult := mrCancel;
-    CancelButton.Cancel := True;
-
+    if UseCancel then
+    begin
+      YesButton.SetBounds(Form.ClientWidth - 270, Form.ClientHeight - 45, 75, 25);
+      NoButton.SetBounds(Form.ClientWidth - 185, Form.ClientHeight - 45, 75, 25);
+      CancelButton := TButton.Create(Form);
+      CancelButton.Parent := Form;
+      CancelButton.SetBounds(Form.ClientWidth - 100, Form.ClientHeight - 45, 75, 25);
+      CancelButton.Caption := SetupMessage(msgButtonCancel);
+      CancelButton.ModalResult := mrCancel;
+      CancelButton.Cancel := True;
+    end
+    else
+    begin
+      YesButton.SetBounds(Form.ClientWidth - 185, Form.ClientHeight - 45, 75, 25);
+      NoButton.SetBounds(Form.ClientWidth - 100, Form.ClientHeight - 45, 75, 25);
+      NoButton.Cancel := True;
+    end;
     Form.ActiveControl := MessageMemo;
-
-    // ✅ ADD THIS LINE: Select all text to encourage the screen reader to read it all.
     MessageMemo.SelectAll;
-
     ModalResultValue := Form.ShowModal();
-    if ModalResultValue = mrYes then
-      Result := IDYES
-    else if ModalResultValue = mrNo then
-      Result := IDNO
+    case ModalResultValue of
+      mrYes: Result := IDYES;
+      mrNo: Result := IDNO;
     else
       Result := IDCANCEL;
-
+    end;
   finally
     Form.Free;
   end;
 end;
 
-
 // --- Helper Functions ---
-
 function CompareVersions(v1, v2: string): Integer;
 var
   i1, i2: Integer;
@@ -215,153 +316,228 @@ end;
 
 procedure KillProcesses;
 begin
-  // Kill Zalo, the watcher script (wscript.exe), and the image process.
   Exec('taskkill', '/F /IM Zalo.exe', '', SW_HIDE, ewNoWait, ResultCode);
-  Exec('taskkill', '/F /IM Zablind Image.exe', '', SW_HIDE, ewNoWait, ResultCode);
-  // This is a broad way to kill the script; it's generally safe here.
-  Exec('taskkill', '/F /IM wscript.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
-// NEW: Procedure to create the VBS watcher script dynamically.
-procedure CreateProcessWatcherScript;
+// --- Update Functions ---
+function GetJsonValue(Json, Key: string): string;
 var
-  WatcherPath: string;
-  ScriptLines: TStringList;
+  P: Integer;
+  ValueStart, ValueEnd: Integer;
+  TempJson: string;
 begin
-  WatcherPath := ExpandConstant('{app}\{#WatcherFileName}');
-  ScriptLines := TStringList.Create;
-  try
-    ScriptLines.Add('Dim zaloRunning, imageRunning');
-    ScriptLines.Add('Set wmi = GetObject("winmgmts:\\.\root\cimv2")');
-    ScriptLines.Add('Set shell = CreateObject("WScript.Shell")');
-    ScriptLines.Add('');
-    ScriptLines.Add('Do');
-    ScriptLines.Add('    zaloRunning = wmi.ExecQuery("SELECT * FROM Win32_Process WHERE Name = ''Zalo.exe''").Count > 0');
-    ScriptLines.Add('    imageRunning = wmi.ExecQuery("SELECT * FROM Win32_Process WHERE Name = ''Zablind Image.exe''").Count > 0');
-    ScriptLines.Add('');
-    ScriptLines.Add('    If zaloRunning AND NOT imageRunning Then');
-    ScriptLines.Add('        shell.Run """' + ExpandConstant('{app}\Zablind Image.exe') + '""", 0, False');
-    ScriptLines.Add('    ElseIf NOT zaloRunning AND imageRunning Then');
-    ScriptLines.Add('        shell.Run "taskkill /F /IM ""Zablind Image.exe""", 0, True');
-    ScriptLines.Add('    End If');
-    ScriptLines.Add('');
-    ScriptLines.Add('    WScript.Sleep(5000)'); // Check every 5 seconds
-    ScriptLines.Add('Loop');
-    
-    ScriptLines.SaveToFile(WatcherPath);
-  finally
-    ScriptLines.Free;
+  Result := '';
+  P := Pos('"' + Key + '":', Json);
+  if P > 0 then
+  begin
+    ValueStart := P + Length(Key) + 3;
+    if Json[ValueStart] = '"' then
+    begin
+      ValueStart := ValueStart + 1;
+      TempJson := Copy(Json, ValueStart, Length(Json));
+      ValueEnd := Pos('"', TempJson);
+      if ValueEnd > 0 then
+      begin
+        Result := Copy(TempJson, 1, ValueEnd - 1);
+      end;
+    end;
   end;
 end;
 
+function GetAssetURL(ReleaseJson, AssetName: string): string;
+var
+  AssetNamePos, UrlPos, UrlStart, UrlEnd: Integer;
+  SearchStart: Integer;
+  SubJson: string;
+begin
+  Result := '';
+
+  // Match exactly as in GitHub JSON (no space after colon)
+  AssetNamePos := Pos('"name":"' + AssetName + '"', ReleaseJson);
+
+  if AssetNamePos = 0 then
+  begin
+    Log('Asset "' + AssetName + '" not found in JSON.');
+    Exit;
+  end;
+
+  // Restrict search range to after found asset
+  SearchStart := AssetNamePos;
+  SubJson := Copy(ReleaseJson, SearchStart, Length(ReleaseJson) - SearchStart + 1);
+
+  UrlPos := Pos('"browser_download_url":"', SubJson);
+  if UrlPos = 0 then
+  begin
+    Log('browser_download_url not found for "' + AssetName + '".');
+    Exit;
+  end;
+
+  UrlStart := UrlPos + Length('"browser_download_url":"');
+  UrlEnd := Pos('"', Copy(SubJson, UrlStart, MaxInt));
+  if UrlEnd = 0 then
+  begin
+    Log('Failed to find end of URL for "' + AssetName + '".');
+    Exit;
+  end;
+
+  Result := Copy(SubJson, UrlStart, UrlEnd - 1);
+  Log('Found asset "' + AssetName + '" URL: ' + Result);
+end;
+
+function GetInstalledVersion(): string;
+var
+  ver: string;
+begin
+  if RegQueryStringValue(HKLM, 'Software\Wow6432Node\Zablind Patcher', 'Version', ver) then
+    Result := ver
+  else
+    Result := '';
+end;
+
+// --- Main Setup Logic ---
 function InitializeSetup(): Boolean;
 var
-  appAsar, backupAsar, appPath: string;
-  choice: Integer;
+  InstalledVersion: string;
+  GitHubApiURL: string;
+  JsonPath: string;
+  backupAsar: string;
 begin
-  WasReinstall := False;
+  PerformInstall := False;
+  
   latestZaloPath := GetZaloResourcePath('');
-  appAsar := latestZaloPath + '\app.asar';
-  backupAsar := latestZaloPath + '\app.asar.bak';
-
   if not DirExists(latestZaloPath) then
   begin
-    AccessibleMessageBox('Không thể tìm thấy nơi cài đặt Zalo. Bạn phải tải và cài đặt Zalo trước.', 'Lỗi');
+    MsgBox(CustomMessage('ZaloNotFound'), mbError, MB_OK);
     Result := False;
     Exit;
   end;
 
-  KillProcesses();
-
-  if FileExists(backupAsar) then
+  // Always use fresh version check
+  GitHubApiURL := 'https://api.github.com/repos/{#GitHubUser}/{#GitHubRepo}/releases/latest?t=' + GetDateTimeString('yyyymmddhhnnss', '-', ':');
+  JsonPath := ExpandConstant('{tmp}\release.json');
+  
+  if not DownloadFilePS(GitHubApiURL, JsonPath) then
   begin
-    choice := AccessibleChoiceBox('Zablind đã được cài đặt trước đó. Hãy chọn một trong hai tuỳ chọn:' + #13#10#13#10 +
-                                  '• Có = GỠ CÀI ĐẶT Zablind' + #13#10 +
-                                  '• Không = CÀI ĐẶT LẠI hoặc CẬP NHẬT Zablind' + #13#10 +
-                                  '• Huỷ = Thoát',
-                                  'Lựa chọn hành động');
-    if choice = IDYES then
+    MsgBox(CustomMessage('ConnectionError'), mbError, MB_OK);
+    Result := False; 
+    Exit;
+  end;
+  
+  if LoadStringFromFile(JsonPath, LatestReleaseJson) then
+  begin
+    // DEBUG: Log first 200 chars of JSON
+    Log('GitHub Response: ' + Copy(LatestReleaseJson, 1, 200) + '...');
+    
+    LatestVersion := GetJsonValue(LatestReleaseJson, 'tag_name');
+    InstalledVersion := GetInstalledVersion();
+    
+    // Verify assets exist before proceeding
+    if (GetAssetURL(LatestReleaseJson, '{#AppAsarFile}') = '') or 
+       (GetAssetURL(LatestReleaseJson, '{#GuideFile}') = '') then
     begin
-      if DeleteFile(appAsar) then
-      begin
-        if RenameFile(backupAsar, appAsar) then
-        begin
-          RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'ZablindWatcher');
-          appPath := ExpandConstant('{autopf}\Zablind');
-          DeleteFile(appPath + '\{#WatcherFileName}');
-          DeleteFile(appPath + '\Zablind Image.exe');
-          DeleteFile(appPath + '\huong_dan_zablind.txt');
-          AccessibleMessageBox('Zablind đã được gỡ cài đặt. Zalo đã được khôi phục lại như ban đầu. Bấm Tab rồi chọn Đồng ý để tắt thông báo này. Zablind rất buồn khi phải xa bạn, hẹn gặp lại!', 'Thông báo');
-        end
-        else
-          AccessibleMessageBox('QUAN TRỌNG: Không thể sao lưu bản cài đặt mặc định của Zalo. Hãy cài đặt lại Zalo.', 'Lỗi nghiêm trọng');
-      end
-      else
-        AccessibleMessageBox('Gỡ cài đặt thất bại. Không thể xoá bản cài đặt cũ.', 'Lỗi');
-      
+      Log('Missing assets in release. Full JSON:');
+      Log(LatestReleaseJson);
+      MsgBox(CustomMessage('FileError'), mbError, MB_OK);
       Result := False;
-    end
-    else if choice = IDNO then
+      Exit;
+    end;
+    
+    if InstalledVersion = '' then
     begin
-      WasReinstall := True;
-      Result := True;
+      MsgBox(FmtMessage(CustomMessage('DownloadAndInstall'), [LatestVersion]), mbInformation, MB_OK);
+      PerformInstall := True;
+    end
+    else if CompareVersions(LatestVersion, InstalledVersion) > 0 then
+    begin
+      if MsgBox(FmtMessage(CustomMessage('UpdateAvailable'), [LatestVersion, InstalledVersion]), mbConfirmation, MB_YESNO) = IDYES then
+      begin
+        KillProcesses();
+        DelTree(ExpandConstant('{app}'), True, True, True);
+        PerformInstall := True;
+      end;
     end
     else
     begin
-      Result := False;
+      backupAsar := latestZaloPath + '\app.asar.bak';
+      if FileExists(backupAsar) then
+      begin 
+        if MsgBox(CustomMessage('AlreadyInstalled') + #13#10 + CustomMessage('UninstallOption'), mbConfirmation, MB_YESNO) = IDYES then
+        begin
+          KillProcesses();
+          if DeleteFile(latestZaloPath + '\app.asar') then
+          begin
+            if RenameFile(backupAsar, latestZaloPath + '\app.asar') then
+              MsgBox(CustomMessage('UninstallSuccess'), mbInformation, MB_OK)
+            else
+              MsgBox(CustomMessage('RestoreFailed'), mbError, MB_OK);
+          end
+          else
+            MsgBox(CustomMessage('UninstallFailed'), mbError, MB_OK);
+        end;
+      end
+      else
+      begin
+        MsgBox(FmtMessage(CustomMessage('LatestVersion'), [InstalledVersion]), mbInformation, MB_OK);
+      end;
     end;
   end
   else
   begin
-    Result := True;
+    MsgBox(CustomMessage('ConnectionError'), mbError, MB_OK);
+    Result := False;
+    Exit;
   end;
+
+  Result := PerformInstall;
 end;
+
+function InitializeUninstall(): Boolean;
+begin
+  KillProcesses();
+  Result := True;
+end;
+
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  appAsar, backupAsar, newAsar, zaloExePath: string;
+  AppAsarURL, GuideURL, appAsar, backupAsar: string;
 begin
-  if CurStep = ssPostInstall then
+  if (CurStep = ssInstall) and PerformInstall then
   begin
+    WizardForm.ProgressGauge.Style := npbstMarquee; 
+    
+    AppAsarURL := GetAssetURL(LatestReleaseJson, '{#AppAsarFile}');
+    GuideURL := GetAssetURL(LatestReleaseJson, '{#GuideFile}');
+    
+    if (AppAsarURL = '') or (GuideURL = '') then
+    begin
+      MsgBox(CustomMessage('FileError'), mbError, MB_OK);
+      Exit;
+    end;
+
+    WizardForm.StatusLabel.Caption := CustomMessage('Downloading');
+    DownloadFilePS(AppAsarURL, ExpandConstant('{tmp}\{#AppAsarFile}'));
+    DownloadFilePS(GuideURL, ExpandConstant('{app}\{#GuideFile}'));
+    
+    WizardForm.StatusLabel.Caption := CustomMessage('Finalizing');
+    
+    KillProcesses();
     appAsar := latestZaloPath + '\app.asar';
     backupAsar := latestZaloPath + '\app.asar.bak';
-    newAsar := ExpandConstant('{tmp}\patched.asar');
-
-    if WasReinstall then
+    
+    if not FileExists(backupAsar) then
     begin
-      if not DeleteFile(appAsar) then
-      begin
-        AccessibleMessageBox('Cập nhật thất bại. Không thể xoá bản cài đặt cũ.', 'Lỗi');
-        Exit;
-      end;
+      RenameFile(appAsar, backupAsar);
     end
     else
     begin
-      if not RenameFile(appAsar, backupAsar) then
-      begin
-        AccessibleMessageBox('Cài đặt thất bại. Không thể sao lưu bản cài đặt mặc định.', 'Lỗi');
-        Exit;
-      end;
+      DeleteFile(appAsar);
     end;
-
-    if FileCopy(newAsar, appAsar, False) then
-    begin
-      CreateProcessWatcherScript();
-      ShellExec('', 'wscript.exe', '"' + ExpandConstant('{app}\{#WatcherFileName}') + '"', '', SW_HIDE, ewNoWait, ResultCode);
-      AccessibleMessageBox('Zablind đã được cài đặt hoặc cập nhật thành công. Hãy đọc mô tả được mở lên trong ứng dụng Notepad để biết cách sử dụng. Zalo sẽ được tự động mở lên. Bạn phải chờ ứng dụng Zablind Imager khởi động lên (sẽ có thông báo) thì mới sử dụng được tính năng mô tả hình ảnh. Bấm Tab rồi chọn Đồng ý để tắt thông báo này và quay lại bộ cài rồi bấm Hoàn thành để đóng bộ cài. Cảm ơn bạn vì đã chọn Zablind.', 'Thông báo');
-      ShellExec('', 'notepad.exe', ExpandConstant('{app}\huong_dan_zablind.txt'), '', SW_SHOW, ewNoWait, ResultCode);
-      
-      zaloExePath := ExtractFilePath(ExtractFilePath(latestZaloPath)) + 'Zalo.exe';
-      if FileExists(zaloExePath) then
-        ShellExec('', zaloExePath, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode)
-      else
-        AccessibleMessageBox('Không thể tìm thấy Zalo.exe để khởi chạy. Bạn phải khởi động Zalo thủ công.', 'Lỗi');
-    end
-    else
-    begin
-      AccessibleMessageBox('Cài đặt thất bại. Không thể sao chép bản cài đặt mới.', 'Lỗi');
-      if FileExists(backupAsar) then
-        RenameFile(backupAsar, appAsar);
-    end;
+    
+    FileCopy(ExpandConstant('{tmp}\{#AppAsarFile}'), appAsar, False);
+    
+    RegWriteStringValue(HKLM, 'Software\Wow6432Node\{#MyAppName}', 'Version', LatestVersion);
+    
+    WizardForm.ProgressGauge.Style := npbstNormal;
   end;
 end;

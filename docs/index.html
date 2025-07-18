@@ -31,8 +31,24 @@
 </head>
 
 <body>
-    <h1>Zablind - Nâng tầm trải nghiệm dùng Zalo PC trên Windows cho người khiếm thị (vui lòng đọc kỹ các lưu ý bên dưới
-        để cài đặt thành công)</h1>
+    <h1>Zablind - Nâng tầm trải nghiệm dùng Zalo PC trên Windows cho người khiếm thị - Tác giả tạm dừng phát triển các
+        bản Beta do có
+        công việc cá nhân, sẽ trở lại sớm với phiên bản chính thức và đã chính thức dừng phát hành bản Beta mới!</h1>
+    <h2>Lưu ý về tính bảo mật khi dùng Zablind</h2>
+    <p>Zablind chỉ dừng lại với mục đích chỉnh sửa giao diện gốc của Zalo, tác giả cam kết <strong>KHÔNG THU THẬP DỮ
+            LIỆU</strong> của người dùng dưới bất kỳ hình thức nào, và cũng không có khả năng truy cập dữ liệu đó.
+        Zablind là phần mềm có mã nguồn mở và có thể truy
+        cập repo của dự án tại đây: <a href="https://github.com/oceanondawave/zablind">Link
+            repo trên GitHub</a>. Người dùng có thể giám sát trực tiếp mã nguồn của phần mềm để xem xét xem phần mềm có
+        độc hại hoặc có cố ý truy cập dữ liệu riêng tư hay không qua repo trên. Nếu người dùng cảm thấy lo ngại về quyền
+        riêng tư, có thể hoàn toàn <strong>từ chối</strong> sử dụng phần mềm.
+    </p>
+    <p>Zablind là dự án phát triển vì cộng đồng của cá nhân tác giả. Tác giả và Zablind <strong>không</strong> có liên
+        hệ gì với phần mềm Zalo chính thức và Zalo Group, VNG. Mọi khiếu nại về Zalo chính thức đều sẽ không liên quan
+        đến
+        Zablind, và mọi yêu cầu về phát triển tính năng như ý muốn cho phần mềm Zalo gốc đều sẽ bị từ chối, vì nó nằm
+        ngoài
+        phạm vi và khả năng truy cập của Zablind.</p>
     <h2>Lưu ý dành cho người dùng NVDA và JAWS</h2>
     <p><strong>Lưu ý:</strong> Hỗ trợ tốt với trình đọc màn hình NVDA. Nếu bạn dùng JAWS thì khi vào
         Zalo bạn chỉ
@@ -90,7 +106,7 @@
     <div id="releases">Đang tải, vui lòng chờ...</div>
 
     <script>
-        const API_URL = "https://api.github.com/repos/oceanondawave/zablind/releases";
+        const API_URL = "https://api.github.com/repos/oceanondawave/zablind/releases/latest";
         const container = document.getElementById("releases");
 
         fetch(API_URL)
