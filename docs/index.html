@@ -103,60 +103,54 @@
             nhầm trục lợi cho bản thân là vi phạm bản quyền và sẽ phải chịu toàn bộ trách nhiệm trước tác giả và người
             dùng.</strong>
     </p>
-    <div id="releases">Đang tải, vui lòng chờ...</div>
+    <div id="release">Đang tải, vui lòng chờ...</div>
 
     <script>
         const API_URL = "https://api.github.com/repos/oceanondawave/zablind/releases/latest";
-        const container = document.getElementById("releases");
+        const container = document.getElementById("release");
 
         fetch(API_URL)
-            .then(res => res.json())
-            .then(releases => {
-                if (!Array.isArray(releases)) {
-                    container.innerHTML = "Error fetching releases.";
-                    return;
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("Could not fetch the latest release from GitHub.");
+                }
+                return res.json();
+            })
+            .then(release => {
+
+                container.innerHTML = "";
+
+                const div = document.createElement("div");
+                div.className = "release";
+                const date = new Date(release.published_at).toLocaleDateString();
+
+                // These lines use keys from the 'release' object.
+                div.innerHTML = `
+                        <h2>${release.name || release.tag_name}</h2>
+                        <p><strong>Phiên bản:</strong> ${release.tag_name}</p>
+                        <p><strong>Đã phát hành:</strong> ${date}</p>
+                        <p>${release.body ? release.body.replace(/\n/g, "<br>") : ""}</p>
+                    `;
+
+                // This checks for the 'assets' array inside the 'release' object.
+                if (release.assets && release.assets.length > 0) {
+
+                    // This loops through each item in the 'release.assets' array.
+                    release.assets.forEach(asset => {
+                        const assetDiv = document.createElement("div");
+                        assetDiv.className = "asset";
+                        assetDiv.innerHTML = `
+                                Tải về tại đây: <a href="${asset.browser_download_url}" target="_blank">${asset.name}</a>
+                                (đã có ${asset.download_count} vị huynh đài tải về)
+                            `;
+                        div.appendChild(assetDiv);
+                    });
                 }
 
-                if (releases.length === 0) {
-                    container.innerHTML = "No releases found.";
-                    return;
-                }
-
-                container.innerHTML = ""; // Clear loading
-
-                releases.forEach(release => {
-                    const div = document.createElement("div");
-                    div.className = "release";
-
-                    const date = new Date(release.published_at).toLocaleDateString();
-
-                    div.innerHTML = `
-            <h2>${release.name || release.tag_name}</h2>
-            <p><strong>Phiên bản:</strong> ${release.tag_name}</p>
-            <p><strong>Đã phát hành:</strong> ${date}</p>
-            <p>${release.body ? release.body.replace(/\n/g, "<br>") : ""}</p>
-          `;
-
-                    if (release.assets.length > 0) {
-                        const ul = document.createElement("ul");
-                        release.assets.forEach(asset => {
-                            const assetDiv = document.createElement("div");
-                            assetDiv.className = "asset";
-                            assetDiv.innerHTML = `
-        Tải về tại đây: <a href="${asset.browser_download_url}" target="_blank">${asset.name}</a>
-        (đã có ${asset.download_count} vị huynh đài tải về)
-    `;
-                            div.appendChild(assetDiv);
-                        });
-
-                        div.appendChild(ul);
-                    }
-
-                    container.appendChild(div);
-                });
+                container.appendChild(div);
             })
             .catch(err => {
-                container.innerHTML = "Failed to load releases.";
+                container.innerHTML = "Failed to load release information.";
                 console.error(err);
             });
     </script>
