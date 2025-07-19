@@ -1,4 +1,4 @@
-# Zablind (Beta version 1.5)
+# Zablind (Beta version 1.4)
 
 _A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows._
 
@@ -107,8 +107,6 @@ A new `app.asar` will appear in the root directory.
 Replace the original `app.asar` file in the Zalo directory with the one you just created.
 
 Run Zalo to test the changes.
-
-You don't need to care about the `installer/zablind.iss` since I store this script for buiding the installer. But you can take it as a reference.
 
 ---
 
