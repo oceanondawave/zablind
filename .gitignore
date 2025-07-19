@@ -1,22 +1,33 @@
-# Ignore everything
+# 1. Ignore everything by default
 *
 
-# Allow git config files and license
+# --- EXCEPTIONS ---
+
+# 2. Keep specific root files
 !.gitignore
-!LICENSE
-!README.md
+!/LICENSE
+!/README.md
 
-# Unignore folder chain explicitly
-!extracted/
+# 3. Keep the entire /docs directory and everything inside it
+!/docs/
+!/docs/**
 
-!extracted/main-dist/
-!extracted/main-dist/zablind.js
-!extracted/main-dist/zbimage_api.js
-!extracted/main-dist/preload-wrapper.js
+# 4. Keep only specific files from the /extracted directory
+# First, you must un-ignore each directory in the path...
+!/extracted/
+!/extracted/main-dist/
+!/extracted/pc-dist/
 
-!extracted/pc-dist/
-!extracted/pc-dist/popup-viewer.html
-!extracted/pc-dist/index.html
-!extracted/pc-dist/child.html
+# ...then, un-ignore the specific files you want to keep.
+!/extracted/main-dist/zablind.js
+!/extracted/main-dist/zbimage_api.js
+!/extracted/main-dist/preload-wrapper.js
+!/extracted/pc-dist/child.html
+!/extracted/pc-dist/index.html
+!/extracted/pc-dist/popup-viewer.html
 
-!docs/
+# --- GLOBAL IGNORES ---
+
+# 5. Ignore macOS system files everywhere. This overrides any '!' rules above.
+.DS_Store
+._*
