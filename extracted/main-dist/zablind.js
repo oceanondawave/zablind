@@ -1,4 +1,4 @@
-const { describeImageFromPath } = require("./zbimage_api.js");
+// const { describeImageFromPath } = require("./zbimage_api.js");
 
 window.addEventListener("DOMContentLoaded", () => {
   // ======================
@@ -10,9 +10,9 @@ window.addEventListener("DOMContentLoaded", () => {
       voices.find((voice) => voice.lang.startsWith("en")) || voices[0]; // fallback
 
     const msg = new SpeechSynthesisUtterance();
-    msg.lang = "en-GB";
+    msg.lang = "en-US";
     msg.voice = englishVoice;
-    msg.text = "Zablind Beta version 1.5 - by Ocean Kid.";
+    msg.text = "Zablind Beta 1.4";
     msg.volume = 1.0;
     msg.rate = 1.0;
 
@@ -422,13 +422,47 @@ window.addEventListener("DOMContentLoaded", () => {
 
     focusRegion.textContent = getMessageContent(el).announcement;
     focusRegion.focus();
-
-    // Check if message has a image that can be describable
-    let imagePath = getImagePath(el);
-    if (imagePath) {
-      announce("Có thể mô tả hình ảnh");
-    }
   }
+
+  // Announce when someone is typing
+  (function () {
+    liveRegion.setAttribute("aria-live", "polite");
+    liveRegion.setAttribute("role", "status");
+    liveRegion.style.cssText =
+      "position:absolute;left:-9999px;height:1px;width:1px;overflow:hidden;";
+    document.body.appendChild(liveRegion);
+
+    // Track previous announcement to avoid repeats
+    let lastAnnouncedText = "";
+
+    // Configuration
+    const typingIndicatorSelector = ".doing-something.message-view__typing";
+
+    // Check for typing indicator periodically
+    const checkInterval = setInterval(() => {
+      const typingIndicator = document.querySelector(typingIndicatorSelector);
+
+      if (typingIndicator) {
+        const currentText = typingIndicator.textContent.trim();
+
+        // Only announce if text has changed
+        if (currentText !== lastAnnouncedText) {
+          liveRegion.textContent = currentText;
+          lastAnnouncedText = currentText;
+        }
+      } else if (lastAnnouncedText !== "") {
+        // Typing has stopped - clear announcement
+        liveRegion.textContent = "";
+        lastAnnouncedText = "";
+      }
+    }, 1000); // Check every second
+
+    // Clean up
+    window.addEventListener("beforeunload", () => {
+      clearInterval(checkInterval);
+      liveRegion.remove();
+    });
+  })();
 
   // ======================
   // Menu Functions
@@ -482,38 +516,6 @@ window.addEventListener("DOMContentLoaded", () => {
         item.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     });
-  }
-  // ======================
-  // Get image's path function
-  // ======================
-  function getImagePath(item) {
-    // Get all image elements within the provided item
-    const imgs = item.querySelectorAll("img");
-
-    // Loop through each image to find one with a local file path
-    for (const img of imgs) {
-      // Check if the src attribute exists and is a file URI
-      if (img.src && img.src.startsWith("file://")) {
-        try {
-          const url = new URL(img.src);
-          let path = decodeURIComponent(url.pathname);
-
-          // FIX: Correctly handle Windows paths (e.g., /C:/Users/...)
-          // without breaking macOS/Linux paths (e.g., /Users/...).
-          if (/^\/[a-zA-Z]:/.test(path)) {
-            // Remove the leading slash ONLY for Windows-style paths
-            path = path.substring(1);
-          }
-          return path;
-        } catch (error) {
-          console.error("❌ Failed to parse img.src:", img.src, error);
-          // If parsing this src fails, continue to the next image
-        }
-      }
-    }
-
-    // If the loop completes, no suitable image was found
-    return null;
   }
 
   // ======================
@@ -585,18 +587,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (event.key === "Tab" && !isTyping) {
       event.preventDefault();
       playMedia();
-      return;
-    }
-
-    // Describe image (Ctrl+Shift +I)
-    if (
-      event.ctrlKey &&
-      event.shiftKey &&
-      event.key.toLowerCase() === "d" &&
-      !isTyping
-    ) {
-      event.preventDefault();
-      describeImage();
       return;
     }
   }
@@ -884,55 +874,6 @@ window.addEventListener("DOMContentLoaded", () => {
       control.focus();
       control.click();
     }, 50);
-  }
-
-  function describeImage() {
-    const currentId = state.messages.currentId;
-    const message = state.messages.map.get(currentId);
-    const currentMessage = message;
-    if (!currentMessage) return;
-
-    let imagePath = null;
-
-    // =============================
-    // 🔹 Case 1: Sticker
-    // =============================
-    const sticker = currentMessage.querySelector(".sticker");
-    if (sticker) {
-      const bgStyle = window.getComputedStyle(sticker);
-      const bgImage = bgStyle.getPropertyValue("background-image");
-
-      const match = bgImage.match(/url\("file:\/\/\/(.+?)"\)/);
-      if (match && match[1]) {
-        imagePath = decodeURIComponent(match[1].replace(/\\/g, "/"));
-      }
-    }
-
-    // =============================
-    // 🔹 Case 2: <img> element (includes raw cache fallback)
-    // =============================
-    if (!imagePath) {
-      imagePath = getImagePath(currentMessage);
-    }
-
-    // =============================
-    // 🔹 Send to API
-    // =============================
-    if (imagePath) {
-      describeImageFromPath(imagePath)
-        .then((caption) => {
-          if (caption) {
-            console.log(caption);
-          } else {
-            console.log("Failed to get caption.");
-          }
-        })
-        .catch((err) => {
-          console.error("❌ API error", err);
-        });
-    } else {
-      console.warn("🚫 No image found to describe.");
-    }
   }
 
   function refreshAll() {
