@@ -9,6 +9,8 @@
 !/README.md
 !/patch_zalo.ps1
 !/emoji-labels.json
+!/zablind_installer.py
+!/build_installer.bat
 
 # 3. Keep the entire /docs directory and everything inside it
 !/docs/
