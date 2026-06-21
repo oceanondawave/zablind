@@ -1,116 +1,66 @@
-# Zablind (Beta version 1.4)
+# Zablind (Beta version 2.0)
 
-_A lightweight tool designed to assist visually impaired users in navigating Zalo. Currently available for Windows._
+_A lightweight accessibility tool designed to assist visually impaired users in navigating Zalo PC on Windows._
 
-> ⚠️ **Disclaimer**: This tool modifies internal files of the Zalo desktop app. Use at your own risk. Always back up your original `app.asar` file before proceeding.
-
----
-
-✅ Latest Supported Zalo Version: 25.7.1
-
-✅ What It Currently Supports
-
-- Press <code>Ctrl + Shift + M</code> / <code>Ctrl + Shift + N</code> to navigate forward / backward through recent contacts. ⚠️ Avoid pressing too quickly. Zalo may load older contacts, causing lag.
-- Press <code>Enter</code> to jump to that chat window.
-- Press <code>Ctrl + Shift + R</code> to read the latest message.
-- Press <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to read the previous / next message.
-- If the message is a voice or video message, press <code>Tab</code> to play it. If it's a video message, after pressing <code>Tab</code> to play, you can press <code>Space</code> once then press <code>Space</code> one more time to pause/play the video. If it's a photo, you can also press <code>Tab</code> to view it. This also works for an album (which contains many photos/videos), but you can only view the first photo/video in the album for now.
-- Press <code>ESC</code> to stop watching/viewing the photos/videos.
-- Press <code>Ctrl + Shift + I</code> to listen to an image's description from <code>Zablind Image</code>.
-- Press the <code>Application</code> / <code>Context Menu</code> key to open the menu for each message.
-- Press <code>Ctrl + Shift + A</code> to open the attachment menu to send files/folders.
-- Use <code>Up</code> / <code>Down</code> arrow keys to navigate options.
-- Press <code>Enter</code> to choose an option.
-- Press <code>ESC</code> to exit the menu (note: while in the menu, you cannot navigate messages).
-- Press <code>Ctrl + Shift + E</code> to jump to the typing section to write a message.
-- You can reply to an message (if you choose that option in the menu, you'll jump to the typing section automatically). When you're replying to a message, if you want to cancel, press <code>ESC</code> once then press <code>ESC</code> one more time to go back to the typing section.
-- ⚠️ While using <code>Ctrl + Shift + K</code> / <code>Ctrl + Shift + L</code> to navigate messages, avoid pressing too quickly. Zalo may load older messages, causing lag or misreads.
-- More features coming soon!
+> ⚠️ **Disclaimer**: This tool modifies internal files of the Zalo desktop app. Use at your own risk. Zablind is fully open-source and does not collect or transmit any user data.
 
 ---
 
-## 🧪 How to Build and Test
+## ⚡ What It Currently Supports
 
-Update Zalo to the latest supported version.
+- **Contact Navigation**: Press `Ctrl + Shift + M` / `Ctrl + Shift + N` to navigate forward / backward through recent contacts.
+- **Open Chats**: Press `Enter` to jump to the selected chat window.
+- **Read Messages**: Press `Ctrl + Shift + R` to read the latest message, and `Ctrl + Shift + K` / `Ctrl + Shift + L` to read the previous / next message.
+- **Voice & Media Messages**: Press `Tab` to play voice messages or open images/videos. For video messages, press `Space` to pause/resume playback.
+- **Image Description**: Press `Ctrl + Shift + I` to hear descriptions from the Zablind Image API.
+- **Message Menus**: Press the `Application` (or `Context Menu`) key to open the options menu for a message.
+- **Send Attachments**: Press `Ctrl + Shift + A` to open the attachment menu, use `Up` / `Down` arrows to navigate, and `Enter` to choose.
+- **Keyboard Shortcut Help**: Press `Escape` twice when focused on message lists/panels to access helper modals.
+- **Making Calls**: Press `Ctrl + Shift + C` to focus on the audio call button, use `Tab` to switch to video, and press `Enter` to call.
+- **Call Management**: Accept/deny calls, toggle camera/microphone on/off, and end calls using simple keyboard shortcuts:
+  - **Incoming Call (focused)**: `A` to Accept, `Ctrl + A` to Accept without camera, `D` to Deny.
+  - **Active Call**: `C` to Toggle Camera, `M` to Toggle Microphone, `E` to End Call.
 
-Clone the repository:
+---
 
-```bash
-git clone https://github.com/oceanondawave/zablind.git
-```
+## 🛠️ Developer Guide: Configuration & Auto-Updates
 
-Navigate to:
+Zablind now features fully automated installation, updating, and health-checking routines running natively on Python inside `ZablindCallHandler.exe`. You no longer need Node.js or NPM installed on user machines.
 
-```
-C:\Users\<your-user-name>\AppData\Local\Programs\Zalo\<latest-Zalo-version>\resources
-```
+### 1. Configuration (`config.js`)
+All global settings are defined in [zablind_main/zablind/config.js](file:///c:/Projects/zablind/zablind_main/zablind/config.js):
+- `version`: The current version string (e.g. `"2.0"`).
+- `year`: The copyright or current year string (e.g. `"2026"`).
+- `enableDevTools`: Set to `true` to automatically open detached Chrome DevTools on Zalo start (keep `false` in production).
+- `showCallHandlerConsole`: Set to `true` to show the background handler's console window (keep `false` in production).
 
-Copy the `app.asar` file and `app.asar.unpacked` folder found in that `resources` folder into a new folder called `original` in the root of this project (create one first).
+### 2. Compilation
+To build the background service executable:
+1. Ensure Python 3 (32-bit x86 preferred for universal architecture compatibility) is installed.
+2. Navigate to `zablind_call` and run:
+   ```cmd
+   build_exe_x86.bat
+   ```
+This will compile the Python code into a single executable `ZablindCallHandler.exe` inside the root and `zablind_call` folders.
 
-Move `zablind.js`, `zbimage_api.js` and `preload-wrapper.js` from `extracted/main-dist/` and `popup-viewer.html`, `child.html` and `index.html` from `extracted/pc-dist/` into the project root.
+### 3. Creating a Release
+To publish an update that will auto-update on all user machines:
+1. Update the `version` and `year` in `config.js`.
+2. Compile the new executable using `build_exe_x86.bat`.
+3. Create a zip archive containing:
+   - `ZablindCallHandler.exe`
+   - `zablind/` (the entire JS folder containing `config.js` and modules)
+   - `preload-wrapper.js`
+   - `popup-viewer.html`
+4. Publish a new Release on your GitHub repository (`oceanondawave/zablind`) with a tag matching your new version (e.g., `v2.1`), and upload the zip file as a release asset.
 
-Install the `asar` tool globally using npm:
-
-```bash
-npm install -g asar
-```
-
-Create a folder named `extracted` in the root directory.
-
-Extract the original `app.asar` using:
-
-```bash
-asar extract original/app.asar extracted
-```
-
-Move `zablind.js`, `zbimage_api.js` and `preload-wrapper.js` into:
-
-```
-extracted/main-dist/
-```
-
-Move `popup-viewer.html`, `child.html` and `index.html` into:
-
-```
-extracted/pc-dist/
-```
-
-Open `extracted/main-dist/main.js` and find the line:
-
-```js
-u.join(__dirname, "preload-render.js");
-```
-
-Replace it with:
-
-```js
-u.join(__dirname, "preload-wrapper.js");
-```
-
-(Optional) To open Dev Tools by default, find `k = new s(this.mainOpts)` and replace it with:
-
-```js
-(k = new s(this.mainOpts)),
-k.webContents.openDevTools({ mode: "detach" }),
-```
-
-Make changes to the files as needed, then save the files.
-
-Repack the `app.asar` using:
-
-```bash
-asar pack extracted app.asar
-```
-
-A new `app.asar` will appear in the root directory.
-
-Replace the original `app.asar` file in the Zalo directory with the one you just created.
-
-Run Zalo to test the changes.
+### 4. Background Installer, Updater, & Watchdog
+- **Auto-Installation**: The running service scans for new Zalo directories (`AppData/Local/Programs/Zalo/Zalo-*`). When Zalo installs a new version folder, the service kills Zalo, automatically applies the ASAR patch, deletes old version folders to save space, and restarts Zalo.
+- **GitHub Updater**: The background thread checks your repository's latest release tag on startup. If a new version is found, it downloads the zip, renames the running executable to bypass Windows locks, extracts the new assets, and restarts the service.
+- **Compatibility Watchdog**: Monitors Zalo processes. If Zalo launches but Zablind fails to start or encounters a critical JS crash, the watchdog logs telemetry to `zablind_crash.log` and alerts the user via TTS: *"Cảnh báo: Zablind không tương thích với phiên bản Zalo này. Đang ghi lại nhật ký lỗi."*
 
 ---
 
 ## 🛑 Disclaimer
 
-This project is developed for the benefit of the visually impaired Zalo community. Contributions, improvements, and feedback are welcome. Modifying proprietary software may violate terms of service. Use responsibly.
-Feel free to reach me at: minh.ngntri@gmail.com.
+This project is developed for the benefit of the visually impaired Zalo community. Contributions, improvements, and feedback are welcome. Feel free to contact the author at: minh.ngntri@gmail.com.

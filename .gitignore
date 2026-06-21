@@ -7,18 +7,17 @@
 !.gitignore
 !/LICENSE
 !/README.md
+!/patch_zalo.ps1
+!/emoji-labels.json
 
 # 3. Keep the entire /docs directory and everything inside it
 !/docs/
 !/docs/**
 
 # 4. Keep only specific files from the /extracted directory
-# First, you must un-ignore each directory in the path...
 !/extracted/
 !/extracted/main-dist/
 !/extracted/pc-dist/
-
-# ...then, un-ignore the specific files you want to keep.
 !/extracted/main-dist/zablind.js
 !/extracted/main-dist/zbimage_api.js
 !/extracted/main-dist/preload-wrapper.js
@@ -26,8 +25,44 @@
 !/extracted/pc-dist/index.html
 !/extracted/pc-dist/popup-viewer.html
 
-# --- GLOBAL IGNORES ---
+# 5. Keep the source code of Zablind and Call Handler
+!/zablind_main/
+!/zablind_main/**
+!/zablind_call/
+!/zablind_call/**
 
-# 5. Ignore macOS system files everywhere. This overrides any '!' rules above.
+# --- GLOBAL IGNORES ---
+# These overrides any '!' rules above and ignores build artifacts, logs, and temp files
+
+# Ignore compiled executables (rebuilt locally)
+*.exe
+*.exe.old
+zablind_call/ZablindCallHandler.exe
+zablind_main/zablind/bin/ZablindCallHandler.exe
+
+# Ignore build directories and specs
+build/
+dist/
+zablind_call/build/
+zablind_call/dist/
+zablind_call/ZablindCallHandler.spec
+zablind_call/ZablindCallHandler_x86.spec
+
+# Ignore logs
+*.log
+*.old
+*.bak
+zablind_crash.log
+zalo_stderr.log
+zablind_call_handler.log
+
+# Ignore Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore local system files
 .DS_Store
 ._*
+Thumbs.db

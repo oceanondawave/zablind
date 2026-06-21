@@ -61,6 +61,7 @@ window.addEventListener("DOMContentLoaded", () => {
       map: new Map(),
       currentId: null,
       lastHoveredId: null,
+      linkFocusId: null,
     },
     menu: {
       items: [],
@@ -205,6 +206,46 @@ window.addEventListener("DOMContentLoaded", () => {
     return linkHost
       ? `Liên kết ${linkHost}${allText ? " " + allText : ""}`
       : allText || "(không có nội dung)";
+  }
+
+  function getLinkMessageTitle(messageElement) {
+    if (!messageElement) return "";
+
+    const title =
+      messageElement
+        .querySelector(".link-message__link-title")
+        ?.textContent.trim() || "";
+    if (title) return title;
+
+    const hiddenText =
+      messageElement.querySelector(".nvda-focus-region")?.textContent || "";
+    const hiddenFirstLine = hiddenText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line && !/^https?:\/\//i.test(line));
+
+    if (hiddenFirstLine) {
+      return hiddenFirstLine.replace(/^Liên kết:\s*/i, "").trim();
+    }
+
+    const linkEl = messageElement.querySelector(
+      ".link-message a.text-is-link, .link-message-v2 a.text-is-link"
+    );
+    if (linkEl?.dataset.content) {
+      try {
+        return new URL(linkEl.dataset.content).hostname;
+      } catch {
+        return "";
+      }
+    }
+
+    return "";
+  }
+
+  function getMessagePrimaryLink(messageElement) {
+    return messageElement?.querySelector(
+      ".link-message a.text-is-link, .link-message-v2 a.text-is-link"
+    );
   }
 
   function formatDuration(rawDuration) {

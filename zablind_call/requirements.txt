@@ -1,0 +1,9 @@
+psutil>=5.9.0
+comtypes>=1.4.0
+pywin32>=300; sys_platform == "win32"
+keyboard>=0.13.5; sys_platform == "win32"
+gtts>=2.5.0
+pygame>=2.5.0
+accessible_output2>=0.17
+
+
