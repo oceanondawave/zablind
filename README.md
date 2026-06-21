@@ -36,12 +36,19 @@ All global settings are defined in [zablind_main/zablind/config.js](file:///c:/P
 
 ### 2. Compilation
 To build the background service executable:
-1. Ensure Python 3 (32-bit x86 preferred for universal architecture compatibility) is installed.
+1. Ensure Python 3 (32-bit x86 preferred) is installed.
 2. Navigate to `zablind_call` and run:
    ```cmd
    build_exe_x86.bat
    ```
-This will compile the Python code into a single executable `ZablindCallHandler.exe` inside the root and `zablind_call` folders.
+This compiles the background service into `ZablindCallHandler.exe` and places it in both `zablind_call` and `zablind_main/zablind/bin/` folders automatically.
+
+To build the setup installer executable:
+1. Run the root build script:
+   ```cmd
+   build_installer.bat
+   ```
+This compiles the setup installer into a single-executable offline installer `ZablindInstaller.exe` in the root folder, which user can run to install Zablind.
 
 ### 3. Creating a Release
 To publish an update that will auto-update on all user machines:
