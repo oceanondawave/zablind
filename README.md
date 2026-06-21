@@ -1,4 +1,4 @@
-# Zablind (Beta version 2.0)
+# Zablind
 
 _A lightweight accessibility tool designed to assist visually impaired users in navigating Zalo PC on Windows._
 
