@@ -52,14 +52,15 @@ This compiles the setup installer into a single-executable offline installer `Za
 
 ### 3. Creating a Release
 To publish an update that will auto-update on all user machines:
-1. Update the `version` and `year` in `config.js`.
-2. Compile the new executable using `build_exe_x86.bat`.
-3. Create a zip archive containing:
-   - `ZablindCallHandler.exe`
-   - `zablind/` (the entire JS folder containing `config.js` and modules)
-   - `preload-wrapper.js`
-   - `popup-viewer.html`
-4. Publish a new Release on your GitHub repository (`oceanondawave/zablind`) with a tag matching your new version (e.g., `v2.1`), and upload the zip file as a release asset.
+1. Update the `version` and `year` in [zablind_main/zablind/config.js](file:///c:/Projects/zablind/zablind_main/zablind/config.js).
+2. Run the packaging script in the root directory:
+   ```cmd
+   python pack_release.py
+   ```
+   This will automatically build `ZablindCallHandler.exe`, compile `ZablindInstaller.exe`, and bundle all the files into a clean `zablind_release.zip` with the correct production layout.
+3. Publish a new Release on your GitHub repository (`oceanondawave/zablind`) with a tag matching your new version (e.g., `v2.1`).
+4. Upload `zablind_release.zip` and `ZablindInstaller.exe` as release assets to the GitHub Release page. The background updater will automatically check for this zip file to run the self-update.
+
 
 ### 4. Background Installer, Updater, & Watchdog
 - **Auto-Installation**: The running service scans for new Zalo directories (`AppData/Local/Programs/Zalo/Zalo-*`). When Zalo installs a new version folder, the service kills Zalo, automatically applies the ASAR patch, deletes old version folders to save space, and restarts Zalo.

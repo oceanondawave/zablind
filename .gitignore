@@ -11,6 +11,7 @@
 !/emoji-labels.json
 !/zablind_installer.py
 !/build_installer.bat
+!/pack_release.py
 
 # 3. Keep the entire /docs directory and everything inside it
 !/docs/
@@ -49,6 +50,7 @@ zablind_call/build/
 zablind_call/dist/
 zablind_call/ZablindCallHandler.spec
 zablind_call/ZablindCallHandler_x86.spec
+zablind_release.zip
 
 # Ignore logs
 *.log

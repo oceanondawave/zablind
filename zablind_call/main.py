@@ -4904,15 +4904,6 @@ def perform_self_update(zip_url, handler):
             
         print("[UPDATER] Download complete. Preparing files...")
         
-        current_exe = os.path.abspath(sys.executable)
-        old_exe = current_exe + ".old"
-        if os.path.exists(old_exe):
-            try: os.remove(old_exe)
-            except: pass
-            
-        os.rename(current_exe, old_exe)
-        print(f"[UPDATER] Renamed running exe to {old_exe}")
-        
         extract_temp = os.path.join(tempfile.gettempdir(), "zablind_extract")
         if os.path.exists(extract_temp):
             shutil.rmtree(extract_temp)
@@ -4926,29 +4917,109 @@ def perform_self_update(zip_url, handler):
         if len(items) == 1 and os.path.isdir(os.path.join(extract_temp, items[0])):
             source_dir = os.path.join(extract_temp, items[0])
             
-        print(f"[UPDATER] Copying new files from {source_dir} to {exe_dir}")
-        
-        for item in os.listdir(source_dir):
-            src = os.path.join(source_dir, item)
-            dst = os.path.join(exe_dir, item)
-            if os.path.isdir(src):
-                if os.path.exists(dst):
-                    try: shutil.rmtree(dst)
-                    except: pass
-                try: shutil.copytree(src, dst)
-                except: pass
-            else:
-                if os.path.exists(dst):
-                    try: os.remove(dst)
-                    except: pass
-                try: shutil.copy2(src, dst)
+        # Check if the update contains ZablindCallHandler.exe
+        has_binary = os.path.exists(os.path.join(source_dir, "ZablindCallHandler.exe")) or \
+                     os.path.exists(os.path.join(source_dir, "ZablindCallHandler_x86.exe"))
+                     
+        if has_binary:
+            print("[UPDATER] Detected binary update. Renaming running executable...")
+            current_exe = os.path.abspath(sys.executable)
+            old_exe = current_exe + ".old"
+            if os.path.exists(old_exe):
+                try: os.remove(old_exe)
                 except: pass
                 
-        handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
-        print("[UPDATER] Update complete! Launching new executable...")
-        
-        subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
-        
+            os.rename(current_exe, old_exe)
+            print(f"[UPDATER] Renamed running exe to {old_exe}")
+            
+            print(f"[UPDATER] Copying all files from {source_dir} to {exe_dir}")
+            for item in os.listdir(source_dir):
+                src = os.path.join(source_dir, item)
+                dst = os.path.join(exe_dir, item)
+                if os.path.isdir(src):
+                    if os.path.exists(dst):
+                        try: shutil.rmtree(dst)
+                        except: pass
+                    try: shutil.copytree(src, dst)
+                    except: pass
+                else:
+                    if os.path.exists(dst):
+                        try: os.remove(dst)
+                        except: pass
+                    try: shutil.copy2(src, dst)
+                    except: pass
+            
+            handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
+            print("[UPDATER] Update complete! Launching new executable...")
+            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
+        else:
+            print("[UPDATER] No binary found in update. Performing JS/Resource-only update...")
+            
+            if os.path.exists(os.path.join(source_dir, "zablind_main")):
+                js_base = os.path.join(source_dir, "zablind_main")
+            else:
+                js_base = source_dir
+                
+            preload_src = os.path.join(js_base, "preload-wrapper.js")
+            popup_src = os.path.join(js_base, "html", "popup-viewer.html")
+            if not os.path.exists(popup_src):
+                popup_src = os.path.join(js_base, "popup-viewer.html")
+            zablind_src = os.path.join(js_base, "zablind")
+            
+            preload_dst = os.path.join(exe_dir, "preload-wrapper.js")
+            popup_dst = os.path.join(exe_dir, "popup-viewer.html")
+            zablind_dst = os.path.join(exe_dir, "zablind")
+            
+            if os.path.exists(preload_src):
+                print(f"[UPDATER] Copying {preload_src} to {preload_dst}")
+                try:
+                    if os.path.exists(preload_dst):
+                        os.remove(preload_dst)
+                    shutil.copy2(preload_src, preload_dst)
+                except Exception as e:
+                    print(f"[UPDATER] Failed to copy preload-wrapper.js: {e}")
+                    
+            if os.path.exists(popup_src):
+                print(f"[UPDATER] Copying {popup_src} to {popup_dst}")
+                try:
+                    if os.path.exists(popup_dst):
+                        os.remove(popup_dst)
+                    shutil.copy2(popup_src, popup_dst)
+                except Exception as e:
+                    print(f"[UPDATER] Failed to copy popup-viewer.html: {e}")
+                    
+            if os.path.exists(zablind_src):
+                print(f"[UPDATER] Copying {zablind_src} to {zablind_dst}")
+                try:
+                    if os.path.exists(zablind_dst):
+                        shutil.rmtree(zablind_dst)
+                    shutil.copytree(zablind_src, zablind_dst)
+                except Exception as e:
+                    print(f"[UPDATER] Failed to copy zablind folder: {e}")
+                    
+            call_src = os.path.join(source_dir, "zablind_call")
+            if os.path.exists(call_src):
+                call_dst = os.path.join(exe_dir, "..", "zablind_call")
+                if os.path.exists(os.path.dirname(call_dst)):
+                    print(f"[UPDATER] Copying {call_src} to {call_dst}")
+                    try:
+                        for root, _, files in os.walk(call_src):
+                            for file in files:
+                                src_f = os.path.join(root, file)
+                                rel_f = os.path.relpath(src_f, call_src)
+                                dst_f = os.path.join(call_dst, rel_f)
+                                os.makedirs(os.path.dirname(dst_f), exist_ok=True)
+                                if os.path.exists(dst_f):
+                                    os.remove(dst_f)
+                                shutil.copy2(src_f, dst_f)
+                    except Exception as e:
+                        print(f"[UPDATER] Failed to copy zablind_call: {e}")
+                        
+            handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
+            print("[UPDATER] Update complete! Restarting executable...")
+            current_exe = os.path.abspath(sys.executable)
+            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
+            
         try: os.remove(zip_path)
         except: pass
         
@@ -5034,68 +5105,106 @@ def start_zalo_patcher_thread(handler):
                         active_asar = os.path.join(resources_dir, "app.asar")
                         backup_asar = os.path.join(resources_dir, "app.asar.bak")
                         
-                        if os.path.exists(active_asar) and not os.path.exists(backup_asar):
-                            print(f"[PATCHER] Detected unpatched Zalo version: {latest_version_dir_name}")
-                            assets_source = find_zablind_assets()
-                            if assets_source:
-                                handler.speak("Zablind đang tự động nâng cấp và vá lỗi Zalo... Xin vui lòng đợi giây lát.", language="vi", clear_pending=True)
-                                kill_zalo_processes()
-                                backup_original_asar(resources_dir)
-                                
-                                files_to_add = collect_zablind_assets(assets_source)
-                                files_to_patch = {}
-                                
-                                original_main_js = read_file_from_asar(backup_asar, "main-dist/main.js")
-                                if original_main_js:
-                                    main_js_str = original_main_js.decode('utf-8', errors='ignore')
-                                    if "preload-render.js" in main_js_str:
-                                        main_js_str = main_js_str.replace("preload-render.js", "preload-wrapper.js")
-                                    files_to_patch["main-dist/main.js"] = main_js_str.encode('utf-8')
+                        assets_source = find_zablind_assets()
+                        should_patch = False
+                        
+                        if os.path.exists(active_asar):
+                            if not os.path.exists(backup_asar):
+                                should_patch = True
+                            elif assets_source:
+                                # Already patched. Check version to see if we need to update/re-patch.
+                                local_v = get_local_version(assets_source)
+                                patched_config = read_file_from_asar(active_asar, "main-dist/zablind/config.js")
+                                patched_v = None
+                                if patched_config:
+                                    try:
+                                        content = patched_config.decode('utf-8', errors='ignore')
+                                        match = re.search(r"version:\s*['\"]([^'\"]+)['\"]", content)
+                                        if match:
+                                            patched_v = match.group(1)
+                                    except Exception as e:
+                                        print(f"[PATCHER] Error reading patched config version: {e}")
+                                        
+                                if not patched_v or patched_v != local_v:
+                                    print(f"[PATCHER] Detected version mismatch. Patched version: {patched_v}, Local version: {local_v}. Re-patching Zalo...")
+                                    should_patch = True
                                     
-                                original_bootstrap = read_file_from_asar(backup_asar, "bootstrap.js")
-                                if original_bootstrap:
-                                    bootstrap_str = original_bootstrap.decode('utf-8', errors='ignore')
-                                    if "zablind/modules/call-service.js" not in bootstrap_str:
-                                        patch_block = """function bootstrap() {
+                                    # Restore clean backup before patching
+                                    try:
+                                        kill_zalo_processes()
+                                        if os.path.exists(backup_asar):
+                                            if os.path.exists(active_asar):
+                                                os.remove(active_asar)
+                                            shutil.copy2(backup_asar, active_asar)
+                                            
+                                        backup_unpacked = backup_asar + ".unpacked"
+                                        active_unpacked = active_asar + ".unpacked"
+                                        if os.path.exists(backup_unpacked):
+                                            if os.path.exists(active_unpacked):
+                                                shutil.rmtree(active_unpacked)
+                                            shutil.copytree(backup_unpacked, active_unpacked)
+                                    except Exception as restore_err:
+                                        print(f"[PATCHER] Restore backup failed: {restore_err}")
+                                        
+                        if should_patch and assets_source:
+                            handler.speak("Zablind đang tự động nâng cấp và vá lỗi Zalo... Xin vui lòng đợi giây lát.", language="vi", clear_pending=True)
+                            kill_zalo_processes()
+                            backup_original_asar(resources_dir)
+                            
+                            files_to_add = collect_zablind_assets(assets_source)
+                            files_to_patch = {}
+                            
+                            original_main_js = read_file_from_asar(backup_asar, "main-dist/main.js")
+                            if original_main_js:
+                                main_js_str = original_main_js.decode('utf-8', errors='ignore')
+                                if "preload-render.js" in main_js_str:
+                                    main_js_str = main_js_str.replace("preload-render.js", "preload-wrapper.js")
+                                files_to_patch["main-dist/main.js"] = main_js_str.encode('utf-8')
+                                
+                            original_bootstrap = read_file_from_asar(backup_asar, "bootstrap.js")
+                            if original_bootstrap:
+                                bootstrap_str = original_bootstrap.decode('utf-8', errors='ignore')
+                                if "zablind/modules/call-service.js" not in bootstrap_str:
+                                    patch_block = """function bootstrap() {
   try {
     require('./main-dist/zablind/modules/call-service.js');
   } catch (e) {
     console.error('Failed to load Zablind Call Service in main process:', e);
   }"""
-                                        bootstrap_str = bootstrap_str.replace("function bootstrap() {", patch_block, 1)
-                                    files_to_patch["bootstrap.js"] = bootstrap_str.encode('utf-8')
-                                    
-                                temp_asar = os.path.join(tempfile.gettempdir(), "app.asar.patched")
-                                if os.path.exists(temp_asar):
-                                    try: os.remove(temp_asar)
-                                    except: pass
-                                    
-                                print(f"[PATCHER] Patching app.asar...")
-                                stream_patch_asar(backup_asar, temp_asar, files_to_patch, files_to_add)
+                                    bootstrap_str = bootstrap_str.replace("function bootstrap() {", patch_block, 1)
+                                files_to_patch["bootstrap.js"] = bootstrap_str.encode('utf-8')
                                 
-                                active_unpacked = active_asar + ".unpacked"
-                                if os.path.exists(active_asar):
-                                    os.remove(active_asar)
-                                if os.path.exists(active_unpacked):
-                                    shutil.rmtree(active_unpacked)
-                                    
-                                shutil.copy2(temp_asar, active_asar)
-                                shutil.copytree(temp_asar + ".unpacked", active_unpacked)
+                            temp_asar = os.path.join(tempfile.gettempdir(), "app.asar.patched")
+                            if os.path.exists(temp_asar):
+                                try: os.remove(temp_asar)
+                                except: pass
                                 
-                                try:
-                                    os.remove(temp_asar)
-                                    shutil.rmtree(temp_asar + ".unpacked")
-                                except:
-                                    pass
-                                    
-                                handler.speak("Cài đặt thành công. Đang khởi động lại Zalo.", language="vi")
+                            print(f"[PATCHER] Patching app.asar...")
+                            stream_patch_asar(backup_asar, temp_asar, files_to_patch, files_to_add)
+                            
+                            active_unpacked = active_asar + ".unpacked"
+                            if os.path.exists(active_asar):
+                                os.remove(active_asar)
+                            if os.path.exists(active_unpacked):
+                                shutil.rmtree(active_unpacked)
                                 
-                                zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
-                                if os.path.exists(zalo_exe):
-                                    print(f"[PATCHER] Restarting Zalo: {zalo_exe}")
-                                    subprocess.Popen(zalo_exe, cwd=latest_version_dir)
-                            else:
-                                print("[PATCHER] Zablind assets not found! Cannot patch Zalo.")
+                            shutil.copy2(temp_asar, active_asar)
+                            shutil.copytree(temp_asar + ".unpacked", active_unpacked)
+                            
+                            try:
+                                os.remove(temp_asar)
+                                shutil.rmtree(temp_asar + ".unpacked")
+                            except:
+                                pass
+                                
+                            handler.speak("Cài đặt thành công. Đang khởi động lại Zalo.", language="vi")
+                            
+                            zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
+                            if os.path.exists(zalo_exe):
+                                print(f"[PATCHER] Restarting Zalo: {zalo_exe}")
+                                subprocess.Popen(zalo_exe, cwd=latest_version_dir)
+                        elif should_patch and not assets_source:
+                            print("[PATCHER] Zablind assets not found! Cannot patch Zalo.")
             except Exception as loop_err:
                 print(f"[PATCHER] Error in patcher loop: {loop_err}")
                 traceback.print_exc()
