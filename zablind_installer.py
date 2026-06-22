@@ -16,6 +16,9 @@ hwnd_btn2 = None
 hwnd_btn3 = None
 hwnd_status = None
 
+# Store original window procedures for subclassed controls
+orig_wndprocs = {}
+
 def install_zablind_core(status_callback):
     status_callback("Bắt đầu cài đặt...")
     try:
@@ -231,12 +234,50 @@ def run_uninstall():
     if hwnd_btn3:
         win32gui.SetFocus(hwnd_btn3)
 
+def button_subclass_proc(hwnd, msg, wparam, lparam):
+    global hwnd_btn1, hwnd_btn2, hwnd_btn3
+    
+    if msg == win32con.WM_KEYDOWN:
+        vk = wparam
+        if vk == win32con.VK_TAB:
+            # Handle keyboard Tab navigation
+            shift = (win32api.GetKeyState(win32con.VK_SHIFT) & 0x8000) != 0
+            
+            if hwnd == hwnd_btn1:
+                next_hwnd = hwnd_btn3 if shift else hwnd_btn2
+            elif hwnd == hwnd_btn2:
+                next_hwnd = hwnd_btn1 if shift else hwnd_btn3
+            elif hwnd == hwnd_btn3:
+                next_hwnd = hwnd_btn2 if shift else hwnd_btn1
+            else:
+                next_hwnd = hwnd_btn1
+                
+            if next_hwnd:
+                win32gui.SetFocus(next_hwnd)
+            return 0
+            
+        elif vk == win32con.VK_RETURN:
+            # Simulate Enter key press as button activation
+            control_id = 0
+            if hwnd == hwnd_btn1: control_id = 201
+            elif hwnd == hwnd_btn2: control_id = 202
+            elif hwnd == hwnd_btn3: control_id = 203
+            
+            if control_id > 0:
+                parent = win32gui.GetParent(hwnd)
+                win32gui.PostMessage(parent, win32con.WM_COMMAND, control_id, hwnd)
+            return 0
+            
+    orig = orig_wndprocs.get(hwnd)
+    if orig:
+        return win32gui.CallWindowProc(orig, hwnd, msg, wparam, lparam)
+    return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
+
 def wnd_proc(hwnd, msg, wparam, lparam):
     global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status
     
     if msg == win32con.WM_CREATE:
         hwnd_main = hwnd
-        # Set native system GUI font
         hfont = win32gui.GetStockObject(win32con.DEFAULT_GUI_FONT)
         
         # 1. Title Static
@@ -255,7 +296,7 @@ def wnd_proc(hwnd, msg, wparam, lparam):
         )
         win32gui.SendMessage(h_desc, win32con.WM_SETFONT, hfont, True)
         
-        # 3. Buttons (using standard Win32 BUTTON controls with WS_TABSTOP)
+        # 3. Buttons (native controls with keyboard Tab stops)
         hwnd_btn1 = win32gui.CreateWindow(
             "BUTTON", "1. Cài đặt / Cài đặt lại",
             win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.BS_DEFPUSHBUTTON,
@@ -285,6 +326,14 @@ def wnd_proc(hwnd, msg, wparam, lparam):
         )
         win32gui.SendMessage(hwnd_status, win32con.WM_SETFONT, hfont, True)
         
+        # Subclass buttons to intercept and handle Tab/Enter keyboard navigation manually
+        for btn in [hwnd_btn1, hwnd_btn2, hwnd_btn3]:
+            try:
+                orig = win32gui.SetWindowLong(btn, win32con.GWL_WNDPROC, button_subclass_proc)
+                orig_wndprocs[btn] = orig
+            except Exception as subclass_err:
+                print(f"[INSTALLER] Subclassing error: {subclass_err}")
+                
         # Initial keyboard focus
         win32gui.SetFocus(hwnd_btn1)
         return 0
@@ -306,7 +355,6 @@ def wnd_proc(hwnd, msg, wparam, lparam):
     return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 def main():
-    # Register window class
     wc = win32gui.WNDCLASS()
     wc.lpfnWndProc = wnd_proc
     wc.lpszClassName = "ZablindInstallerClass"
@@ -315,11 +363,10 @@ def main():
     
     try:
         class_atom = win32gui.RegisterClass(wc)
-    except Exception as e:
-        # Already registered or failed
+    except:
         class_atom = "ZablindInstallerClass"
         
-    # Calculate screen center coordinates
+    # Center window on screen
     screen_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
     screen_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
     width = 450
@@ -327,7 +374,6 @@ def main():
     x = (screen_w - width) // 2
     y = (screen_h - height) // 2
     
-    # Create main window
     hwnd = win32gui.CreateWindow(
         class_atom,
         "Bộ cài đặt Zablind",
@@ -339,14 +385,13 @@ def main():
     win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
     win32gui.UpdateWindow(hwnd)
     
-    # Main message loop with IsDialogMessage to automatically handle Tab/Enter keyboard navigation
+    # Message loop
     while True:
         rc, msg = win32gui.GetMessage(None, 0, 0)
         if not rc:
             break
-        if not win32gui.IsDialogMessage(hwnd, msg):
-            win32gui.TranslateMessage(msg)
-            win32gui.DispatchMessage(msg)
+        win32gui.TranslateMessage(msg)
+        win32gui.DispatchMessage(msg)
 
 if __name__ == '__main__':
     main()
