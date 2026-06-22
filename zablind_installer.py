@@ -15,6 +15,11 @@ hwnd_btn1 = None
 hwnd_btn2 = None
 hwnd_btn3 = None
 hwnd_status = None
+h_title = None
+h_desc = None
+
+# Tab navigation order
+tab_order = []
 
 # Store original window procedures for subclassed controls
 orig_wndprocs = {}
@@ -235,29 +240,29 @@ def run_uninstall():
         win32gui.SetFocus(hwnd_btn3)
 
 def button_subclass_proc(hwnd, msg, wparam, lparam):
-    global hwnd_btn1, hwnd_btn2, hwnd_btn3
+    global hwnd_btn1, hwnd_btn2, hwnd_btn3, tab_order
     
     if msg == win32con.WM_KEYDOWN:
         vk = wparam
         if vk == win32con.VK_TAB:
-            # Handle keyboard Tab navigation
+            # Handle keyboard Tab navigation manually across all registered UI controls
             shift = (win32api.GetKeyState(win32con.VK_SHIFT) & 0x8000) != 0
             
-            if hwnd == hwnd_btn1:
-                next_hwnd = hwnd_btn3 if shift else hwnd_btn2
-            elif hwnd == hwnd_btn2:
-                next_hwnd = hwnd_btn1 if shift else hwnd_btn3
-            elif hwnd == hwnd_btn3:
-                next_hwnd = hwnd_btn2 if shift else hwnd_btn1
-            else:
-                next_hwnd = hwnd_btn1
-                
-            if next_hwnd:
-                win32gui.SetFocus(next_hwnd)
+            try:
+                idx = tab_order.index(hwnd)
+                if shift:
+                    next_idx = (idx - 1) % len(tab_order)
+                else:
+                    next_idx = (idx + 1) % len(tab_order)
+                next_hwnd = tab_order[next_idx]
+                if next_hwnd:
+                    win32gui.SetFocus(next_hwnd)
+            except ValueError:
+                pass
             return 0
             
         elif vk == win32con.VK_RETURN:
-            # Simulate Enter key press as button activation
+            # Simulate Enter key activation if focus is currently on one of the buttons
             control_id = 0
             if hwnd == hwnd_btn1: control_id = 201
             elif hwnd == hwnd_btn2: control_id = 202
@@ -286,6 +291,12 @@ def wnd_proc(hwnd, msg, wparam, lparam):
             win32gui.DestroyWindow(hwnd)
         return 0
         
+    elif msg == win32con.WM_CTLCOLORSTATIC or msg == win32con.WM_CTLCOLOREDIT:
+        # Style read-only edit controls to blend into parent face color perfectly
+        win32gui.SetTextColor(wparam, win32api.GetSysColor(win32con.COLOR_WINDOWTEXT))
+        win32gui.SetBkColor(wparam, win32api.GetSysColor(win32con.COLOR_BTNFACE))
+        return win32gui.GetSysColorBrush(win32con.COLOR_BTNFACE)
+        
     elif msg == win32con.WM_DESTROY:
         win32gui.PostQuitMessage(0)
         return 0
@@ -293,7 +304,7 @@ def wnd_proc(hwnd, msg, wparam, lparam):
     return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 def main():
-    global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status
+    global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status, h_title, h_desc, tab_order
     
     wc = win32gui.WNDCLASS()
     wc.lpfnWndProc = wnd_proc
@@ -325,18 +336,18 @@ def main():
     hwnd_main = hwnd
     hfont = win32gui.GetStockObject(17) # 17 is DEFAULT_GUI_FONT
     
-    # 1. Title Static
+    # 1. Title Label (using EDIT control with ES_READONLY to allow keyboard focus and reading)
     h_title = win32gui.CreateWindow(
-        "STATIC", "BỘ CÀI ĐẶT ZABLIND",
-        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+        "EDIT", "BỘ CÀI ĐẶT ZABLIND",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,
         10, 15, 410, 25, hwnd, 101, 0, None
     )
     win32gui.SendMessage(h_title, win32con.WM_SETFONT, hfont, True)
     
-    # 2. Desc Static
+    # 2. Desc Label (using EDIT control with ES_READONLY)
     h_desc = win32gui.CreateWindow(
-        "STATIC", "Vui lòng chọn một tùy chọn bên dưới:",
-        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+        "EDIT", "Vui lòng chọn một tùy chọn bên dưới:",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,
         10, 45, 410, 20, hwnd, 102, 0, None
     )
     win32gui.SendMessage(h_desc, win32con.WM_SETFONT, hfont, True)
@@ -363,24 +374,27 @@ def main():
     )
     win32gui.SendMessage(hwnd_btn3, win32con.WM_SETFONT, hfont, True)
     
-    # 4. Status Static
+    # 4. Status Label (using EDIT control with ES_READONLY)
     hwnd_status = win32gui.CreateWindow(
-        "STATIC", "Trạng thái: Sẵn sàng",
-        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+        "EDIT", "Trạng thái: Sẵn sàng",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,
         10, 230, 410, 20, hwnd, 103, 0, None
     )
     win32gui.SendMessage(hwnd_status, win32con.WM_SETFONT, hfont, True)
     
-    # Subclass buttons to intercept and handle Tab/Enter keyboard navigation manually
-    for btn in [hwnd_btn1, hwnd_btn2, hwnd_btn3]:
+    # Define exact Tab order including the text labels
+    tab_order = [h_title, h_desc, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status]
+    
+    # Subclass all controls to route Tab / Shift+Tab keyboard navigation correctly
+    for ctrl in tab_order:
         try:
-            orig = win32gui.SetWindowLong(btn, win32con.GWL_WNDPROC, button_subclass_proc)
-            orig_wndprocs[btn] = orig
+            orig = win32gui.SetWindowLong(ctrl, win32con.GWL_WNDPROC, button_subclass_proc)
+            orig_wndprocs[ctrl] = orig
         except Exception as subclass_err:
             print(f"[INSTALLER] Subclassing error: {subclass_err}")
             
-    # Initial keyboard focus
-    win32gui.SetFocus(hwnd_btn1)
+    # Initial keyboard focus on title text
+    win32gui.SetFocus(h_title)
     
     # Show main window
     win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
