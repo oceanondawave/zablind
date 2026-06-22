@@ -71,8 +71,15 @@ def install_zablind():
         
         print("[INSTALLER] Installed files successfully.")
         
-        # Spawn new call handler
-        subprocess.Popen([installed_exe], cwd=target_dir)
+        # Spawn new call handler completely detached from installer console
+        subprocess.Popen(
+            [installed_exe],
+            cwd=target_dir,
+            creationflags=0x00000008 | 0x08000000, # DETACHED_PROCESS | CREATE_NO_WINDOW
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL
+        )
         
         speak("Zablind installation completed successfully. The background service has been started.")
         
@@ -164,7 +171,14 @@ def uninstall_zablind():
             zalo_exe = os.path.join(local_appdata, 'Programs', 'Zalo', 'Zalo.exe')
             if os.path.exists(zalo_exe):
                 print(f"[UNINSTALLER] Launching original Zalo: {zalo_exe}")
-                subprocess.Popen([zalo_exe], cwd=os.path.dirname(zalo_exe))
+                subprocess.Popen(
+                    [zalo_exe],
+                    cwd=os.path.dirname(zalo_exe),
+                    creationflags=0x00000008 | 0x08000000, # DETACHED_PROCESS | CREATE_NO_WINDOW
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL
+                )
                 
         speak("Zablind has been uninstalled successfully. Zalo is restored to its original state.")
         
