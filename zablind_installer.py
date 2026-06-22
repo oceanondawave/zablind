@@ -276,69 +276,7 @@ def button_subclass_proc(hwnd, msg, wparam, lparam):
 def wnd_proc(hwnd, msg, wparam, lparam):
     global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status
     
-    if msg == win32con.WM_CREATE:
-        hwnd_main = hwnd
-        hfont = win32gui.GetStockObject(win32con.DEFAULT_GUI_FONT)
-        
-        # 1. Title Static
-        h_title = win32gui.CreateWindow(
-            "STATIC", "BỘ CÀI ĐẶT ZABLIND",
-            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
-            10, 15, 410, 25, hwnd, 101, 0, None
-        )
-        win32gui.SendMessage(h_title, win32con.WM_SETFONT, hfont, True)
-        
-        # 2. Desc Static
-        h_desc = win32gui.CreateWindow(
-            "STATIC", "Vui lòng chọn một tùy chọn bên dưới:",
-            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
-            10, 45, 410, 20, hwnd, 102, 0, None
-        )
-        win32gui.SendMessage(h_desc, win32con.WM_SETFONT, hfont, True)
-        
-        # 3. Buttons (native controls with keyboard Tab stops)
-        hwnd_btn1 = win32gui.CreateWindow(
-            "BUTTON", "1. Cài đặt / Cài đặt lại",
-            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.BS_DEFPUSHBUTTON,
-            100, 80, 230, 40, hwnd, 201, 0, None
-        )
-        win32gui.SendMessage(hwnd_btn1, win32con.WM_SETFONT, hfont, True)
-        
-        hwnd_btn2 = win32gui.CreateWindow(
-            "BUTTON", "2. Gỡ cài đặt Zablind",
-            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP,
-            100, 130, 230, 40, hwnd, 202, 0, None
-        )
-        win32gui.SendMessage(hwnd_btn2, win32con.WM_SETFONT, hfont, True)
-        
-        hwnd_btn3 = win32gui.CreateWindow(
-            "BUTTON", "3. Thoát",
-            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP,
-            100, 180, 230, 30, hwnd, 203, 0, None
-        )
-        win32gui.SendMessage(hwnd_btn3, win32con.WM_SETFONT, hfont, True)
-        
-        # 4. Status Static
-        hwnd_status = win32gui.CreateWindow(
-            "STATIC", "Trạng thái: Sẵn sàng",
-            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
-            10, 230, 410, 20, hwnd, 103, 0, None
-        )
-        win32gui.SendMessage(hwnd_status, win32con.WM_SETFONT, hfont, True)
-        
-        # Subclass buttons to intercept and handle Tab/Enter keyboard navigation manually
-        for btn in [hwnd_btn1, hwnd_btn2, hwnd_btn3]:
-            try:
-                orig = win32gui.SetWindowLong(btn, win32con.GWL_WNDPROC, button_subclass_proc)
-                orig_wndprocs[btn] = orig
-            except Exception as subclass_err:
-                print(f"[INSTALLER] Subclassing error: {subclass_err}")
-                
-        # Initial keyboard focus
-        win32gui.SetFocus(hwnd_btn1)
-        return 0
-        
-    elif msg == win32con.WM_COMMAND:
+    if msg == win32con.WM_COMMAND:
         control_id = win32api.LOWORD(wparam)
         if control_id == 201: # Install
             threading.Thread(target=run_install, daemon=True).start()
@@ -355,6 +293,8 @@ def wnd_proc(hwnd, msg, wparam, lparam):
     return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 def main():
+    global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status
+    
     wc = win32gui.WNDCLASS()
     wc.lpfnWndProc = wnd_proc
     wc.lpszClassName = "ZablindInstallerClass"
@@ -382,6 +322,67 @@ def main():
         0, 0, 0, None
     )
     
+    hwnd_main = hwnd
+    hfont = win32gui.GetStockObject(17) # 17 is DEFAULT_GUI_FONT
+    
+    # 1. Title Static
+    h_title = win32gui.CreateWindow(
+        "STATIC", "BỘ CÀI ĐẶT ZABLIND",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+        10, 15, 410, 25, hwnd, 101, 0, None
+    )
+    win32gui.SendMessage(h_title, win32con.WM_SETFONT, hfont, True)
+    
+    # 2. Desc Static
+    h_desc = win32gui.CreateWindow(
+        "STATIC", "Vui lòng chọn một tùy chọn bên dưới:",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+        10, 45, 410, 20, hwnd, 102, 0, None
+    )
+    win32gui.SendMessage(h_desc, win32con.WM_SETFONT, hfont, True)
+    
+    # 3. Buttons (native controls with keyboard Tab stops)
+    hwnd_btn1 = win32gui.CreateWindow(
+        "BUTTON", "1. Cài đặt / Cài đặt lại",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.BS_DEFPUSHBUTTON,
+        100, 80, 230, 40, hwnd, 201, 0, None
+    )
+    win32gui.SendMessage(hwnd_btn1, win32con.WM_SETFONT, hfont, True)
+    
+    hwnd_btn2 = win32gui.CreateWindow(
+        "BUTTON", "2. Gỡ cài đặt Zablind",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP,
+        100, 130, 230, 40, hwnd, 202, 0, None
+    )
+    win32gui.SendMessage(hwnd_btn2, win32con.WM_SETFONT, hfont, True)
+    
+    hwnd_btn3 = win32gui.CreateWindow(
+        "BUTTON", "3. Thoát",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP,
+        100, 180, 230, 30, hwnd, 203, 0, None
+    )
+    win32gui.SendMessage(hwnd_btn3, win32con.WM_SETFONT, hfont, True)
+    
+    # 4. Status Static
+    hwnd_status = win32gui.CreateWindow(
+        "STATIC", "Trạng thái: Sẵn sàng",
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+        10, 230, 410, 20, hwnd, 103, 0, None
+    )
+    win32gui.SendMessage(hwnd_status, win32con.WM_SETFONT, hfont, True)
+    
+    # Subclass buttons to intercept and handle Tab/Enter keyboard navigation manually
+    for btn in [hwnd_btn1, hwnd_btn2, hwnd_btn3]:
+        try:
+            orig = win32gui.SetWindowLong(btn, win32con.GWL_WNDPROC, button_subclass_proc)
+            orig_wndprocs[btn] = orig
+        except Exception as subclass_err:
+            print(f"[INSTALLER] Subclassing error: {subclass_err}")
+            
+    # Initial keyboard focus
+    win32gui.SetFocus(hwnd_btn1)
+    
+    # Show main window
     win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
     win32gui.UpdateWindow(hwnd)
     
