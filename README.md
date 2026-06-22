@@ -8,18 +8,43 @@ _A lightweight accessibility tool designed to assist visually impaired users in 
 
 ## ⚡ What It Currently Supports
 
-- **Contact Navigation**: Press `Ctrl + Shift + M` / `Ctrl + Shift + N` to navigate forward / backward through recent contacts.
-- **Open Chats**: Press `Enter` to jump to the selected chat window.
-- **Read Messages**: Press `Ctrl + Shift + R` to read the latest message, and `Ctrl + Shift + K` / `Ctrl + Shift + L` to read the previous / next message.
-- **Voice & Media Messages**: Press `Tab` to play voice messages or open images/videos. For video messages, press `Space` to pause/resume playback.
-- **Image Description**: Press `Ctrl + Shift + I` to hear descriptions from the Zablind Image API.
-- **Message Menus**: Press the `Application` (or `Context Menu`) key to open the options menu for a message.
-- **Send Attachments**: Press `Ctrl + Shift + A` to open the attachment menu, use `Up` / `Down` arrows to navigate, and `Enter` to choose.
-- **Keyboard Shortcut Help**: Press `Escape` twice when focused on message lists/panels to access helper modals.
-- **Making Calls**: Press `Ctrl + Shift + C` to focus on the audio call button, use `Tab` to switch to video, and press `Enter` to call.
-- **Call Management**: Accept/deny calls, toggle camera/microphone on/off, and end calls using simple keyboard shortcuts:
-  - **Incoming Call (focused)**: `A` to Accept, `Ctrl + A` to Accept without camera, `D` to Deny.
-  - **Active Call**: `C` to Toggle Camera, `M` to Toggle Microphone, `E` to End Call.
+### 🧭 General & Help
+- **Shortcut Help**: Press `Ctrl + Shift + H` to toggle the keyboard shortcuts help panel.
+- **Language Selection**: Press `Ctrl + Shift + G` to automatically toggle between Vietnamese and English voice announcements.
+- **Check for Updates**: Press `Ctrl + Shift + U` to manually trigger an update check for Zablind.
+- **Dismiss/Close**: Press `Escape` to close active menus, dialogs, or media viewers.
+
+### 🔍 Navigation
+- **Contact Search**: Press `Ctrl + Shift + F` to focus on the contact search input box.
+- **Select first chat**: Press `Ctrl + Shift + 1` to immediately select the first conversation in the list.
+- **Contact/Chat List**: Press `Ctrl + Shift + M` to move down to the next conversation/result, or `Ctrl + Shift + N` to move up.
+- **Focus Message Input**: Press `Ctrl + Shift + E` to focus on the chat input text box.
+- **Switch Tabs**: Press `Ctrl + Shift + T` to toggle between the **Focus** (Ưu tiên) and **Other** (Khác) chat tabs.
+
+### ✉️ Messaging
+- **Read Messages**: Press `Ctrl + Shift + K` to read the previous message and `Ctrl + Shift + L` to read the next message.
+- **Jump to Latest**: Press `Ctrl + Shift + R` to immediately read the latest message.
+- **Voice & Media Messages**: Press `Tab` when focused on a message to play a voice message or open a photo/video.
+- **Link Messages**: Use `ArrowDown` to focus on links inside a message, `ArrowUp` to focus back on the message text, and `Enter` to open the focused link.
+- **Message Options**: Press the `ContextMenu` (or Application) key to open the options menu for the focused message.
+
+### 🛠️ Actions
+- **Add Friend**: Press `Ctrl + Shift + B` to open the "Add Friend by phone number" dialog.
+- **Sync Messages**: Press `Ctrl + Shift + S` to synchronize messages from your mobile device.
+- **Restart / Log Out Zalo**: Press `Ctrl + Shift + Q` to open the logout dialog with a one-click button to restart Zalo.
+- **QR Code Fullscreen**: Press `Ctrl + Shift + D` on the login screen to open the Zalo login QR code full-screen in your default browser.
+- **Send Attachments**: Press `Ctrl + Shift + O` to open the file/folder attachment menu.
+
+### 📞 Calls & Call Management
+- **Start a Call**: Press `Ctrl + Shift + C` to focus the audio call button, press `Tab` to switch to the video call button, and `Enter` to place the call.
+- **Incoming Call (focused call window)**:
+  - Press `A` to Accept the call.
+  - Press `Ctrl + A` or `Ctrl + Shift + A` to Accept the video call without turning on your camera.
+  - Press `D` to Deny/decline the call.
+- **Active Call**:
+  - Press `C` to toggle camera/video on/off.
+  - Press `M` to toggle microphone/mute on/off.
+  - Press `E` to end/hang up the call.
 
 ---
 
