@@ -4,9 +4,17 @@ import shutil
 import winreg
 import subprocess
 import time
-import tkinter as tk
-from tkinter import ttk, messagebox
+import win32gui
+import win32con
+import win32api
 import threading
+
+# Global control handles
+hwnd_main = None
+hwnd_btn1 = None
+hwnd_btn2 = None
+hwnd_btn3 = None
+hwnd_status = None
 
 def install_zablind_core(status_callback):
     status_callback("Bắt đầu cài đặt...")
@@ -183,126 +191,162 @@ def uninstall_zablind_core(status_callback):
         print(f"[UNINSTALLER] Fatal error during uninstall: {e}")
         return False
 
-class InstallerApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Bộ cài đặt Zablind")
-        self.root.geometry("450x320")
-        self.root.resizable(False, False)
+def set_status(text):
+    if hwnd_status:
+        win32gui.SetWindowText(hwnd_status, f"Trạng thái: {text}")
+
+def disable_ui():
+    if hwnd_btn1: win32gui.EnableWindow(hwnd_btn1, False)
+    if hwnd_btn2: win32gui.EnableWindow(hwnd_btn2, False)
+    if hwnd_btn3: win32gui.EnableWindow(hwnd_btn3, False)
+
+def enable_ui():
+    if hwnd_btn1: win32gui.EnableWindow(hwnd_btn1, True)
+    if hwnd_btn2: win32gui.EnableWindow(hwnd_btn2, True)
+    if hwnd_btn3: win32gui.EnableWindow(hwnd_btn3, True)
+
+def run_install():
+    disable_ui()
+    success = install_zablind_core(set_status)
+    enable_ui()
+    if success:
+        set_status("Cài đặt thành công!")
+        win32api.MessageBox(hwnd_main, "Cài đặt Zablind thành công!", "Thông báo", win32con.MB_OK | win32con.MB_ICONINFORMATION)
+    else:
+        set_status("Cài đặt thất bại!")
+        win32api.MessageBox(hwnd_main, "Cài đặt Zablind thất bại!", "Lỗi", win32con.MB_OK | win32con.MB_ICONERROR)
+    if hwnd_btn3:
+        win32gui.SetFocus(hwnd_btn3)
+
+def run_uninstall():
+    disable_ui()
+    success = uninstall_zablind_core(set_status)
+    enable_ui()
+    if success:
+        set_status("Gỡ cài đặt thành công!")
+        win32api.MessageBox(hwnd_main, "Gỡ cài đặt Zablind thành công!", "Thông báo", win32con.MB_OK | win32con.MB_ICONINFORMATION)
+    else:
+        set_status("Gỡ cài đặt thất bại!")
+        win32api.MessageBox(hwnd_main, "Gỡ cài đặt Zablind thất bại!", "Lỗi", win32con.MB_OK | win32con.MB_ICONERROR)
+    if hwnd_btn3:
+        win32gui.SetFocus(hwnd_btn3)
+
+def wnd_proc(hwnd, msg, wparam, lparam):
+    global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status
+    
+    if msg == win32con.WM_CREATE:
+        hwnd_main = hwnd
+        # Set native system GUI font
+        hfont = win32gui.GetStockObject(win32con.DEFAULT_GUI_FONT)
         
-        # Center the window
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f'{width}x{height}+{x}+{y}')
+        # 1. Title Static
+        h_title = win32gui.CreateWindow(
+            "STATIC", "BỘ CÀI ĐẶT ZABLIND",
+            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+            10, 15, 410, 25, hwnd, 101, 0, None
+        )
+        win32gui.SendMessage(h_title, win32con.WM_SETFONT, hfont, True)
         
-        # Setup ttk style for screen reader accessibility and consistent fonts
-        style = ttk.Style()
-        try:
-            if 'vista' in style.theme_names():
-                style.theme_use('vista')
-            elif 'xpnative' in style.theme_names():
-                style.theme_use('xpnative')
-        except:
-            pass
-            
-        style.configure('TLabel', font=("Arial", 11))
-        style.configure('Title.TLabel', font=("Arial", 15, "bold"), foreground="#2b6cb0")
-        style.configure('Status.TLabel', font=("Arial", 11, "bold"), foreground="#4a5568")
-        style.configure('TButton', font=("Arial", 11, "bold"))
+        # 2. Desc Static
+        h_desc = win32gui.CreateWindow(
+            "STATIC", "Vui lòng chọn một tùy chọn bên dưới:",
+            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+            10, 45, 410, 20, hwnd, 102, 0, None
+        )
+        win32gui.SendMessage(h_desc, win32con.WM_SETFONT, hfont, True)
         
-        # UI Elements using native ttk widgets for MSAA screen reader support
-        self.title_lbl = ttk.Label(root, text="BỘ CÀI ĐẶT ZABLIND", style="Title.TLabel", takefocus=True)
-        self.title_lbl.pack(pady=15)
+        # 3. Buttons (using standard Win32 BUTTON controls with WS_TABSTOP)
+        hwnd_btn1 = win32gui.CreateWindow(
+            "BUTTON", "1. Cài đặt / Cài đặt lại",
+            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.BS_DEFPUSHBUTTON,
+            100, 80, 230, 40, hwnd, 201, 0, None
+        )
+        win32gui.SendMessage(hwnd_btn1, win32con.WM_SETFONT, hfont, True)
         
-        self.desc_lbl = ttk.Label(root, text="Vui lòng chọn một tùy chọn bên dưới:", style="TLabel", takefocus=True)
-        self.desc_lbl.pack(pady=5)
+        hwnd_btn2 = win32gui.CreateWindow(
+            "BUTTON", "2. Gỡ cài đặt Zablind",
+            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP,
+            100, 130, 230, 40, hwnd, 202, 0, None
+        )
+        win32gui.SendMessage(hwnd_btn2, win32con.WM_SETFONT, hfont, True)
         
-        btn_frame = ttk.Frame(root)
-        btn_frame.pack(pady=15)
+        hwnd_btn3 = win32gui.CreateWindow(
+            "BUTTON", "3. Thoát",
+            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP,
+            100, 180, 230, 30, hwnd, 203, 0, None
+        )
+        win32gui.SendMessage(hwnd_btn3, win32con.WM_SETFONT, hfont, True)
         
-        self.btn_install = ttk.Button(btn_frame, text="1. Cài đặt / Cài đặt lại", style="TButton", command=self.start_install)
-        self.btn_install.pack(pady=5)
+        # 4. Status Static
+        hwnd_status = win32gui.CreateWindow(
+            "STATIC", "Trạng thái: Sẵn sàng",
+            win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.SS_CENTER,
+            10, 230, 410, 20, hwnd, 103, 0, None
+        )
+        win32gui.SendMessage(hwnd_status, win32con.WM_SETFONT, hfont, True)
         
-        self.btn_uninstall = ttk.Button(btn_frame, text="2. Gỡ cài đặt Zablind", style="TButton", command=self.start_uninstall)
-        self.btn_uninstall.pack(pady=5)
+        # Initial keyboard focus
+        win32gui.SetFocus(hwnd_btn1)
+        return 0
         
-        self.btn_exit = ttk.Button(btn_frame, text="3. Thoát", style="TButton", command=self.exit_app)
-        self.btn_exit.pack(pady=5)
+    elif msg == win32con.WM_COMMAND:
+        control_id = win32api.LOWORD(wparam)
+        if control_id == 201: # Install
+            threading.Thread(target=run_install, daemon=True).start()
+        elif control_id == 202: # Uninstall
+            threading.Thread(target=run_uninstall, daemon=True).start()
+        elif control_id == 203: # Exit
+            win32gui.DestroyWindow(hwnd)
+        return 0
         
-        self.status_lbl = ttk.Label(root, text="Trạng thái: Sẵn sàng", style="Status.TLabel", takefocus=True)
-        self.status_lbl.pack(pady=10)
+    elif msg == win32con.WM_DESTROY:
+        win32gui.PostQuitMessage(0)
+        return 0
         
-        # Default focus on the title label to read context first, user can Tab through
-        self.title_lbl.focus_set()
-        
-    def start_install(self):
-        self.btn_install.config(state="disabled")
-        self.btn_uninstall.config(state="disabled")
-        self.btn_exit.config(state="disabled")
-        self.status_lbl.config(text="Trạng thái: Đang cài đặt...")
-        self.status_lbl.focus_set()
-        threading.Thread(target=self.run_install_thread, daemon=True).start()
-        
-    def run_install_thread(self):
-        try:
-            success = install_zablind_core(self.update_status)
-            if success:
-                self.root.after(0, lambda: self.finish_task("Cài đặt thành công!", True))
-            else:
-                self.root.after(0, lambda: self.finish_task("Cài đặt thất bại!", False))
-        except Exception as e:
-            self.root.after(0, lambda: self.finish_task(f"Lỗi: {str(e)}", False))
-            
-    def start_uninstall(self):
-        self.btn_install.config(state="disabled")
-        self.btn_uninstall.config(state="disabled")
-        self.btn_exit.config(state="disabled")
-        self.status_lbl.config(text="Trạng thái: Đang gỡ cài đặt...")
-        self.status_lbl.focus_set()
-        threading.Thread(target=self.run_uninstall_thread, daemon=True).start()
-        
-    def run_uninstall_thread(self):
-        try:
-            success = uninstall_zablind_core(self.update_status)
-            if success:
-                self.root.after(0, lambda: self.finish_task("Gỡ cài đặt thành công!", True))
-            else:
-                self.root.after(0, lambda: self.finish_task("Gỡ cài đặt thất bại!", False))
-        except Exception as e:
-            self.root.after(0, lambda: self.finish_task(f"Lỗi: {str(e)}", False))
-            
-    def update_status(self, text):
-        def update():
-            self.status_lbl.config(text=f"Trạng thái: {text}")
-            self.status_lbl.focus_set()
-        self.root.after(0, update)
-        
-    def finish_task(self, text, is_success):
-        self.status_lbl.config(text=f"Trạng thái: {text}")
-        
-        self.btn_install.config(state="normal")
-        self.btn_uninstall.config(state="normal")
-        self.btn_exit.config(state="normal")
-        
-        # Set focus to status label so screen reader announces final state
-        self.status_lbl.focus_set()
-        
-        if is_success:
-            messagebox.showinfo("Thông báo", text)
-        else:
-            messagebox.showerror("Lỗi", text)
-        self.btn_exit.focus_set()
-        
-    def exit_app(self):
-        self.root.destroy()
+    return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 def main():
-    root = tk.Tk()
-    app = InstallerApp(root)
-    root.mainloop()
+    # Register window class
+    wc = win32gui.WNDCLASS()
+    wc.lpfnWndProc = wnd_proc
+    wc.lpszClassName = "ZablindInstallerClass"
+    wc.hbrBackground = win32con.COLOR_BTNFACE + 1
+    wc.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
+    
+    try:
+        class_atom = win32gui.RegisterClass(wc)
+    except Exception as e:
+        # Already registered or failed
+        class_atom = "ZablindInstallerClass"
+        
+    # Calculate screen center coordinates
+    screen_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+    screen_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+    width = 450
+    height = 300
+    x = (screen_w - width) // 2
+    y = (screen_h - height) // 2
+    
+    # Create main window
+    hwnd = win32gui.CreateWindow(
+        class_atom,
+        "Bộ cài đặt Zablind",
+        win32con.WS_OVERLAPPED | win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_MINIMIZEBOX,
+        x, y, width, height,
+        0, 0, 0, None
+    )
+    
+    win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
+    win32gui.UpdateWindow(hwnd)
+    
+    # Main message loop with IsDialogMessage to automatically handle Tab/Enter keyboard navigation
+    while True:
+        rc, msg = win32gui.GetMessage(None, 0, 0)
+        if not rc:
+            break
+        if not win32gui.IsDialogMessage(hwnd, msg):
+            win32gui.TranslateMessage(msg)
+            win32gui.DispatchMessage(msg)
 
 if __name__ == '__main__':
     main()
