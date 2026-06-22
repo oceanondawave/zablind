@@ -4082,6 +4082,20 @@ class ZaloCallHandler:
             # Silent fail - don't spam errors
             pass
     
+    def register_global_hotkeys(self):
+        """Register hotkeys that should always remain active (e.g. manual update check)."""
+        if not KEYBOARD_AVAILABLE:
+            return
+        try:
+            try:
+                keyboard.remove_hotkey("ctrl+shift+u")
+            except:
+                pass
+            keyboard.add_hotkey("ctrl+shift+u", lambda: check_for_updates_manually(self))
+            print("[OK] Global update hotkey registered.")
+        except Exception as e:
+            print(f"[ERROR] Failed to register global update hotkey: {e}")
+
     def register_hotkeys(self):
         """Register global keyboard hotkeys."""
         if not KEYBOARD_AVAILABLE:
@@ -4103,7 +4117,6 @@ class ZaloCallHandler:
             keyboard.add_hotkey(self.camera_toggle_hotkey, lambda: self._enqueue_action("camera"))
             keyboard.add_hotkey(self.end_call_hotkey, lambda: self._enqueue_action("end_call"))
             keyboard.add_hotkey(self.microphone_toggle_hotkey, lambda: self._enqueue_action("microphone"))
-            keyboard.add_hotkey("ctrl+shift+u", lambda: check_for_updates_manually(self))
             
             self.hotkeys_registered = True
             print("[OK] Hotkeys registered successfully.")
@@ -4131,6 +4144,8 @@ class ZaloCallHandler:
             keyboard.unhook_all_hotkeys()
             self.hotkeys_registered = False
             print("[OK] Hotkeys unregistered successfully.")
+            # Re-register global hotkeys that should always remain active
+            self.register_global_hotkeys()
         except Exception as e:
             print(f"[ERROR] Failed to unregister hotkeys: {e}")
 
@@ -5051,18 +5066,15 @@ def register_startup():
     try:
         import winreg
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        exe_path = os.path.abspath(sys.executable)
-        
-        if not exe_path.endswith(".exe"):
-            print("[STARTUP] Running from Python script. Skipping registry startup registration.")
-            return
-            
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(key, "ZablindCallHandler", 0, winreg.REG_SZ, f'"{exe_path}"')
+        try:
+            winreg.DeleteValue(key, "ZablindCallHandler")
+            print("[STARTUP] Cleaned up legacy startup registry key.")
+        except FileNotFoundError:
+            pass
         winreg.CloseKey(key)
-        print(f"[STARTUP] Registered ZablindCallHandler to startup registry key: {exe_path}")
     except Exception as e:
-        print(f"[STARTUP] Failed to register startup registry key: {e}")
+        print(f"[STARTUP] Error cleaning up startup key: {e}")
 
 
 def start_zalo_patcher_thread(handler):
@@ -5488,7 +5500,7 @@ def main():
     
     # Register hotkeys dynamically (skipped at startup to avoid screen reader issues when idle)
     # Hotkeys will be registered as soon as a call (incoming or active) is detected.
-    pass
+    handler.register_global_hotkeys()
     
     # Try to find ZaloCall process (but don't exit if not found - it only runs during calls)
     print("Looking for ZaloCall.exe process...")

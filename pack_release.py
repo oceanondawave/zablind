@@ -72,7 +72,7 @@ def main():
     # 2. Build ZablindInstaller.exe
     print("\n--- 2. Building ZablindInstaller.exe ---")
     installer_args = [
-        "pyinstaller", "--onefile",
+        "pyinstaller", "--onefile", "--noconsole",
         "--name=ZablindInstaller",
         "--add-data=zablind_call/ZablindCallHandler.exe;.",
         "--add-data=zablind_main/preload-wrapper.js;.",
