@@ -1900,18 +1900,14 @@ class ZaloCallHandler:
             call_type: Type of call ('audio' or 'video')
         """
         if not caller_name:
-            call_type_str = "video" if call_type == "video" else "thoáº¡i"
-            announcement = f"CÃ³ cuá»™c gá»i {call_type_str} Ä‘áº¿n"
+            announcement = f"Incoming {call_type} call"
             print(f"[ANNOUNCE] Spoken incoming call announcement: '{announcement}'")
-            self.speak(announcement, language='vi')
+            self.speak(announcement, language='en')
             return
-        if not caller_name:
-            caller_name = "Người lạ"
-        
-        call_type_str = "video" if call_type == "video" else "thoại"
-        announcement = f"{caller_name} đang gọi {call_type_str}"
+            
+        announcement = f"Incoming {call_type} call from {caller_name}"
         print(f"[ANNOUNCE] Spoken incoming call announcement: '{announcement}'")
-        self.speak(announcement, language='vi')
+        self.speak(announcement, language='en')
 
     def _resolve_caller_name_async(self, call_type: str):
         """Resolve caller name after fast incoming detection without delaying hotkeys."""
@@ -3462,8 +3458,7 @@ class ZaloCallHandler:
                 self.call_type = "video" if is_video else "audio"
                 print(f"[ACCEPT] Initialized states: camera_on={self.camera_on}, microphone_on={self.microphone_on}, call_type={self.call_type}")
                 
-                call_type_vn = "video" if is_video else "thoại"
-                self.speak(f"Đã chấp nhận cuộc gọi {call_type_vn}", language='vi')
+                self.speak(f"Accepted {self.call_type} call", language='en')
                 
                 self.call_active = True
                 self.incoming_call_detected = False
@@ -3496,7 +3491,7 @@ class ZaloCallHandler:
                     self.click_checkbox(checkboxes[1])
                     self.camera_on = True if is_video else False
                     self.microphone_on = True
-                    self.speak("Đã chấp nhận cuộc gọi", language='vi')
+                    self.speak("Accepted call", language='en')
                     self.call_active = True
                     self.incoming_call_detected = False
                 elif checkboxes and len(checkboxes) == 1:
@@ -3506,7 +3501,7 @@ class ZaloCallHandler:
                     self.click_checkbox(checkboxes[0])
                     self.camera_on = True if is_video else False
                     self.microphone_on = True
-                    self.speak("Đã chấp nhận cuộc gọi", language='vi')
+                    self.speak("Accepted call", language='en')
                     self.call_active = True
                     self.incoming_call_detected = False
                 else:
@@ -3589,7 +3584,7 @@ class ZaloCallHandler:
                 self.call_type = "video"
                 print(f"[ACCEPT WITHOUT CAMERA] Initialized states: camera_on={self.camera_on}, microphone_on={self.microphone_on}, call_type=video")
                 
-                self.speak("Đã chấp nhận cuộc gọi video không mở camera", language='vi')
+                self.speak("Accepted video call without camera", language='en')
                 
                 self.call_active = True
                 self.incoming_call_detected = False
@@ -3625,7 +3620,7 @@ class ZaloCallHandler:
                     self.microphone_on = True
                     self.call_type = "video"
                     print(f"[ACCEPT WITHOUT CAMERA] Fallback states: camera_on={self.camera_on}, microphone_on={self.microphone_on}")
-                    self.speak("Đã chấp nhận cuộc gọi", language='vi')
+                    self.speak("Accepted call", language='en')
                     self.call_active = True
                     self.incoming_call_detected = False
                 else:
@@ -3636,7 +3631,7 @@ class ZaloCallHandler:
                         self.camera_on = False
                         self.microphone_on = True
                         self.call_type = "video"
-                        self.speak("Đã chấp nhận cuộc gọi", language='vi')
+                        self.speak("Accepted call", language='en')
                         self.call_active = True
                         self.incoming_call_detected = False
                     else:
@@ -3710,7 +3705,7 @@ class ZaloCallHandler:
                 if not self.click_point(deny_point, "deny"):
                     self.click_checkbox(deny_btn)
                 self._clear_speech_queue()
-                self.speak("Đã từ chối cuộc gọi", language='vi')
+                self.speak("Call declined", language='en')
                 self._reset_call_state(reset_process=True, clear_actions=True, reason="deny clicked")
                 self.start_ghost_window_reaper(old_pid)
             else:
@@ -3723,7 +3718,7 @@ class ZaloCallHandler:
                     old_pid = self.zalocall_pid
                     self.click_checkbox(checkboxes[0])
                     self._clear_speech_queue()
-                    self.speak("Đã từ chối cuộc gọi", language='vi')
+                    self.speak("Call declined", language='en')
                     self._reset_call_state(reset_process=True, clear_actions=True, reason="deny fallback clicked")
                     self.start_ghost_window_reaper(old_pid)
                 else:
@@ -3925,7 +3920,7 @@ class ZaloCallHandler:
             if end_point:
                 old_pid = self.zalocall_pid
                 if self.click_point(end_point, "end call"):
-                    self.speak("ÄÃ£ káº¿t thÃºc cuá»™c gá»i", language='vi')
+                    self.speak("Call ended", language='en')
                     self._reset_call_state(reset_process=True, clear_actions=True, reason="end call clicked")
                     self.start_ghost_window_reaper(old_pid)
                     return
@@ -3960,7 +3955,7 @@ class ZaloCallHandler:
             if end_btn:
                 old_pid = self.zalocall_pid
                 self.click_checkbox(end_btn)
-                self.speak("Đã kết thúc cuộc gọi", language='vi')
+                self.speak("Call ended", language='en')
                 self._reset_call_state(reset_process=True, clear_actions=True, reason="end call clicked")
                 self.start_ghost_window_reaper(old_pid)
         except Exception as e:
@@ -4408,12 +4403,11 @@ class ZaloCallHandler:
                                     self.pending_video_incoming_announced = True
                                     self.announce_incoming_call(self.caller_name, "video")
                                 
-                                call_type_vn = "video" if self.call_type == "video" else "thoại"
                                 if self.caller_name:
-                                    announcement = f"Đã kết nối cuộc gọi {call_type_vn} với {self.caller_name}"
+                                    announcement = f"Connected {self.call_type} call with {self.caller_name}"
                                 else:
-                                    announcement = f"Đã kết nối cuộc gọi {call_type_vn}"
-                                self.speak(announcement, language='vi')
+                                    announcement = f"Connected {self.call_type} call"
+                                self.speak(announcement, language='en')
                             
                             # Detect or update call_type dynamically ONLY if it is not already set (keep existing call_type)
                             old_call_type = self.call_type
@@ -4893,7 +4887,7 @@ def perform_self_update(zip_url, handler):
     zip_path = os.path.join(tempfile.gettempdir(), "zablind_update.zip")
     
     try:
-        handler.speak("Zablind đang tự động tải và cập nhật phiên bản mới...", language="vi", clear_pending=True)
+        handler.speak("Zablind is downloading a new update...", language="en", clear_pending=True)
         print(f"[UPDATER] Downloading update from {zip_url}")
         
         req = urllib.request.Request(
@@ -4950,7 +4944,7 @@ def perform_self_update(zip_url, handler):
                     try: shutil.copy2(src, dst)
                     except: pass
             
-            handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
+            handler.speak("Update completed. Restarting service.", language="en")
             print("[UPDATER] Update complete! Launching new executable...")
             subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
         else:
@@ -5016,7 +5010,7 @@ def perform_self_update(zip_url, handler):
                     except Exception as e:
                         print(f"[UPDATER] Failed to copy zablind_call: {e}")
                         
-            handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
+            handler.speak("Update completed. Restarting service.", language="en")
             print("[UPDATER] Update complete! Restarting executable...")
             current_exe = os.path.abspath(sys.executable)
             subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
@@ -5030,7 +5024,7 @@ def perform_self_update(zip_url, handler):
     except Exception as update_err:
         print(f"[UPDATER] Self-update failed: {update_err}")
         traceback.print_exc()
-        handler.speak("Cập nhật Zablind thất bại. Vui lòng thử lại sau.", language="vi")
+        handler.speak("Zablind update failed. Please try again later.", language="en")
         try:
             current_exe = os.path.abspath(sys.executable)
             old_exe = current_exe + ".old"
@@ -5148,7 +5142,7 @@ def start_zalo_patcher_thread(handler):
                                         print(f"[PATCHER] Restore backup failed: {restore_err}")
                                         
                         if should_patch and assets_source:
-                            handler.speak("Zablind đang tự động nâng cấp và vá lỗi Zalo... Xin vui lòng đợi giây lát.", language="vi", clear_pending=True)
+                            handler.speak("Zablind is upgrading and patching Zalo. Please wait a moment.", language="en", clear_pending=True)
                             kill_zalo_processes()
                             backup_original_asar(resources_dir)
                             
@@ -5198,7 +5192,7 @@ def start_zalo_patcher_thread(handler):
                             except:
                                 pass
                                 
-                            handler.speak("Cài đặt thành công. Đang khởi động lại Zalo.", language="vi")
+                            handler.speak("Patch applied successfully. Restarting Zalo.", language="en")
                             
                             zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
                             if os.path.exists(zalo_exe):
@@ -5217,36 +5211,41 @@ def start_zalo_patcher_thread(handler):
 def start_updater_thread(handler):
     def updater_job():
         time.sleep(5.0)
-        try:
-            assets_source = find_zablind_assets()
-            if not assets_source:
-                print("[UPDATER] Zablind assets not found, skipping update check.")
-                return
-            local_v = get_local_version(assets_source)
-            print(f"[UPDATER] Checking for updates. Local version: {local_v}")
-            remote_tag, zip_url = get_latest_github_release()
-            if remote_tag and zip_url:
-                print(f"[UPDATER] Latest remote version: {remote_tag}")
-                if is_new_version(local_v, remote_tag):
-                    print(f"[UPDATER] New version available! Local: {local_v}, Remote: {remote_tag}")
-                    perform_self_update(zip_url, handler)
+        while True:
+            try:
+                assets_source = find_zablind_assets()
+                if not assets_source:
+                    print("[UPDATER] Zablind assets not found, skipping update check.")
                 else:
-                    print("[UPDATER] Zablind is up to date.")
-            else:
-                print("[UPDATER] Could not fetch latest release info.")
-        except Exception as err:
-            print(f"[UPDATER] Error in update check: {err}")
+                    local_v = get_local_version(assets_source)
+                    print(f"[UPDATER] Checking for updates. Local version: {local_v}")
+                    remote_tag, zip_url = get_latest_github_release()
+                    if remote_tag and zip_url:
+                        print(f"[UPDATER] Latest remote version: {remote_tag}")
+                        if is_new_version(local_v, remote_tag):
+                            print(f"[UPDATER] New version available! Local: {local_v}, Remote: {remote_tag}")
+                            perform_self_update(zip_url, handler)
+                            break
+                        else:
+                            print("[UPDATER] Zablind is up to date.")
+                    else:
+                        print("[UPDATER] Could not fetch latest release info.")
+            except Exception as err:
+                print(f"[UPDATER] Error in update check: {err}")
+            
+            # Check again in 6 hours
+            time.sleep(6 * 3600)
             
     threading.Thread(target=updater_job, daemon=True).start()
 
 
 def check_for_updates_manually(handler):
     def job():
-        handler.speak("Đang kiểm tra cập nhật Zablind...", language="vi", clear_pending=True)
+        handler.speak("Checking for Zablind updates...", language="en", clear_pending=True)
         try:
             assets_source = find_zablind_assets()
             if not assets_source:
-                handler.speak("Không tìm thấy tệp tin Zablind trên máy tính.", language="vi")
+                handler.speak("Zablind files not found on this computer.", language="en")
                 return
             local_v = get_local_version(assets_source)
             print(f"[UPDATER] Manual check. Local version: {local_v}")
@@ -5254,15 +5253,15 @@ def check_for_updates_manually(handler):
             if remote_tag and zip_url:
                 print(f"[UPDATER] Latest remote version: {remote_tag}")
                 if is_new_version(local_v, remote_tag):
-                    handler.speak(f"Đã có phiên bản mới {remote_tag}. Đang bắt đầu cập nhật.", language="vi")
+                    handler.speak(f"New version {remote_tag} is available. Starting update.", language="en")
                     perform_self_update(zip_url, handler)
                 else:
-                    handler.speak("Zablind đã ở phiên bản mới nhất.", language="vi")
+                    handler.speak("Zablind is up to date.", language="en")
             else:
-                handler.speak("Không thể kết nối đến máy chủ cập nhật.", language="vi")
+                handler.speak("Could not connect to the update server.", language="en")
         except Exception as e:
             print(f"[UPDATER] Manual update check error: {e}")
-            handler.speak("Đã xảy ra lỗi khi kiểm tra cập nhật.", language="vi")
+            handler.speak("Error checking for updates.", language="en")
             
     threading.Thread(target=job, daemon=True).start()
 
@@ -5325,10 +5324,9 @@ def start_watchdog_thread(handler):
                             except:
                                 pass
                         time.sleep(0.5)
-                        
                     if not handshake_success:
                         print("[WATCHDOG] Handshake failed or timed out!")
-                        handler.speak("Cảnh báo: Zablind không tương thích với phiên bản Zalo này. Đang ghi lại nhật ký lỗi.", language="vi", clear_pending=True)
+                        handler.speak("Warning. Zablind is incompatible with this Zalo version. Error log saved.", language="en", clear_pending=True)
                         try:
                             zalo_version = "Unknown"
                             local_appdata = os.environ.get('LOCALAPPDATA')

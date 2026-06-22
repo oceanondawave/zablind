@@ -185,6 +185,12 @@ const shortcutsData = [
     descVi: "Đóng menu ngữ cảnh, hộp thoại hoặc trình xem phương tiện đang mở",
     descEn: "Dismiss/close the active menu, dialog or viewer",
     category: "General"
+  },
+  {
+    keys: ["Ctrl", "Shift", "U"],
+    descVi: "Kiểm tra bản cập nhật mới nhất cho Zablind",
+    descEn: "Check for the latest updates for Zablind",
+    category: "General"
   }
 ];
 
