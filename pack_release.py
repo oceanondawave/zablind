@@ -21,7 +21,7 @@ def main():
     print("==================================================")
     print("  ZABLIND RELEASE PACKAGER  ")
     print("==================================================")
-    speak("Bắt đầu đóng gói phiên bản phát hành Zablind.")
+    speak("Starting Zablind release packaging.")
     
     # Root directory
     root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -58,7 +58,7 @@ def main():
         print("[PACKER] Successfully built ZablindCallHandler.exe")
     except Exception as e:
         print(f"[ERROR] Failed to build ZablindCallHandler.exe: {e}")
-        speak("Đóng gói thất bại. Không thể biên dịch Call Handler.")
+        speak("Packaging failed. Could not compile Call Handler.")
         sys.exit(1)
         
     # Copy build artifacts to relevant locations
@@ -89,7 +89,7 @@ def main():
         print("[PACKER] Successfully built ZablindInstaller.exe")
     except Exception as e:
         print(f"[ERROR] Failed to build ZablindInstaller.exe: {e}")
-        speak("Đóng gói thất bại. Không thể biên dịch installer.")
+        speak("Packaging failed. Could not compile installer.")
         sys.exit(1)
         
     # 3. Create zablind_release.zip
@@ -121,7 +121,7 @@ def main():
         print(f"[PACKER] Successfully created {zip_path}")
     except Exception as e:
         print(f"[ERROR] Failed to create release zip: {e}")
-        speak("Đóng gói thất bại. Không thể nén file release.")
+        speak("Packaging failed. Could not compress release files.")
         sys.exit(1)
         
     # 4. Clean up temporary build files
@@ -142,7 +142,7 @@ def main():
     if os.path.exists(spec_inst):
         os.remove(spec_inst)
         
-    speak("Đóng gói Zablind thành công. Bản cài đặt và file zip cập nhật đã sẵn sàng.")
+    speak("Zablind packaging completed successfully. Installer and update zip files are ready.")
     print("\n==================================================")
     print("Build finished successfully!")
     print("Files created:")
