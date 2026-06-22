@@ -5371,8 +5371,38 @@ def start_watchdog_thread(handler):
     threading.Thread(target=watchdog_loop, daemon=True).start()
 
 
+def should_show_console():
+    try:
+        assets_source = find_zablind_assets()
+        if assets_source:
+            if isinstance(assets_source, dict):
+                config_path = os.path.join(assets_source['zablind'], 'config.js')
+            else:
+                config_path = os.path.join(assets_source, 'zablind', 'config.js')
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                match = re.search(r"showCallHandlerConsole:\s*(true|false)", content)
+                if match:
+                    return match.group(1) == "true"
+    except:
+        pass
+    return False
+
+
 def main():
     """Main entry point."""
+    if not should_show_console():
+        try:
+            import ctypes
+            import win32gui
+            import win32con
+            hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+            if hwnd:
+                win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+        except:
+            pass
+
     # Set Process DPI Awareness to avoid coordinate scaling issues with SetCursorPos
     try:
         import ctypes
