@@ -5,7 +5,7 @@ import winreg
 import subprocess
 import time
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 import threading
 
 def install_zablind_core(status_callback):
@@ -198,40 +198,52 @@ class InstallerApp:
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
         
-        self.title_font = ("Arial", 16, "bold")
-        self.label_font = ("Arial", 11)
-        self.btn_font = ("Arial", 11, "bold")
+        # Setup ttk style for screen reader accessibility and consistent fonts
+        style = ttk.Style()
+        try:
+            if 'vista' in style.theme_names():
+                style.theme_use('vista')
+            elif 'xpnative' in style.theme_names():
+                style.theme_use('xpnative')
+        except:
+            pass
+            
+        style.configure('TLabel', font=("Arial", 11))
+        style.configure('Title.TLabel', font=("Arial", 15, "bold"), foreground="#2b6cb0")
+        style.configure('Status.TLabel', font=("Arial", 11, "bold"), foreground="#4a5568")
+        style.configure('TButton', font=("Arial", 11, "bold"))
         
-        # UI Elements
-        self.title_lbl = tk.Label(root, text="BỘ CÀI ĐẶT ZABLIND", font=self.title_font, fg="#2b6cb0")
+        # UI Elements using native ttk widgets for MSAA screen reader support
+        self.title_lbl = ttk.Label(root, text="BỘ CÀI ĐẶT ZABLIND", style="Title.TLabel", takefocus=True)
         self.title_lbl.pack(pady=15)
         
-        self.desc_lbl = tk.Label(root, text="Vui lòng chọn một tùy chọn bên dưới:", font=self.label_font)
+        self.desc_lbl = ttk.Label(root, text="Vui lòng chọn một tùy chọn bên dưới:", style="TLabel", takefocus=True)
         self.desc_lbl.pack(pady=5)
         
-        btn_frame = tk.Frame(root)
+        btn_frame = ttk.Frame(root)
         btn_frame.pack(pady=15)
         
-        self.btn_install = tk.Button(btn_frame, text="1. Cài đặt / Cài đặt lại", font=self.btn_font, width=22, height=2, bg="#3182ce", fg="white", activebackground="#2b6cb0", activeforeground="white", command=self.start_install)
+        self.btn_install = ttk.Button(btn_frame, text="1. Cài đặt / Cài đặt lại", style="TButton", command=self.start_install)
         self.btn_install.pack(pady=5)
         
-        self.btn_uninstall = tk.Button(btn_frame, text="2. Gỡ cài đặt Zablind", font=self.btn_font, width=22, height=2, bg="#e53e3e", fg="white", activebackground="#c53030", activeforeground="white", command=self.start_uninstall)
+        self.btn_uninstall = ttk.Button(btn_frame, text="2. Gỡ cài đặt Zablind", style="TButton", command=self.start_uninstall)
         self.btn_uninstall.pack(pady=5)
         
-        self.btn_exit = tk.Button(btn_frame, text="3. Thoát", font=self.btn_font, width=22, height=1, command=self.exit_app)
+        self.btn_exit = ttk.Button(btn_frame, text="3. Thoát", style="TButton", command=self.exit_app)
         self.btn_exit.pack(pady=5)
         
-        self.status_lbl = tk.Label(root, text="Trạng thái: Sẵn sàng", font=self.label_font, fg="#4a5568")
+        self.status_lbl = ttk.Label(root, text="Trạng thái: Sẵn sàng", style="Status.TLabel", takefocus=True)
         self.status_lbl.pack(pady=10)
         
-        # Set focus to the first button
-        self.btn_install.focus_set()
+        # Default focus on the title label to read context first, user can Tab through
+        self.title_lbl.focus_set()
         
     def start_install(self):
         self.btn_install.config(state="disabled")
         self.btn_uninstall.config(state="disabled")
         self.btn_exit.config(state="disabled")
-        self.status_lbl.config(text="Trạng thái: Đang cài đặt...", fg="#3182ce")
+        self.status_lbl.config(text="Trạng thái: Đang cài đặt...")
+        self.status_lbl.focus_set()
         threading.Thread(target=self.run_install_thread, daemon=True).start()
         
     def run_install_thread(self):
@@ -248,7 +260,8 @@ class InstallerApp:
         self.btn_install.config(state="disabled")
         self.btn_uninstall.config(state="disabled")
         self.btn_exit.config(state="disabled")
-        self.status_lbl.config(text="Trạng thái: Đang gỡ cài đặt...", fg="#e53e3e")
+        self.status_lbl.config(text="Trạng thái: Đang gỡ cài đặt...")
+        self.status_lbl.focus_set()
         threading.Thread(target=self.run_uninstall_thread, daemon=True).start()
         
     def run_uninstall_thread(self):
@@ -264,14 +277,18 @@ class InstallerApp:
     def update_status(self, text):
         def update():
             self.status_lbl.config(text=f"Trạng thái: {text}")
+            self.status_lbl.focus_set()
         self.root.after(0, update)
         
     def finish_task(self, text, is_success):
-        self.status_lbl.config(text=f"Trạng thái: {text}", fg="green" if is_success else "red")
+        self.status_lbl.config(text=f"Trạng thái: {text}")
         
         self.btn_install.config(state="normal")
         self.btn_uninstall.config(state="normal")
         self.btn_exit.config(state="normal")
+        
+        # Set focus to status label so screen reader announces final state
+        self.status_lbl.focus_set()
         
         if is_success:
             messagebox.showinfo("Thông báo", text)
