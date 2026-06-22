@@ -8,17 +8,8 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 
-def speak(text):
-    print(f"[INSTALLER] Speaking: {text}")
-    try:
-        import win32com.client
-        sapi_voice = win32com.client.Dispatch("SAPI.SpVoice")
-        sapi_voice.Speak(text)
-    except Exception as e:
-        print(f"[INSTALLER] TTS failed: {e}")
-
 def install_zablind_core(status_callback):
-    status_callback("Bắt đầu cài đặt...", "Starting installation.")
+    status_callback("Bắt đầu cài đặt...")
     try:
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
         
@@ -29,7 +20,7 @@ def install_zablind_core(status_callback):
         target_dir = os.path.join(local_appdata, 'Programs', 'zablind_call')
         
         # Kill running processes
-        status_callback("Đang dừng các ứng dụng liên quan...", "Stopping running processes.")
+        status_callback("Đang dừng các ứng dụng liên quan...")
         zalo_names = ["zalo.exe", "zaloexecutable.exe", "zalocall.exe", "zablindcallhandler.exe", "zablindcallhandler_x86.exe"]
         try:
             import psutil
@@ -48,7 +39,7 @@ def install_zablind_core(status_callback):
         time.sleep(1.5)
         
         # Recreate target folder
-        status_callback("Đang chuẩn bị thư mục cài đặt...", "Preparing installation directory.")
+        status_callback("Đang chuẩn bị thư mục cài đặt...")
         if os.path.exists(target_dir):
             try: shutil.rmtree(target_dir)
             except: pass
@@ -61,14 +52,14 @@ def install_zablind_core(status_callback):
         src_zablind = os.path.join(base_path, 'zablind')
         
         # Copy files
-        status_callback("Đang sao chép các tệp tin...", "Copying files.")
+        status_callback("Đang sao chép các tệp tin...")
         shutil.copy2(src_exe, os.path.join(target_dir, 'ZablindCallHandler.exe'))
         shutil.copy2(src_preload, os.path.join(target_dir, 'preload-wrapper.js'))
         shutil.copy2(src_popup, os.path.join(target_dir, 'popup-viewer.html'))
         shutil.copytree(src_zablind, os.path.join(target_dir, 'zablind'))
         
         # Clean up legacy startup registry key if present (don't start with PC anymore)
-        status_callback("Đang dọn dẹp hệ thống...", "Cleaning registry entries.")
+        status_callback("Đang dọn dẹp hệ thống...")
         try:
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
@@ -88,11 +79,11 @@ def install_zablind_core(status_callback):
         return False
 
 def uninstall_zablind_core(status_callback):
-    status_callback("Bắt đầu gỡ cài đặt...", "Starting uninstallation.")
+    status_callback("Bắt đầu gỡ cài đặt...")
     
     try:
         # 1. Kill running processes
-        status_callback("Đang dừng các ứng dụng liên quan...", "Stopping running processes.")
+        status_callback("Đang dừng các ứng dụng liên quan...")
         zalo_names = ["zalo.exe", "zaloexecutable.exe", "zalocall.exe", "zablindcallhandler.exe", "zablindcallhandler_x86.exe"]
         try:
             import psutil
@@ -111,7 +102,7 @@ def uninstall_zablind_core(status_callback):
         time.sleep(1.5)
         
         # 2. Remove Startup Run registry key
-        status_callback("Đang dọn dẹp hệ thống...", "Cleaning registry entry.")
+        status_callback("Đang dọn dẹp hệ thống...")
         try:
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
@@ -125,7 +116,7 @@ def uninstall_zablind_core(status_callback):
             print(f"[UNINSTALLER] Startup registry key error: {reg_err}")
             
         # 3. Restore Zalo original files (app.asar) from backup
-        status_callback("Đang khôi phục các tệp tin gốc của Zalo...", "Restoring original Zalo files.")
+        status_callback("Đang khôi phục các tệp tin gốc của Zalo...")
         local_appdata = os.environ.get('LOCALAPPDATA')
         if local_appdata:
             zalo_base = os.path.join(local_appdata, 'Programs', 'Zalo')
@@ -162,7 +153,7 @@ def uninstall_zablind_core(status_callback):
                                 print(f"[UNINSTALLER] Failed to restore app.asar.unpacked in {subdir}: {e}")
                                 
         # 4. Remove target folder
-        status_callback("Đang xóa thư mục cài đặt...", "Removing installation files.")
+        status_callback("Đang xóa thư mục cài đặt...")
         if local_appdata:
             target_dir = os.path.join(local_appdata, 'Programs', 'zablind_call')
             if os.path.exists(target_dir):
@@ -173,7 +164,7 @@ def uninstall_zablind_core(status_callback):
                     print(f"[UNINSTALLER] Failed to delete target folder: {e}")
                     
         # 5. Restart Zalo clean if it exists
-        status_callback("Đang khởi động lại Zalo...", "Restarting Zalo.")
+        status_callback("Đang khởi động lại Zalo...")
         if local_appdata:
             zalo_exe = os.path.join(local_appdata, 'Programs', 'Zalo', 'Zalo.exe')
             if os.path.exists(zalo_exe):
@@ -223,23 +214,17 @@ class InstallerApp:
         
         self.btn_install = tk.Button(btn_frame, text="1. Cài đặt / Cài đặt lại", font=self.btn_font, width=22, height=2, bg="#3182ce", fg="white", activebackground="#2b6cb0", activeforeground="white", command=self.start_install)
         self.btn_install.pack(pady=5)
-        self.btn_install.bind("<FocusIn>", lambda e: speak("Nút Cài đặt hoặc cài đặt lại Zablind. Bấm Phím cách hoặc Enter để thực hiện."))
         
         self.btn_uninstall = tk.Button(btn_frame, text="2. Gỡ cài đặt Zablind", font=self.btn_font, width=22, height=2, bg="#e53e3e", fg="white", activebackground="#c53030", activeforeground="white", command=self.start_uninstall)
         self.btn_uninstall.pack(pady=5)
-        self.btn_uninstall.bind("<FocusIn>", lambda e: speak("Nút Gỡ cài đặt Zablind. Bấm Phím cách hoặc Enter để thực hiện."))
         
         self.btn_exit = tk.Button(btn_frame, text="3. Thoát", font=self.btn_font, width=22, height=1, command=self.exit_app)
         self.btn_exit.pack(pady=5)
-        self.btn_exit.bind("<FocusIn>", lambda e: speak("Nút Thoát."))
         
         self.status_lbl = tk.Label(root, text="Trạng thái: Sẵn sàng", font=self.label_font, fg="#4a5568")
         self.status_lbl.pack(pady=10)
         
-        self.root.after(100, self.announce_welcome)
-        
-    def announce_welcome(self):
-        speak("Chào mừng bạn đến với Bộ cài đặt Zablind. Sử dụng phím Táp để di chuyển và phím Cách để chọn.")
+        # Set focus to the first button
         self.btn_install.focus_set()
         
     def start_install(self):
@@ -276,16 +261,13 @@ class InstallerApp:
         except Exception as e:
             self.root.after(0, lambda: self.finish_task(f"Lỗi: {str(e)}", False))
             
-    def update_status(self, text, speak_text=None):
+    def update_status(self, text):
         def update():
             self.status_lbl.config(text=f"Trạng thái: {text}")
-            if speak_text:
-                speak(speak_text)
         self.root.after(0, update)
         
     def finish_task(self, text, is_success):
         self.status_lbl.config(text=f"Trạng thái: {text}", fg="green" if is_success else "red")
-        speak(text)
         
         self.btn_install.config(state="normal")
         self.btn_uninstall.config(state="normal")
@@ -298,7 +280,6 @@ class InstallerApp:
         self.btn_exit.focus_set()
         
     def exit_app(self):
-        speak("Đang thoát bộ cài đặt.")
         self.root.destroy()
 
 def main():
