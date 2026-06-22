@@ -174,7 +174,7 @@ def uninstall_zablind():
         sys.exit(1)
 
 def main():
-    speak("Welcome to the Zablind Installer. Please select an option from the menu.")
+    speak("Welcome to the Zablind Installer.")
     while True:
         print("\n===========================================")
         print("             ZABLIND INSTALLER             ")
@@ -183,6 +183,13 @@ def main():
         print("  2. Uninstall Zablind                     ")
         print("  3. Exit                                  ")
         print("===========================================")
+        
+        # Verbose TTS feedback for accessibility
+        speak("Option 1. Install or Reinstall Zablind.")
+        speak("Option 2. Uninstall Zablind.")
+        speak("Option 3. Exit.")
+        speak("Please type 1, 2, or 3, then press Enter.")
+        
         try:
             choice = input("Select an option (1-3): ").strip()
         except KeyboardInterrupt:
@@ -198,7 +205,7 @@ def main():
             speak("Exiting installer.")
             break
         else:
-            speak("Invalid choice. Please select one, two, or three.")
+            speak("Invalid choice. Please select 1, 2, or 3.")
 
 if __name__ == '__main__':
     main()
