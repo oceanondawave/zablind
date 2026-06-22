@@ -120,7 +120,19 @@
                 font-feature-settings: "rlig" 1, "calt" 1;
             }
         }
+        
+        /* Markdown rendering styles */
+        .markdown-content h1 { @apply text-2xl font-bold mt-4 mb-2 text-primary; }
+        .markdown-content h2 { @apply text-xl font-semibold mt-4 mb-2 text-primary; }
+        .markdown-content h3 { @apply text-lg font-semibold mt-3 mb-1 text-foreground; }
+        .markdown-content ul { @apply list-disc pl-6 mb-4 space-y-1; }
+        .markdown-content ol { @apply list-decimal pl-6 mb-4 space-y-1; }
+        .markdown-content p { @apply mb-3 leading-relaxed; }
+        .markdown-content code { @apply font-mono text-xs bg-muted/80 px-1.5 py-0.5 rounded border border-border/40; }
+        .markdown-content strong { @apply font-bold text-foreground; }
     </style>
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body class="min-h-screen antialiased py-10 px-4 md:px-0">
@@ -134,24 +146,6 @@
             <p class="text-xl text-muted-foreground leading-relaxed">
                 Nâng tầm trải nghiệm dùng Zalo PC trên Windows cho người khiếm thị.
             </p>
-
-            <div role="alert"
-                class="relative w-full rounded-lg border border-destructive/50 p-4 [&>svg~*]:pl-7 bg-destructive/10 text-destructive-foreground text-left">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="absolute left-4 top-4 h-4 w-4">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m15 9-6 6" />
-                    <path d="m9 9 6 6" />
-                </svg>
-                <h5 class="mb-1 font-medium leading-none tracking-tight">
-                    Thông báo quan trọng
-                </h5>
-                <div class="text-sm opacity-90 mt-2">
-                    Tác giả tạm dừng phát triển các bản Beta do công việc cá nhân. Sẽ trở lại sớm với phiên bản chính
-                    thức và đã chính thức dừng phát hành bản Beta mới!
-                </div>
-            </div>
         </header>
 
         <!-- Installer Section (Dynamic) -->
@@ -216,9 +210,9 @@
                         <li><strong>Kết nối Internet:</strong> Cần thiết để tải file.</li>
                         <li><strong>Phiên bản Zalo:</strong> Cần cập nhật Zalo mới nhất (<a href="https://zalo.me/pc"
                                 class="text-primary hover:underline">Tải Zalo</a>).</li>
-                        <li><strong>Cài đặt:</strong> Chạy file .exe > Chọn "OK".</li>
-                        <li><strong>Gỡ cài đặt:</strong> Chạy file .exe > "OK" > "No" để gỡ.</li>
-                        <li><strong>Cập nhật:</strong> Chạy file .exe > "OK" > "Yes" để kiểm tra và cập nhật.</li>
+                        <li><strong>Cài đặt / Cài đặt lại:</strong> Chạy file cài đặt và chọn tùy chọn số 1 (Install / Reinstall Zablind).</li>
+                        <li><strong>Gỡ cài đặt:</strong> Chạy file cài đặt và chọn tùy chọn số 2 (Uninstall Zablind) để khôi phục Zalo gốc.</li>
+                        <li><strong>Cập nhật:</strong> Tự động kiểm tra và cập nhật sau mỗi 6 giờ. Bạn cũng có thể bấm <kbd class="font-sans font-semibold">Ctrl + Shift + U</kbd> khi ở trong Zalo để kiểm tra cập nhật thủ công.</li>
                         <li><strong>Hướng dẫn:</strong> Xem file "Zablind Instructions" ngoài Desktop sau khi cài.</li>
                     </ul>
                 </div>
@@ -233,7 +227,7 @@
                         <line x1="12" y1="9" x2="12" y2="13" />
                         <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
-                    <h5 class="mb-1 font-medium leading-none tracking-tight">Lưu ý bản Beta</h5>
+                    <h5 class="mb-1 font-medium leading-none tracking-tight">Lưu ý phím Application</h5>
                     <div class="text-sm opacity-90 mt-2">
                         Nếu phím <strong>Application/Menu</strong> không hoạt động, hãy thử <kbd
                             class="font-sans font-semibold">Shift + F10</kbd>. Nếu vẫn không được, hãy dùng phần mềm
@@ -291,7 +285,7 @@
                 Sản phẩm miễn phí vì cộng đồng. Vui lòng ghi rõ nguồn khi chia sẻ. Mọi hành vi thương mại hóa đều bị
                 cấm.
             </p>
-            <div class="pt-4 text-xs font-mono">Ⓒ 2025 Minh Tri Nguyen</div>
+            <div class="pt-4 text-xs font-mono">Ⓒ <span id="copyright-year">2026</span> Minh Tri Nguyen</div>
         </footer>
 
         <!-- Release History -->
@@ -325,23 +319,26 @@
 
                 const date = new Date(release.published_at).toLocaleDateString();
 
-                // Build assets list
+                // Build assets list (filtering out .zip files as they are only for background updates)
                 let assetsHtml = "";
                 if (release.assets && release.assets.length > 0) {
-                    assetsHtml = `<div class="mt-6 space-y-3">` +
-                        release.assets.map(asset => `
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                            <a href="${asset.browser_download_url}" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 w-full sm:w-auto shadow-md">
-                                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                Tải ${asset.name}
-                            </a>
-                            <span class="text-xs text-muted-foreground flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                ${asset.download_count} lượt tải
-                            </span>
-                        </div>
-                    `).join('') +
-                        `</div>`;
+                    const filteredAssets = release.assets.filter(asset => !asset.name.endsWith('.zip'));
+                    if (filteredAssets.length > 0) {
+                        assetsHtml = `<div class="mt-6 space-y-3">` +
+                            filteredAssets.map(asset => `
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                                <a href="${asset.browser_download_url}" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 w-full sm:w-auto shadow-md">
+                                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Tải ${asset.name}
+                                </a>
+                                <span class="text-xs text-muted-foreground flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    ${asset.download_count} lượt tải
+                                </span>
+                            </div>
+                        `).join('') +
+                            `</div>`;
+                    }
                 }
 
                 div.innerHTML = `
@@ -357,8 +354,8 @@
                         <p class="text-sm text-muted-foreground">Phát hành ngày ${date}</p>
                     </div>
                     <div class="p-6">
-                        <div class="text-sm text-foreground/90 space-y-2 leading-relaxed">
-                            ${release.body ? release.body.replace(/\n/g, "<br>") : ""}
+                        <div class="text-sm text-foreground/90 space-y-2 leading-relaxed markdown-content">
+                            ${release.body ? marked.parse(release.body) : ""}
                         </div>
                         ${assetsHtml}
                     </div>
@@ -406,8 +403,8 @@
                             </div>
                              <p class="text-xs text-muted-foreground mt-1">${date}</p>
                         </div>
-                        <div class="p-6 text-sm text-muted-foreground space-y-2 whitespace-pre-line">
-                             ${release.body ? release.body : "Không có mô tả."}
+                        <div class="p-6 text-sm text-muted-foreground space-y-2 markdown-content">
+                             ${release.body ? marked.parse(release.body) : "Không có mô tả."}
                         </div>
                     `;
                     versions.appendChild(div);
@@ -420,6 +417,9 @@
                     </div>`;
                 console.error(err);
             });
+
+        // Set current copyright year dynamically
+        document.getElementById("copyright-year").textContent = new Date().getFullYear();
     </script>
 </body>
 
