@@ -4108,6 +4108,7 @@ class ZaloCallHandler:
             keyboard.add_hotkey(self.camera_toggle_hotkey, lambda: self._enqueue_action("camera"))
             keyboard.add_hotkey(self.end_call_hotkey, lambda: self._enqueue_action("end_call"))
             keyboard.add_hotkey(self.microphone_toggle_hotkey, lambda: self._enqueue_action("microphone"))
+            keyboard.add_hotkey("ctrl+shift+u", lambda: check_for_updates_manually(self))
             
             self.hotkeys_registered = True
             print("[OK] Hotkeys registered successfully.")
@@ -5237,6 +5238,33 @@ def start_updater_thread(handler):
             print(f"[UPDATER] Error in update check: {err}")
             
     threading.Thread(target=updater_job, daemon=True).start()
+
+
+def check_for_updates_manually(handler):
+    def job():
+        handler.speak("Đang kiểm tra cập nhật Zablind...", language="vi", clear_pending=True)
+        try:
+            assets_source = find_zablind_assets()
+            if not assets_source:
+                handler.speak("Không tìm thấy tệp tin Zablind trên máy tính.", language="vi")
+                return
+            local_v = get_local_version(assets_source)
+            print(f"[UPDATER] Manual check. Local version: {local_v}")
+            remote_tag, zip_url = get_latest_github_release()
+            if remote_tag and zip_url:
+                print(f"[UPDATER] Latest remote version: {remote_tag}")
+                if is_new_version(local_v, remote_tag):
+                    handler.speak(f"Đã có phiên bản mới {remote_tag}. Đang bắt đầu cập nhật.", language="vi")
+                    perform_self_update(zip_url, handler)
+                else:
+                    handler.speak("Zablind đã ở phiên bản mới nhất.", language="vi")
+            else:
+                handler.speak("Không thể kết nối đến máy chủ cập nhật.", language="vi")
+        except Exception as e:
+            print(f"[UPDATER] Manual update check error: {e}")
+            handler.speak("Đã xảy ra lỗi khi kiểm tra cập nhật.", language="vi")
+            
+    threading.Thread(target=job, daemon=True).start()
 
 
 def start_watchdog_thread(handler):
