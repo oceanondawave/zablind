@@ -222,7 +222,7 @@ function startCallService() {
     const childEnv = Object.assign({}, process.env);
     for (const key of Object.keys(childEnv)) {
       const upperKey = key.toUpperCase();
-      if (upperKey === 'TEMP' || upperKey === 'TMP' || upperKey.startsWith('_MEIPASS') || upperKey.startsWith('_MEI')) {
+      if (upperKey === 'TEMP' || upperKey === 'TMP' || upperKey.startsWith('_MEIPASS') || upperKey.startsWith('_MEI') || upperKey.startsWith('_PYI') || upperKey === 'TCL_LIBRARY' || upperKey === 'TK_LIBRARY') {
         delete childEnv[key];
       }
     }
@@ -230,9 +230,16 @@ function startCallService() {
     childEnv['TMP'] = customTempPath;
 
     // Clean PATH variable from any _MEI temporary paths to prevent LoadLibrary DLL search conflicts
-    if (childEnv.PATH) {
+    let pathKey = null;
+    for (const key of Object.keys(childEnv)) {
+      if (key.toUpperCase() === 'PATH') {
+        pathKey = key;
+        break;
+      }
+    }
+    if (pathKey && childEnv[pathKey]) {
       const pathSep = process.platform === 'win32' ? ';' : ':';
-      childEnv.PATH = childEnv.PATH.split(pathSep)
+      childEnv[pathKey] = childEnv[pathKey].split(pathSep)
         .filter(p => !p.includes('_MEI'))
         .join(pathSep);
     }

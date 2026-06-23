@@ -122,15 +122,17 @@ def install_zablind_core(status_callback):
             print("[INSTALLER] Running initial patcher synchronously...")
             clean_env = os.environ.copy()
             for key in list(clean_env.keys()):
-                if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
+                k_upper = key.upper()
+                if k_upper.startswith('_MEIPASS') or k_upper.startswith('_MEI') or k_upper.startswith('_PYI') or k_upper in ('TCL_LIBRARY', 'TK_LIBRARY'):
                     clean_env.pop(key, None)
             
             # Clean PATH variable from any _MEI temporary paths
-            path_val = clean_env.get('PATH', '')
-            if path_val:
+            path_key = next((k for k in clean_env if k.upper() == 'PATH'), None)
+            if path_key:
+                path_val = clean_env[path_key]
                 parts = path_val.split(os.pathsep)
                 clean_parts = [p for p in parts if '_MEI' not in p]
-                clean_env['PATH'] = os.pathsep.join(clean_parts)
+                clean_env[path_key] = os.pathsep.join(clean_parts)
             res = subprocess.run(
                 [installed_exe, "patch-once"],
                 cwd=target_dir,
@@ -249,15 +251,17 @@ def uninstall_zablind_core(status_callback):
                 print(f"[UNINSTALLER] Launching original Zalo: {zalo_exe}")
                 clean_env = os.environ.copy()
                 for key in list(clean_env.keys()):
-                    if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
+                    k_upper = key.upper()
+                    if k_upper.startswith('_MEIPASS') or k_upper.startswith('_MEI') or k_upper.startswith('_PYI') or k_upper in ('TCL_LIBRARY', 'TK_LIBRARY'):
                         clean_env.pop(key, None)
                 
                 # Clean PATH variable from any _MEI temporary paths
-                path_val = clean_env.get('PATH', '')
-                if path_val:
+                path_key = next((k for k in clean_env if k.upper() == 'PATH'), None)
+                if path_key:
+                    path_val = clean_env[path_key]
                     parts = path_val.split(os.pathsep)
                     clean_parts = [p for p in parts if '_MEI' not in p]
-                    clean_env['PATH'] = os.pathsep.join(clean_parts)
+                    clean_env[path_key] = os.pathsep.join(clean_parts)
                 subprocess.Popen(
                     [zalo_exe],
                     cwd=os.path.dirname(zalo_exe),

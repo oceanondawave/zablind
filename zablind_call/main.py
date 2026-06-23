@@ -35,16 +35,18 @@ def get_clean_env():
     import os
     env = os.environ.copy()
     for key in list(env.keys()):
-        if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
+        k_upper = key.upper()
+        if k_upper.startswith('_MEIPASS') or k_upper.startswith('_MEI') or k_upper.startswith('_PYI') or k_upper in ('TCL_LIBRARY', 'TK_LIBRARY'):
             try: del env[key]
             except: pass
             
     # Clean PATH variable from any _MEI temporary paths
-    path_val = env.get('PATH', '')
-    if path_val:
+    path_key = next((k for k in env if k.upper() == 'PATH'), None)
+    if path_key:
+        path_val = env[path_key]
         parts = path_val.split(os.pathsep)
         clean_parts = [p for p in parts if '_MEI' not in p]
-        env['PATH'] = os.pathsep.join(clean_parts)
+        env[path_key] = os.pathsep.join(clean_parts)
         
     return env
 
