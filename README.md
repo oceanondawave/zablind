@@ -10,7 +10,7 @@ _A lightweight accessibility tool designed to assist visually impaired users in 
 
 ### 🧭 General & Help
 - **Shortcut Help**: Press `Ctrl + Shift + H` to toggle the keyboard shortcuts help panel.
-- **Language Selection**: Press `Ctrl + Shift + G` to automatically toggle between Vietnamese and English voice announcements.
+- **Language Selection**: Press `Ctrl + Shift + G` to automatically toggle the Zalo app interface language between Vietnamese and English.
 - **Check for Updates**: Press `Ctrl + Shift + U` to manually trigger an update check for Zablind.
 - **Dismiss/Close**: Press `Escape` to close active menus, dialogs, or media viewers.
 
