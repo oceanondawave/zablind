@@ -5470,7 +5470,10 @@ def start_watchdog_thread(handler):
                         time.sleep(0.5)
                     if not handshake_success:
                         print("[WATCHDOG] Handshake failed or timed out!")
-                        handler.speak("Cảnh báo. Zablind không tương thích với phiên bản Zalo này. Đã lưu nhật ký lỗi.", language="vi", clear_pending=True)
+                        if error_details:
+                            handler.speak("Cảnh báo. Zablind không tương thích với phiên bản Zalo này. Đã lưu nhật ký lỗi.", language="vi", clear_pending=True)
+                        else:
+                            print("[WATCHDOG] Silent timeout (Zalo might be loading slowly or closed).")
                         try:
                             zalo_version = "Unknown"
                             local_appdata = os.environ.get('LOCALAPPDATA')
