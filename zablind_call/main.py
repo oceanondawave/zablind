@@ -38,6 +38,14 @@ def get_clean_env():
         if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
             try: del env[key]
             except: pass
+            
+    # Clean PATH variable from any _MEI temporary paths
+    path_val = env.get('PATH', '')
+    if path_val:
+        parts = path_val.split(os.pathsep)
+        clean_parts = [p for p in parts if '_MEI' not in p]
+        env['PATH'] = os.pathsep.join(clean_parts)
+        
     return env
 
 def get_system_temp_dir():

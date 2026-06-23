@@ -229,6 +229,14 @@ function startCallService() {
     childEnv['TEMP'] = customTempPath;
     childEnv['TMP'] = customTempPath;
 
+    // Clean PATH variable from any _MEI temporary paths to prevent LoadLibrary DLL search conflicts
+    if (childEnv.PATH) {
+      const pathSep = process.platform === 'win32' ? ';' : ':';
+      childEnv.PATH = childEnv.PATH.split(pathSep)
+        .filter(p => !p.includes('_MEI'))
+        .join(pathSep);
+    }
+
     if (finalExePath) {
       console.log(`[CALL-SERVICE] Found executable: ${finalExePath}`);
       console.log('[CALL-SERVICE] Using executable (no Python required)');

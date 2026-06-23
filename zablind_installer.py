@@ -124,6 +124,13 @@ def install_zablind_core(status_callback):
             for key in list(clean_env.keys()):
                 if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
                     clean_env.pop(key, None)
+            
+            # Clean PATH variable from any _MEI temporary paths
+            path_val = clean_env.get('PATH', '')
+            if path_val:
+                parts = path_val.split(os.pathsep)
+                clean_parts = [p for p in parts if '_MEI' not in p]
+                clean_env['PATH'] = os.pathsep.join(clean_parts)
             res = subprocess.run(
                 [installed_exe, "patch-once"],
                 cwd=target_dir,
@@ -244,6 +251,13 @@ def uninstall_zablind_core(status_callback):
                 for key in list(clean_env.keys()):
                     if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
                         clean_env.pop(key, None)
+                
+                # Clean PATH variable from any _MEI temporary paths
+                path_val = clean_env.get('PATH', '')
+                if path_val:
+                    parts = path_val.split(os.pathsep)
+                    clean_parts = [p for p in parts if '_MEI' not in p]
+                    clean_env['PATH'] = os.pathsep.join(clean_parts)
                 subprocess.Popen(
                     [zalo_exe],
                     cwd=os.path.dirname(zalo_exe),
