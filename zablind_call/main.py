@@ -31,6 +31,25 @@ import subprocess
 from typing import Optional, List, Tuple
 import importlib
 
+def get_clean_env():
+    import os
+    env = os.environ.copy()
+    for key in list(env.keys()):
+        if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
+            try: del env[key]
+            except: pass
+    return env
+
+def get_system_temp_dir():
+    import os
+    import tempfile
+    user_profile = os.environ.get('USERPROFILE')
+    if user_profile:
+        real_temp = os.path.join(user_profile, 'AppData', 'Local', 'Temp')
+        if os.path.isdir(real_temp):
+            return real_temp
+    return tempfile.gettempdir()
+
 # ---- Auto Dependency Installer ----
 def _ensure_dependencies():
     packages = {
@@ -107,6 +126,17 @@ class Tee:
 # Redirect stdout/stderr to a log file immediately to catch all outputs
 try:
     log_path = "C:/Projects/zablind/zablind_call_handler.log"
+    # Fallback to local appdata folder if C:/Projects is not writable/present
+    try:
+        with open(log_path, "a") as f:
+            pass
+    except:
+        local_appdata = os.environ.get('LOCALAPPDATA')
+        if local_appdata:
+            log_path = os.path.join(local_appdata, "Programs", "zablind_call", "zablind_call_handler.log")
+        else:
+            log_path = os.path.join(tempfile.gettempdir(), "zablind_call_handler.log")
+
     sys.stdout = Tee(log_path, sys.stdout)
     sys.stderr = Tee(log_path, sys.stderr)
     print("\n" + "="*60)
@@ -121,6 +151,8 @@ try:
 except ImportError:
     PSUTIL_AVAILABLE = False
     print("Warning: 'psutil' not found. Using fallback process detection.")
+
+PATCHING_IN_PROGRESS = False
 
 from comtypes import client
 from comtypes.client import GetModule
@@ -236,7 +268,7 @@ class ZaloCallHandler:
         self.pending_incoming_until: float = 0.0
         self.pending_video_incoming_announced: bool = False
         # File-based IPC for instant outgoing call detection
-        self.outgoing_call_type_file = os.path.join(tempfile.gettempdir(), "zablind_outgoing_call_type.json")
+        self.outgoing_call_type_file = os.path.join(get_system_temp_dir(), "zablind_outgoing_call_type.json")
         
         # Initialize speech queue and worker thread
         self.speech_queue = queue.Queue()
@@ -520,7 +552,7 @@ class ZaloCallHandler:
             if self.incoming_buttons_ready_announced:
                 return
             self.incoming_buttons_ready_announced = True
-        self.speak("ready")
+        self.speak("sẵn sàng", language="vi")
 
     def _remember_incoming_details(self, caller_name: Optional[str] = None, call_type: Optional[str] = None):
         with self.call_lock:
@@ -695,10 +727,10 @@ class ZaloCallHandler:
                         label = "camera"
                     else:
                         self.microphone_on = state
-                        label = "microphone"
-                    word = "on" if state else "off"
+                        label = "micrô"
+                    word = "bật" if state else "tắt"
                     print(f"[STATE] Actual {media}_on={state}")
-                    self.speak(f"{label} {word}", clear_pending=True)
+                    self.speak(f"{label} {word}", language="vi", clear_pending=True)
                     return
 
                 print(f"[STATE] Could not read actual {media} state after click")
@@ -1323,6 +1355,33 @@ class ZaloCallHandler:
             print(f"[TTS] Error getting female voice: {e}")
             return None
     
+    def speak_gtts(self, text: str, lang: str = 'vi'):
+        try:
+            print(f"[gTTS] Speaking: '{text}'")
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            else:
+                try: pygame.mixer.music.stop()
+                except: pass
+            
+            tts = gTTS(text=text, lang=lang)
+            temp_dir = tempfile.gettempdir()
+            temp_file = os.path.join(temp_dir, f"zablind_tts_{int(time.time()*1000)}.mp3")
+            tts.save(temp_file)
+            try:
+                pygame.mixer.music.load(temp_file)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    time.sleep(0.05)
+                pygame.mixer.music.unload()
+            finally:
+                try: os.remove(temp_file)
+                except: pass
+            return True
+        except Exception as e:
+            print(f"[gTTS] Error speaking text: {e}")
+            return False
+
     def speak(self, text: str, language: Optional[str] = None, clear_pending: bool = False):
         """Queue text-to-speech task.
         
@@ -1386,7 +1445,29 @@ class ZaloCallHandler:
                     continue
                 
                 spoken = False
+                
+                # Check if we should use gTTS fallback for Vietnamese when only SAPI5 is available
+                is_sapi = False
                 if speaker:
+                    try:
+                        active_out = speaker.get_first_available_output()
+                        if active_out and active_out.name == 'sapi5':
+                            is_sapi = True
+                    except:
+                        pass
+                
+                # If it's Vietnamese and we would use SAPI5 (which doesn't speak Vietnamese), use gTTS instead!
+                is_vietnamese = (language == 'vi')
+                if not is_vietnamese:
+                    # Simple character check for Vietnamese characters
+                    vietnamese_chars = "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ"
+                    is_vietnamese = any(c in text_lower for c in vietnamese_chars)
+                
+                if is_sapi and is_vietnamese:
+                    print(f"[TTS Worker] Using gTTS fallback for Vietnamese text: '{text}'")
+                    spoken = self.speak_gtts(text, 'vi')
+                
+                if not spoken and speaker:
                     try:
                         # Speak text natively via screen reader or SAPI5 fallback
                         speaker.speak(text, interrupt=True)
@@ -1899,15 +1980,16 @@ class ZaloCallHandler:
             caller_name: Name of the caller (None if not found)
             call_type: Type of call ('audio' or 'video')
         """
+        vn_call_type = "thoại" if call_type == "audio" else "video"
         if not caller_name:
-            announcement = f"Incoming {call_type} call"
+            announcement = f"Cuộc gọi {vn_call_type} đến"
             print(f"[ANNOUNCE] Spoken incoming call announcement: '{announcement}'")
-            self.speak(announcement, language='en')
+            self.speak(announcement, language='vi')
             return
             
-        announcement = f"Incoming {call_type} call from {caller_name}"
+        announcement = f"Cuộc gọi {vn_call_type} đến từ {caller_name}"
         print(f"[ANNOUNCE] Spoken incoming call announcement: '{announcement}'")
-        self.speak(announcement, language='en')
+        self.speak(announcement, language='vi')
 
     def _resolve_caller_name_async(self, call_type: str):
         """Resolve caller name after fast incoming detection without delaying hotkeys."""
@@ -3458,7 +3540,8 @@ class ZaloCallHandler:
                 self.call_type = "video" if is_video else "audio"
                 print(f"[ACCEPT] Initialized states: camera_on={self.camera_on}, microphone_on={self.microphone_on}, call_type={self.call_type}")
                 
-                self.speak(f"Accepted {self.call_type} call", language='en')
+                vn_call_type = "thoại" if self.call_type == "audio" else "video"
+                self.speak(f"Đã nhận cuộc gọi {vn_call_type}", language='vi')
                 
                 self.call_active = True
                 self.incoming_call_detected = False
@@ -3491,7 +3574,7 @@ class ZaloCallHandler:
                     self.click_checkbox(checkboxes[1])
                     self.camera_on = True if is_video else False
                     self.microphone_on = True
-                    self.speak("Accepted call", language='en')
+                    self.speak("Đã nhận cuộc gọi", language='vi')
                     self.call_active = True
                     self.incoming_call_detected = False
                 elif checkboxes and len(checkboxes) == 1:
@@ -3501,7 +3584,7 @@ class ZaloCallHandler:
                     self.click_checkbox(checkboxes[0])
                     self.camera_on = True if is_video else False
                     self.microphone_on = True
-                    self.speak("Accepted call", language='en')
+                    self.speak("Đã nhận cuộc gọi", language='vi')
                     self.call_active = True
                     self.incoming_call_detected = False
                 else:
@@ -3584,7 +3667,7 @@ class ZaloCallHandler:
                 self.call_type = "video"
                 print(f"[ACCEPT WITHOUT CAMERA] Initialized states: camera_on={self.camera_on}, microphone_on={self.microphone_on}, call_type=video")
                 
-                self.speak("Accepted video call without camera", language='en')
+                self.speak("Đã nhận cuộc gọi video không bật camera", language='vi')
                 
                 self.call_active = True
                 self.incoming_call_detected = False
@@ -3620,7 +3703,7 @@ class ZaloCallHandler:
                     self.microphone_on = True
                     self.call_type = "video"
                     print(f"[ACCEPT WITHOUT CAMERA] Fallback states: camera_on={self.camera_on}, microphone_on={self.microphone_on}")
-                    self.speak("Accepted call", language='en')
+                    self.speak("Đã nhận cuộc gọi", language='vi')
                     self.call_active = True
                     self.incoming_call_detected = False
                 else:
@@ -3631,7 +3714,7 @@ class ZaloCallHandler:
                         self.camera_on = False
                         self.microphone_on = True
                         self.call_type = "video"
-                        self.speak("Accepted call", language='en')
+                        self.speak("Đã nhận cuộc gọi", language='vi')
                         self.call_active = True
                         self.incoming_call_detected = False
                     else:
@@ -3705,7 +3788,7 @@ class ZaloCallHandler:
                 if not self.click_point(deny_point, "deny"):
                     self.click_checkbox(deny_btn)
                 self._clear_speech_queue()
-                self.speak("Call declined", language='en')
+                self.speak("Đã từ chối cuộc gọi", language='vi')
                 self._reset_call_state(reset_process=True, clear_actions=True, reason="deny clicked")
                 self.start_ghost_window_reaper(old_pid)
             else:
@@ -3718,7 +3801,7 @@ class ZaloCallHandler:
                     old_pid = self.zalocall_pid
                     self.click_checkbox(checkboxes[0])
                     self._clear_speech_queue()
-                    self.speak("Call declined", language='en')
+                    self.speak("Đã từ chối cuộc gọi", language='vi')
                     self._reset_call_state(reset_process=True, clear_actions=True, reason="deny fallback clicked")
                     self.start_ghost_window_reaper(old_pid)
                 else:
@@ -3920,7 +4003,7 @@ class ZaloCallHandler:
             if end_point:
                 old_pid = self.zalocall_pid
                 if self.click_point(end_point, "end call"):
-                    self.speak("Call ended", language='en')
+                    self.speak("Đã gác máy", language='vi')
                     self._reset_call_state(reset_process=True, clear_actions=True, reason="end call clicked")
                     self.start_ghost_window_reaper(old_pid)
                     return
@@ -3955,7 +4038,7 @@ class ZaloCallHandler:
             if end_btn:
                 old_pid = self.zalocall_pid
                 self.click_checkbox(end_btn)
-                self.speak("Call ended", language='en')
+                self.speak("Đã gác máy", language='vi')
                 self._reset_call_state(reset_process=True, clear_actions=True, reason="end call clicked")
                 self.start_ghost_window_reaper(old_pid)
         except Exception as e:
@@ -4410,7 +4493,12 @@ class ZaloCallHandler:
                                 else:
                                     self.camera_on = False
                                 self.microphone_on = True
-                                print(f"[ACTIVE CALL] Initialized states: camera_on={self.camera_on}, microphone_on={self.microphone_on}")
+                                vn_call_type = "thoại" if self.call_type == "audio" else "video"
+                                if self.caller_name:
+                                    announcement = f"Đã kết nối cuộc gọi {vn_call_type} với {self.caller_name}"
+                                else:
+                                    announcement = f"Đã kết nối cuộc gọi {vn_call_type}"
+                                self.speak(announcement, language='vi')
                                 
                                 # Keep hotkey latency low: do not read slow Electron state here.
                                 print(f"[ACTIVE CALL] Initial states: camera_on={self.camera_on}, microphone_on={self.microphone_on}")
@@ -4418,11 +4506,7 @@ class ZaloCallHandler:
                                     self.pending_video_incoming_announced = True
                                     self.announce_incoming_call(self.caller_name, "video")
                                 
-                                if self.caller_name:
-                                    announcement = f"Connected {self.call_type} call with {self.caller_name}"
-                                else:
-                                    announcement = f"Connected {self.call_type} call"
-                                self.speak(announcement, language='en')
+
                             
                             # Detect or update call_type dynamically ONLY if it is not already set (keep existing call_type)
                             old_call_type = self.call_type
@@ -4902,7 +4986,7 @@ def perform_self_update(zip_url, handler):
     zip_path = os.path.join(tempfile.gettempdir(), "zablind_update.zip")
     
     try:
-        handler.speak("Zablind is downloading a new update...", language="en", clear_pending=True)
+        handler.speak("Zablind đang tải bản cập nhật mới...", language="vi", clear_pending=True)
         print(f"[UPDATER] Downloading update from {zip_url}")
         
         req = urllib.request.Request(
@@ -4959,9 +5043,9 @@ def perform_self_update(zip_url, handler):
                     try: shutil.copy2(src, dst)
                     except: pass
             
-            handler.speak("Update completed. Restarting service.", language="en")
+            handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
             print("[UPDATER] Update complete! Launching new executable...")
-            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
+            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
         else:
             print("[UPDATER] No binary found in update. Performing JS/Resource-only update...")
             
@@ -5025,10 +5109,10 @@ def perform_self_update(zip_url, handler):
                     except Exception as e:
                         print(f"[UPDATER] Failed to copy zablind_call: {e}")
                         
-            handler.speak("Update completed. Restarting service.", language="en")
+            handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
             print("[UPDATER] Update complete! Restarting executable...")
             current_exe = os.path.abspath(sys.executable)
-            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir)
+            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
             
         try: os.remove(zip_path)
         except: pass
@@ -5039,7 +5123,7 @@ def perform_self_update(zip_url, handler):
     except Exception as update_err:
         print(f"[UPDATER] Self-update failed: {update_err}")
         traceback.print_exc()
-        handler.speak("Zablind update failed. Please try again later.", language="en")
+        handler.speak("Cập nhật Zablind thất bại. Vui lòng thử lại sau.", language="vi")
         try:
             current_exe = os.path.abspath(sys.executable)
             old_exe = current_exe + ".old"
@@ -5077,144 +5161,182 @@ def register_startup():
         print(f"[STARTUP] Error cleaning up startup key: {e}")
 
 
-def start_zalo_patcher_thread(handler):
-    def patcher_loop():
-        time.sleep(2.0)
-        while True:
-            try:
-                local_appdata = os.environ.get('LOCALAPPDATA')
-                if not local_appdata:
-                    local_appdata = os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local')
-                zalo_dir = os.path.join(local_appdata, 'Programs', 'Zalo')
-                if os.path.isdir(zalo_dir):
-                    subdirs = [d for d in os.listdir(zalo_dir) if d.startswith('Zalo-') and os.path.isdir(os.path.join(zalo_dir, d))]
-                    
-                    def version_key(version_str):
-                        v = version_str.replace('Zalo-', '')
-                        return [int(x) for x in re.findall(r'\d+', v)]
+def run_zalo_patch(handler=None, is_patch_once=False):
+    global PATCHING_IN_PROGRESS
+    try:
+        local_appdata = os.environ.get('LOCALAPPDATA')
+        if not local_appdata:
+            local_appdata = os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local')
+        zalo_dir = os.path.join(local_appdata, 'Programs', 'Zalo')
+        if os.path.isdir(zalo_dir):
+            subdirs = [d for d in os.listdir(zalo_dir) if d.startswith('Zalo-') and os.path.isdir(os.path.join(zalo_dir, d))]
+            
+            def version_key(version_str):
+                v = version_str.replace('Zalo-', '')
+                return [int(x) for x in re.findall(r'\d+', v)]
+                
+            if subdirs:
+                subdirs.sort(key=version_key)
+                latest_version_dir_name = subdirs[-1]
+                latest_version_dir = os.path.join(zalo_dir, latest_version_dir_name)
+                
+                # 1. Clean up old version folders
+                for old_dir_name in subdirs[:-1]:
+                    old_dir = os.path.join(zalo_dir, old_dir_name)
+                    print(f"[PATCHER] Cleaning up old Zalo directory: {old_dir}")
+                    try:
+                        shutil.rmtree(old_dir)
+                    except Exception as cleanup_err:
+                        print(f"[PATCHER] Failed to delete old Zalo directory {old_dir}: {cleanup_err}")
                         
-                    if subdirs:
-                        subdirs.sort(key=version_key)
-                        latest_version_dir_name = subdirs[-1]
-                        latest_version_dir = os.path.join(zalo_dir, latest_version_dir_name)
-                        
-                        # 1. Clean up old version folders
-                        for old_dir_name in subdirs[:-1]:
-                            old_dir = os.path.join(zalo_dir, old_dir_name)
-                            print(f"[PATCHER] Cleaning up old Zalo directory: {old_dir}")
+                # 2. Check if latest folder is patched
+                resources_dir = os.path.join(latest_version_dir, "resources")
+                active_asar = os.path.join(resources_dir, "app.asar")
+                backup_asar = os.path.join(resources_dir, "app.asar.bak")
+                
+                assets_source = find_zablind_assets()
+                should_patch = False
+                
+                if os.path.exists(active_asar):
+                    if not os.path.exists(backup_asar):
+                        should_patch = True
+                    elif assets_source:
+                        # Already patched. Check version to see if we need to update/re-patch.
+                        local_v = get_local_version(assets_source)
+                        patched_config = read_file_from_asar(active_asar, "main-dist/zablind/config.js")
+                        patched_v = None
+                        if patched_config:
                             try:
-                                shutil.rmtree(old_dir)
-                            except Exception as cleanup_err:
-                                print(f"[PATCHER] Failed to delete old Zalo directory {old_dir}: {cleanup_err}")
+                                content = patched_config.decode('utf-8', errors='ignore')
+                                match = re.search(r"version:\s*['\"]([^'\"]+)['\"]", content)
+                                if match:
+                                    patched_v = match.group(1)
+                            except Exception as e:
+                                print(f"[PATCHER] Error reading patched config version: {e}")
                                 
-                        # 2. Check if latest folder is patched
-                        resources_dir = os.path.join(latest_version_dir, "resources")
-                        active_asar = os.path.join(resources_dir, "app.asar")
-                        backup_asar = os.path.join(resources_dir, "app.asar.bak")
-                        
-                        assets_source = find_zablind_assets()
-                        should_patch = False
-                        
-                        if os.path.exists(active_asar):
-                            if not os.path.exists(backup_asar):
-                                should_patch = True
-                            elif assets_source:
-                                # Already patched. Check version to see if we need to update/re-patch.
-                                local_v = get_local_version(assets_source)
-                                patched_config = read_file_from_asar(active_asar, "main-dist/zablind/config.js")
-                                patched_v = None
-                                if patched_config:
-                                    try:
-                                        content = patched_config.decode('utf-8', errors='ignore')
-                                        match = re.search(r"version:\s*['\"]([^'\"]+)['\"]", content)
-                                        if match:
-                                            patched_v = match.group(1)
-                                    except Exception as e:
-                                        print(f"[PATCHER] Error reading patched config version: {e}")
-                                        
-                                if not patched_v or patched_v != local_v:
-                                    print(f"[PATCHER] Detected version mismatch. Patched version: {patched_v}, Local version: {local_v}. Re-patching Zalo...")
-                                    should_patch = True
+                        if not patched_v or patched_v != local_v:
+                            print(f"[PATCHER] Detected version mismatch. Patched version: {patched_v}, Local version: {local_v}. Re-patching Zalo...")
+                            should_patch = True
+                            
+                            # Restore clean backup before patching
+                            try:
+                                PATCHING_IN_PROGRESS = True
+                                kill_zalo_processes()
+                                if os.path.exists(backup_asar):
+                                    if os.path.exists(active_asar):
+                                        os.remove(active_asar)
+                                    shutil.copy2(backup_asar, active_asar)
                                     
-                                    # Restore clean backup before patching
-                                    try:
-                                        kill_zalo_processes()
-                                        if os.path.exists(backup_asar):
-                                            if os.path.exists(active_asar):
-                                                os.remove(active_asar)
-                                            shutil.copy2(backup_asar, active_asar)
-                                            
-                                        backup_unpacked = backup_asar + ".unpacked"
-                                        active_unpacked = active_asar + ".unpacked"
-                                        if os.path.exists(backup_unpacked):
-                                            if os.path.exists(active_unpacked):
-                                                shutil.rmtree(active_unpacked)
-                                            shutil.copytree(backup_unpacked, active_unpacked)
-                                    except Exception as restore_err:
-                                        print(f"[PATCHER] Restore backup failed: {restore_err}")
-                                        
-                        if should_patch and assets_source:
-                            handler.speak("Zablind is upgrading and patching Zalo. Please wait a moment.", language="en", clear_pending=True)
-                            kill_zalo_processes()
-                            backup_original_asar(resources_dir)
-                            
-                            files_to_add = collect_zablind_assets(assets_source)
-                            files_to_patch = {}
-                            
-                            original_main_js = read_file_from_asar(backup_asar, "main-dist/main.js")
-                            if original_main_js:
-                                main_js_str = original_main_js.decode('utf-8', errors='ignore')
-                                if "preload-render.js" in main_js_str:
-                                    main_js_str = main_js_str.replace("preload-render.js", "preload-wrapper.js")
-                                files_to_patch["main-dist/main.js"] = main_js_str.encode('utf-8')
+                                backup_unpacked = backup_asar + ".unpacked"
+                                active_unpacked = active_asar + ".unpacked"
+                                if os.path.exists(backup_unpacked):
+                                    if os.path.exists(active_unpacked):
+                                        shutil.rmtree(active_unpacked)
+                                    shutil.copytree(backup_unpacked, active_unpacked)
+                            except Exception as restore_err:
+                                print(f"[PATCHER] Restore backup failed: {restore_err}")
                                 
-                            original_bootstrap = read_file_from_asar(backup_asar, "bootstrap.js")
-                            if original_bootstrap:
-                                bootstrap_str = original_bootstrap.decode('utf-8', errors='ignore')
-                                if "zablind/modules/call-service.js" not in bootstrap_str:
-                                    patch_block = """function bootstrap() {
+                if should_patch and assets_source:
+                    PATCHING_IN_PROGRESS = True
+                    if handler:
+                        handler.speak("Zablind đang nâng cấp và vá Zalo. Vui lòng chờ trong giây lát.", language="vi", clear_pending=True)
+                    kill_zalo_processes()
+                    backup_original_asar(resources_dir)
+                    
+                    files_to_add = collect_zablind_assets(assets_source)
+                    files_to_patch = {}
+                    
+                    original_main_js = read_file_from_asar(backup_asar, "main-dist/main.js")
+                    if original_main_js:
+                        main_js_str = original_main_js.decode('utf-8', errors='ignore')
+                        if "preload-render.js" in main_js_str:
+                            main_js_str = main_js_str.replace("preload-render.js", "preload-wrapper.js")
+                        files_to_patch["main-dist/main.js"] = main_js_str.encode('utf-8')
+                        
+                    original_bootstrap = read_file_from_asar(backup_asar, "bootstrap.js")
+                    if original_bootstrap:
+                        bootstrap_str = original_bootstrap.decode('utf-8', errors='ignore')
+                        if "zablind/modules/call-service.js" not in bootstrap_str:
+                            patch_block = """function bootstrap() {
   try {
     require('./main-dist/zablind/modules/call-service.js');
   } catch (e) {
     console.error('Failed to load Zablind Call Service in main process:', e);
   }"""
-                                    bootstrap_str = bootstrap_str.replace("function bootstrap() {", patch_block, 1)
-                                files_to_patch["bootstrap.js"] = bootstrap_str.encode('utf-8')
-                                
-                            temp_asar = os.path.join(tempfile.gettempdir(), "app.asar.patched")
-                            if os.path.exists(temp_asar):
-                                try: os.remove(temp_asar)
-                                except: pass
-                                
-                            print(f"[PATCHER] Patching app.asar...")
-                            stream_patch_asar(backup_asar, temp_asar, files_to_patch, files_to_add)
-                            
-                            active_unpacked = active_asar + ".unpacked"
-                            if os.path.exists(active_asar):
-                                os.remove(active_asar)
-                            if os.path.exists(active_unpacked):
-                                shutil.rmtree(active_unpacked)
-                                
-                            shutil.copy2(temp_asar, active_asar)
-                            shutil.copytree(temp_asar + ".unpacked", active_unpacked)
-                            
-                            try:
-                                os.remove(temp_asar)
-                                shutil.rmtree(temp_asar + ".unpacked")
-                            except:
-                                pass
-                                
-                            handler.speak("Patch applied successfully. Restarting Zalo.", language="en")
-                            
-                            zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
-                            if os.path.exists(zalo_exe):
-                                print(f"[PATCHER] Restarting Zalo: {zalo_exe}")
-                                subprocess.Popen(zalo_exe, cwd=latest_version_dir)
-                        elif should_patch and not assets_source:
-                            print("[PATCHER] Zablind assets not found! Cannot patch Zalo.")
-            except Exception as loop_err:
-                print(f"[PATCHER] Error in patcher loop: {loop_err}")
-                traceback.print_exc()
+                            bootstrap_str = bootstrap_str.replace("function bootstrap() {", patch_block, 1)
+                        files_to_patch["bootstrap.js"] = bootstrap_str.encode('utf-8')
+                        
+                    temp_asar = os.path.join(tempfile.gettempdir(), "app.asar.patched")
+                    if os.path.exists(temp_asar):
+                        try: os.remove(temp_asar)
+                        except: pass
+                        
+                    print(f"[PATCHER] Patching app.asar...")
+                    stream_patch_asar(backup_asar, temp_asar, files_to_patch, files_to_add)
+                    
+                    active_unpacked = active_asar + ".unpacked"
+                    if os.path.exists(active_asar):
+                        os.remove(active_asar)
+                    if os.path.exists(active_unpacked):
+                        shutil.rmtree(active_unpacked)
+                        
+                    shutil.copy2(temp_asar, active_asar)
+                    shutil.copytree(temp_asar + ".unpacked", active_unpacked)
+                    
+                    try:
+                        os.remove(temp_asar)
+                        shutil.rmtree(temp_asar + ".unpacked")
+                    except:
+                        pass
+                        
+                    if handler:
+                        handler.speak("Đã vá Zalo thành công. Đang khởi động lại Zalo.", language="vi")
+                        
+                    root_dir = os.path.dirname(latest_version_dir)
+                    root_zalo = os.path.join(root_dir, "Zalo.exe")
+                    zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
+                    if os.path.exists(root_zalo):
+                        print(f"[PATCHER] Restarting Zalo via root launcher: {root_zalo}")
+                        subprocess.Popen(root_zalo, cwd=root_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+                    elif os.path.exists(zalo_exe):
+                        print(f"[PATCHER] Restarting Zalo via version-specific exe: {zalo_exe}")
+                        subprocess.Popen(zalo_exe, cwd=latest_version_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+                    PATCHING_IN_PROGRESS = False
+                    return True
+                elif not should_patch:
+                    print("[PATCHER] Zalo is already patched and up to date.")
+                    # Restart Zalo as part of installation/reinstallation to ensure it starts cleanly
+                    if is_patch_once:
+                        PATCHING_IN_PROGRESS = True
+                        kill_zalo_processes()
+                        root_dir = os.path.dirname(latest_version_dir)
+                        root_zalo = os.path.join(root_dir, "Zalo.exe")
+                        zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
+                        if os.path.exists(root_zalo):
+                            print(f"[PATCHER] Restarting Zalo via root launcher: {root_zalo}")
+                            subprocess.Popen(root_zalo, cwd=root_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+                        elif os.path.exists(zalo_exe):
+                            print(f"[PATCHER] Restarting Zalo via version-specific exe: {zalo_exe}")
+                            subprocess.Popen(zalo_exe, cwd=latest_version_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+                        PATCHING_IN_PROGRESS = False
+                    return True
+                else:
+                    print("[PATCHER] Zablind assets not found! Cannot patch Zalo.")
+                    return False
+    except Exception as e:
+        PATCHING_IN_PROGRESS = False
+        print(f"[PATCHER] Error in run_zalo_patch: {e}")
+        traceback.print_exc()
+        return False
+
+def start_zalo_patcher_thread(handler):
+    def patcher_loop():
+        time.sleep(2.0)
+        while True:
+            try:
+                run_zalo_patch(handler, is_patch_once=False)
+            except Exception as e:
+                print(f"[PATCHER] Error in patcher loop: {e}")
             time.sleep(10.0)
             
     threading.Thread(target=patcher_loop, daemon=True).start()
@@ -5253,11 +5375,11 @@ def start_updater_thread(handler):
 
 def check_for_updates_manually(handler):
     def job():
-        handler.speak("Checking for Zablind updates...", language="en", clear_pending=True)
+        handler.speak("Đang kiểm tra cập nhật Zablind...", language="vi", clear_pending=True)
         try:
             assets_source = find_zablind_assets()
             if not assets_source:
-                handler.speak("Zablind files not found on this computer.", language="en")
+                handler.speak("Không tìm thấy các tệp tin Zablind trên máy tính này.", language="vi")
                 return
             local_v = get_local_version(assets_source)
             print(f"[UPDATER] Manual check. Local version: {local_v}")
@@ -5265,15 +5387,15 @@ def check_for_updates_manually(handler):
             if remote_tag and zip_url:
                 print(f"[UPDATER] Latest remote version: {remote_tag}")
                 if is_new_version(local_v, remote_tag):
-                    handler.speak(f"New version {remote_tag} is available. Starting update.", language="en")
+                    handler.speak(f"Có phiên bản mới {remote_tag}. Bắt đầu cập nhật.", language="vi")
                     perform_self_update(zip_url, handler)
                 else:
-                    handler.speak("Zablind is up to date.", language="en")
+                    handler.speak("Zablind đã được cập nhật phiên bản mới nhất.", language="vi")
             else:
-                handler.speak("Could not connect to the update server.", language="en")
+                handler.speak("Không thể kết nối tới máy chủ cập nhật.", language="vi")
         except Exception as e:
             print(f"[UPDATER] Manual update check error: {e}")
-            handler.speak("Error checking for updates.", language="en")
+            handler.speak("Lỗi khi kiểm tra cập nhật.", language="vi")
             
     threading.Thread(target=job, daemon=True).start()
 
@@ -5282,7 +5404,7 @@ def start_watchdog_thread(handler):
     def watchdog_loop():
         zalo_was_running = False
         zalo_exe_name = "zalo.exe"
-        temp_dir = tempfile.gettempdir()
+        temp_dir = get_system_temp_dir()
         heartbeat_file = os.path.join(temp_dir, "zablind_heartbeat.json")
         crash_log_file = "C:/Projects/zablind/zablind_crash.log"
         
@@ -5338,7 +5460,7 @@ def start_watchdog_thread(handler):
                         time.sleep(0.5)
                     if not handshake_success:
                         print("[WATCHDOG] Handshake failed or timed out!")
-                        handler.speak("Warning. Zablind is incompatible with this Zalo version. Error log saved.", language="en", clear_pending=True)
+                        handler.speak("Cảnh báo. Zablind không tương thích với phiên bản Zalo này. Đã lưu nhật ký lỗi.", language="vi", clear_pending=True)
                         try:
                             zalo_version = "Unknown"
                             local_appdata = os.environ.get('LOCALAPPDATA')
@@ -5431,6 +5553,33 @@ def main():
     import sys
     import subprocess
     
+    if "patch-once" in sys.argv:
+        print("[PATCH-ONCE] Running Zalo patch once synchronously...")
+        try:
+            success = run_zalo_patch(is_patch_once=True)
+            if success:
+                print("[PATCH-ONCE] Patch applied successfully.")
+                sys.exit(0)
+            else:
+                print("[PATCH-ONCE] Patching failed or not needed.")
+                sys.exit(1)
+        except Exception as patch_err:
+            print(f"[PATCH-ONCE] Fatal error during patch: {patch_err}")
+            sys.exit(1)
+            
+    # Named mutex for single-instance check (skip for patch-once utility)
+    import ctypes
+    mutex_name = "Local\\ZablindCallHandlerMutex"
+    global _call_handler_mutex
+    try:
+        _call_handler_mutex = ctypes.windll.kernel32.CreateMutexW(None, True, mutex_name)
+        last_error = ctypes.windll.kernel32.GetLastError()
+        if last_error == 183: # ERROR_ALREADY_EXISTS
+            print("Another instance of Zablind Call Handler is already running. Exiting.")
+            sys.exit(0)
+    except Exception as mutex_err:
+        print(f"[MUTEX] Error checking single instance: {mutex_err}")
+
     parent_pid = None
     if len(sys.argv) > 1:
         try:
@@ -5540,22 +5689,41 @@ def main():
         monitor_thread.start()
         
         # Keep main thread alive
+        zalo_exe_name = "zalo.exe"
         while True:
             time.sleep(1)
-            if parent_pid:
-                parent_exists = False
-                try:
-                    if PSUTIL_AVAILABLE:
-                        parent_exists = psutil.pid_exists(parent_pid)
-                    else:
-                        output = subprocess.check_output(f'tasklist /FI "PID eq {parent_pid}" /FO CSV /NH', shell=True).decode('utf-8', errors='ignore')
-                        parent_exists = str(parent_pid) in output
-                except:
-                    parent_exists = False
-                if not parent_exists:
-                    print(f"Parent process {parent_pid} has exited. Stopping Call Handler...")
-                    handler.stop()
-                    sys.exit(0)
+            zalo_exists = False
+            try:
+                if PSUTIL_AVAILABLE:
+                    for proc in psutil.process_iter(['name']):
+                        try:
+                            if proc.info['name'] and proc.info['name'].lower() == zalo_exe_name:
+                                zalo_exists = True
+                                break
+                        except:
+                            pass
+                else:
+                    output = subprocess.check_output('tasklist /FI "IMAGENAME eq zalo.exe" /FO CSV /NH', shell=True).decode('utf-8', errors='ignore')
+                    zalo_exists = "zalo.exe" in output.lower()
+            except Exception as e:
+                print(f"[WATCHDOG] Error checking zalo status: {e}")
+                # Fallback to parent_exists if parent_pid is available, otherwise assume Zalo exists to avoid false-positive exit
+                if parent_pid:
+                    try:
+                        if PSUTIL_AVAILABLE:
+                            zalo_exists = psutil.pid_exists(parent_pid)
+                        else:
+                            output = subprocess.check_output(f'tasklist /FI "PID eq {parent_pid}" /FO CSV /NH', shell=True).decode('utf-8', errors='ignore')
+                            zalo_exists = str(parent_pid) in output
+                    except:
+                        zalo_exists = False
+                else:
+                    zalo_exists = True
+                
+            if not zalo_exists and not PATCHING_IN_PROGRESS:
+                print("No Zalo process is running. Stopping Call Handler...")
+                handler.stop()
+                sys.exit(0)
     except KeyboardInterrupt:
         print("\n\nStopping...")
         handler.stop()

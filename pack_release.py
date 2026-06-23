@@ -17,7 +17,23 @@ def speak(text):
     except:
         pass
 
+def get_zablind_version():
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'zablind_main', 'zablind', 'config.js')
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                import re
+                m = re.search(r"version:\s*['\"]([^'\"]+)['\"]", content)
+                if m:
+                    return m.group(1)
+    except Exception as e:
+        print(f"[VERSION] Error reading version: {e}")
+    return "2.0"
+
 def main():
+    version = get_zablind_version()
+    installer_name = f"ZablindInstaller_v{version}"
     print("==================================================")
     print("  ZABLIND RELEASE PACKAGER  ")
     print("==================================================")
@@ -45,11 +61,14 @@ def main():
         "--hidden-import=gtts.gtts",
         "--hidden-import=pygame",
         "--hidden-import=pygame.mixer",
+        "--hidden-import=accessible_output2",
+        "--hidden-import=accessible_output2.outputs.auto",
         "--collect-all=psutil",
         "--collect-all=comtypes",
         "--collect-all=keyboard",
         "--collect-all=gtts",
         "--collect-all=pygame",
+        "--collect-all=accessible_output2",
         "main.py"
     ]
     
@@ -70,25 +89,28 @@ def main():
     shutil.copy2(exe_file, os.path.join(root_dir, "zablind_main", "zablind", "bin", "ZablindCallHandler.exe"))
     
     # 2. Build ZablindInstaller.exe
-    print("\n--- 2. Building ZablindInstaller.exe ---")
+    print(f"\n--- 2. Building {installer_name}.exe ---")
     installer_args = [
         "pyinstaller", "--onefile", "--noconsole",
-        "--name=ZablindInstaller",
+        f"--name={installer_name}",
         "--add-data=zablind_call/ZablindCallHandler.exe;.",
         "--add-data=zablind_main/preload-wrapper.js;.",
         "--add-data=zablind_main/html/popup-viewer.html;.",
         "--add-data=zablind_main/zablind;zablind",
         "--hidden-import=psutil",
+        "--hidden-import=accessible_output2",
+        "--hidden-import=accessible_output2.outputs.auto",
         "--collect-all=psutil",
+        "--collect-all=accessible_output2",
         "zablind_installer.py"
     ]
     
     try:
         subprocess.run(installer_args, cwd=root_dir, check=True)
-        shutil.copy2(os.path.join(root_dir, "dist", "ZablindInstaller.exe"), os.path.join(root_dir, "ZablindInstaller.exe"))
-        print("[PACKER] Successfully built ZablindInstaller.exe")
+        shutil.copy2(os.path.join(root_dir, "dist", f"{installer_name}.exe"), os.path.join(root_dir, f"{installer_name}.exe"))
+        print(f"[PACKER] Successfully built {installer_name}.exe")
     except Exception as e:
-        print(f"[ERROR] Failed to build ZablindInstaller.exe: {e}")
+        print(f"[ERROR] Failed to build {installer_name}.exe: {e}")
         speak("Packaging failed. Could not compile installer.")
         sys.exit(1)
         
@@ -138,7 +160,7 @@ def main():
     for d in [os.path.join(root_dir, "build"), os.path.join(root_dir, "dist")]:
         if os.path.exists(d):
             shutil.rmtree(d)
-    spec_inst = os.path.join(root_dir, "ZablindInstaller.spec")
+    spec_inst = os.path.join(root_dir, f"{installer_name}.spec")
     if os.path.exists(spec_inst):
         os.remove(spec_inst)
         
@@ -146,7 +168,7 @@ def main():
     print("\n==================================================")
     print("Build finished successfully!")
     print("Files created:")
-    print(f"  - {os.path.join(root_dir, 'ZablindInstaller.exe')} (Installer)")
+    print(f"  - {os.path.join(root_dir, f'{installer_name}.exe')} (Installer)")
     print(f"  - {os.path.join(root_dir, 'zablind_release.zip')} (Upload this to GitHub Releases!)")
     print("==================================================")
 

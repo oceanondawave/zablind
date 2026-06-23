@@ -199,6 +199,7 @@ function startCallService() {
     ];
     
     let finalExePath = null;
+    debugLog(`Checking executable paths: ${JSON.stringify(exePaths)}`);
     for (const exePath of exePaths) {
       if (fs.existsSync(exePath)) {
         finalExePath = exePath;
@@ -206,12 +207,35 @@ function startCallService() {
       }
     }
     
+    // Configure isolated temp environment for child processes (prevents PyInstaller DLL load errors)
+    const customTempPath = path.join(zablindCallPath, 'temp');
+    try {
+      if (!fs.existsSync(customTempPath)) {
+        fs.mkdirSync(customTempPath, { recursive: true });
+      }
+    } catch (e) {
+      debugLog(`Error creating custom temp directory: ${e.message}`);
+    }
+    
+    // Normalize and override all case variations of TEMP and TMP to avoid duplicates on Windows
+    // Also remove PyInstaller extraction environment variables (like _MEIPASS) to prevent loader errors
+    const childEnv = Object.assign({}, process.env);
+    for (const key of Object.keys(childEnv)) {
+      const upperKey = key.toUpperCase();
+      if (upperKey === 'TEMP' || upperKey === 'TMP' || upperKey.startsWith('_MEIPASS') || upperKey.startsWith('_MEI')) {
+        delete childEnv[key];
+      }
+    }
+    childEnv['TEMP'] = customTempPath;
+    childEnv['TMP'] = customTempPath;
+
     if (finalExePath) {
       console.log(`[CALL-SERVICE] Found executable: ${finalExePath}`);
       console.log('[CALL-SERVICE] Using executable (no Python required)');
       
       if (CONFIG.showCallHandlerConsole) {
         // Use cmd.exe /c start to spawn in a new visible console window with its own working stdout/stderr
+        debugLog(`Spawning executable with visible console: ${finalExePath} parent_pid=${process.pid}`);
         callServiceProcess = spawn('cmd.exe', [
           '/c',
           'start',
@@ -221,25 +245,55 @@ function startCallService() {
         ], {
           cwd: path.dirname(finalExePath),
           detached: true,
-          stdio: 'ignore'
+          stdio: 'ignore',
+          env: childEnv
         });
       } else {
+        debugLog(`Spawning executable windowless: ${finalExePath} parent_pid=${process.pid}`);
         callServiceProcess = spawn(finalExePath, [process.pid.toString()], {
           cwd: path.dirname(finalExePath),
           detached: true,
-          stdio: 'ignore',
+          stdio: ['ignore', 'pipe', 'pipe'],
           windowsHide: true,
+          env: childEnv
         });
       }
+
+      if (callServiceProcess.stdout) {
+        callServiceProcess.stdout.on('data', (data) => {
+          debugLog(`[EXE-STDOUT] ${data.toString().trim()}`);
+        });
+      }
+
+      if (callServiceProcess.stderr) {
+        callServiceProcess.stderr.on('data', (data) => {
+          debugLog(`[EXE-STDERR] ${data.toString().trim()}`);
+        });
+      }
+
+      callServiceProcess.on('exit', (code, signal) => {
+        debugLog(`[EXE-EXIT] Process exited with code ${code}, signal ${signal}`);
+        callServiceStarted = false;
+        callServiceProcess = null;
+      });
+
+      callServiceProcess.on('error', (err) => {
+        debugLog(`[EXE-ERROR] Process error: ${err.message}`);
+        callServiceStarted = false;
+        callServiceProcess = null;
+      });
+
       callServiceProcess.unref();
       
       callServiceStarted = true;
       console.log('[CALL-SERVICE] Call service started successfully (executable)');
       console.log('[CALL-SERVICE] PID:', callServiceProcess.pid);
+      debugLog(`Spawned process PID: ${callServiceProcess.pid}`);
       return;
     }
 
     // PRIORITY 2: Try Python script (requires Python installed)
+    debugLog(`Executable not found, checking Python script fallback...`);
     const pythonScriptPath = path.join(zablindCallPath, 'main.py');
     
     if (!fs.existsSync(pythonScriptPath)) {
@@ -299,7 +353,8 @@ function startCallService() {
       ], {
         cwd: zablindCallPath,
         detached: true,
-        stdio: 'ignore'
+        stdio: 'ignore',
+        env: childEnv
       });
     } else {
       callServiceProcess = spawn(pythonCmd, [pythonScriptPath, process.pid.toString()], {
@@ -307,6 +362,7 @@ function startCallService() {
         detached: true,
         stdio: 'ignore',
         windowsHide: true,
+        env: childEnv
       });
     }
     callServiceProcess.unref();

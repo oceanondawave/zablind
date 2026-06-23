@@ -8,6 +8,7 @@ import win32gui
 import win32con
 import win32api
 import threading
+import win32com.client
 
 # Global control handles
 hwnd_main = None
@@ -23,6 +24,32 @@ tab_order = []
 
 # Store original window procedures for subclassed controls
 orig_wndprocs = {}
+
+def robust_copy_file(src, dst, max_retries=5, delay=0.5):
+    for i in range(max_retries):
+        try:
+            if os.path.exists(dst):
+                try: os.remove(dst)
+                except: pass
+            shutil.copy2(src, dst)
+            return True
+        except (PermissionError, OSError) as e:
+            if i == max_retries - 1:
+                raise e
+            time.sleep(delay)
+
+def robust_copy_tree(src, dst, max_retries=5, delay=0.5):
+    for i in range(max_retries):
+        try:
+            if os.path.exists(dst):
+                try: shutil.rmtree(dst)
+                except: pass
+            shutil.copytree(src, dst)
+            return True
+        except (PermissionError, OSError) as e:
+            if i == max_retries - 1:
+                raise e
+            time.sleep(delay)
 
 def install_zablind_core(status_callback):
     status_callback("Bắt đầu cài đặt...")
@@ -69,10 +96,10 @@ def install_zablind_core(status_callback):
         
         # Copy files
         status_callback("Đang sao chép các tệp tin...")
-        shutil.copy2(src_exe, os.path.join(target_dir, 'ZablindCallHandler.exe'))
-        shutil.copy2(src_preload, os.path.join(target_dir, 'preload-wrapper.js'))
-        shutil.copy2(src_popup, os.path.join(target_dir, 'popup-viewer.html'))
-        shutil.copytree(src_zablind, os.path.join(target_dir, 'zablind'))
+        robust_copy_file(src_exe, os.path.join(target_dir, 'ZablindCallHandler.exe'))
+        robust_copy_file(src_preload, os.path.join(target_dir, 'preload-wrapper.js'))
+        robust_copy_file(src_popup, os.path.join(target_dir, 'popup-viewer.html'))
+        robust_copy_tree(src_zablind, os.path.join(target_dir, 'zablind'))
         
         # Clean up legacy startup registry key if present (don't start with PC anymore)
         status_callback("Đang dọn dẹp hệ thống...")
@@ -87,6 +114,34 @@ def install_zablind_core(status_callback):
             winreg.CloseKey(key)
         except Exception as reg_err:
             print(f"[INSTALLER] Legacy registry clean error: {reg_err}")
+            
+        # Run Zalo patching once synchronously using the newly copied ZablindCallHandler.exe
+        status_callback("Đang vá và khởi động lại Zalo...")
+        installed_exe = os.path.join(target_dir, 'ZablindCallHandler.exe')
+        try:
+            print("[INSTALLER] Running initial patcher synchronously...")
+            clean_env = os.environ.copy()
+            for key in list(clean_env.keys()):
+                if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
+                    clean_env.pop(key, None)
+            res = subprocess.run(
+                [installed_exe, "patch-once"],
+                cwd=target_dir,
+                creationflags=0x08000000, # CREATE_NO_WINDOW
+                capture_output=True,
+                text=True,
+                timeout=45,
+                env=clean_env
+            )
+            print(f"[INSTALLER] Patcher stdout: {res.stdout}")
+            if res.returncode != 0:
+                print(f"[INSTALLER] Patcher failed with returncode {res.returncode}. stderr: {res.stderr}")
+                status_callback("Lỗi vá Zalo!")
+                return False
+        except Exception as patch_err:
+            print(f"[INSTALLER] Failed to run patcher: {patch_err}")
+            status_callback("Lỗi khởi chạy trình vá Zalo!")
+            return False
             
         print("[INSTALLER] Installed files successfully.")
         return True
@@ -185,13 +240,18 @@ def uninstall_zablind_core(status_callback):
             zalo_exe = os.path.join(local_appdata, 'Programs', 'Zalo', 'Zalo.exe')
             if os.path.exists(zalo_exe):
                 print(f"[UNINSTALLER] Launching original Zalo: {zalo_exe}")
+                clean_env = os.environ.copy()
+                for key in list(clean_env.keys()):
+                    if key.upper().startswith('_MEIPASS') or key.upper().startswith('_MEI'):
+                        clean_env.pop(key, None)
                 subprocess.Popen(
                     [zalo_exe],
                     cwd=os.path.dirname(zalo_exe),
                     creationflags=0x00000008 | 0x08000000, # DETACHED_PROCESS | CREATE_NO_WINDOW
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    stdin=subprocess.DEVNULL
+                    stdin=subprocess.DEVNULL,
+                    env=clean_env
                 )
                 
         return True
@@ -199,9 +259,56 @@ def uninstall_zablind_core(status_callback):
         print(f"[UNINSTALLER] Fatal error during uninstall: {e}")
         return False
 
+speaker = None
+
+def speak_accessible(text):
+    global speaker
+    if speaker is None:
+        try:
+            import accessible_output2.outputs.auto
+            speaker = accessible_output2.outputs.auto.Auto()
+        except Exception as e:
+            print(f"[ACCESSIBLE] Error initializing accessible_output2 auto speaker: {e}")
+            
+    if speaker:
+        try:
+            speaker.speak(text)
+            print(f"[ACCESSIBLE] Spoke: {text}")
+            return True
+        except Exception as e:
+            print(f"[ACCESSIBLE] Error speaking via accessible_output2: {e}")
+
+    # Try speaking using NVDA API
+    try:
+        nvda = win32com.client.Dispatch("nvdaController.controller")
+        nvda.speakText(text)
+        print(f"[ACCESSIBLE] Spoke via NVDA: {text}")
+        return True
+    except:
+        pass
+
+    # Try speaking using JAWS API
+    try:
+        jaws = win32com.client.Dispatch("JFWApi")
+        jaws.SayString(text, True)
+        print(f"[ACCESSIBLE] Spoke via JAWS: {text}")
+        return True
+    except:
+        pass
+        
+    return False
+
 def set_status(text):
     if hwnd_status:
-        win32gui.SetWindowText(hwnd_status, f"Trạng thái: {text}")
+        status_str = f"Trạng thái: {text}"
+        win32gui.SetWindowText(hwnd_status, status_str)
+        speak_accessible(status_str)
+        try:
+            if h_title:
+                win32gui.SetFocus(h_title)
+            win32gui.SetFocus(hwnd_status)
+        except:
+            pass
 
 def disable_ui():
     if hwnd_btn1: win32gui.EnableWindow(hwnd_btn1, False)
@@ -279,7 +386,7 @@ def button_subclass_proc(hwnd, msg, wparam, lparam):
     return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 def wnd_proc(hwnd, msg, wparam, lparam):
-    global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status
+    global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status, h_title, tab_order
     
     if msg == win32con.WM_COMMAND:
         control_id = win32api.LOWORD(wparam)
@@ -289,6 +396,19 @@ def wnd_proc(hwnd, msg, wparam, lparam):
             threading.Thread(target=run_uninstall, daemon=True).start()
         elif control_id == 203: # Exit
             win32gui.DestroyWindow(hwnd)
+        return 0
+        
+    elif msg == win32con.WM_ACTIVATE:
+        # Focus h_title on activation if no other valid control has focus
+        state = win32api.LOWORD(wparam)
+        if state != win32con.WA_INACTIVE:
+            try:
+                curr_focus = win32gui.GetFocus()
+                if tab_order and (curr_focus not in tab_order):
+                    if h_title:
+                        win32gui.SetFocus(h_title)
+            except Exception as focus_err:
+                print(f"[INSTALLER] WM_ACTIVATE focus error: {focus_err}")
         return 0
         
     elif msg == win32con.WM_CTLCOLORSTATIC or msg == win32con.WM_CTLCOLOREDIT:
@@ -303,8 +423,39 @@ def wnd_proc(hwnd, msg, wparam, lparam):
         
     return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
+def get_zablind_version():
+    try:
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_path, 'zablind', 'config.js')
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                import re
+                m = re.search(r"version:\s*['\"]([^'\"]+)['\"]", content)
+                if m:
+                    return m.group(1)
+    except Exception as e:
+        print(f"[VERSION] Error reading version: {e}")
+    return "2.0"
+
 def main():
     global hwnd_main, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status, h_title, h_desc, tab_order
+    
+    # Create a named mutex to ensure single instance
+    import ctypes
+    mutex_name = "Local\\ZablindInstallerMutex"
+    try:
+        global _installer_mutex
+        _installer_mutex = ctypes.windll.kernel32.CreateMutexW(None, True, mutex_name)
+        last_error = ctypes.windll.kernel32.GetLastError()
+        if last_error == 183: # ERROR_ALREADY_EXISTS
+            hwnd_existing = win32gui.FindWindow("ZablindInstallerClass", None)
+            if hwnd_existing:
+                win32gui.ShowWindow(hwnd_existing, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(hwnd_existing)
+            sys.exit(0)
+    except Exception as mutex_err:
+        print(f"[MUTEX] Error checking single instance: {mutex_err}")
     
     wc = win32gui.WNDCLASS()
     wc.lpfnWndProc = wnd_proc
@@ -325,9 +476,11 @@ def main():
     x = (screen_w - width) // 2
     y = (screen_h - height) // 2
     
+    version = get_zablind_version()
+    
     hwnd = win32gui.CreateWindow(
         class_atom,
-        "Bộ cài đặt Zablind",
+        f"Bộ cài đặt Zablind v{version}",
         win32con.WS_OVERLAPPED | win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_MINIMIZEBOX,
         x, y, width, height,
         0, 0, 0, None
@@ -338,7 +491,7 @@ def main():
     
     # 1. Title Label (using EDIT control with ES_READONLY to allow keyboard focus and reading)
     h_title = win32gui.CreateWindow(
-        "EDIT", "BỘ CÀI ĐẶT ZABLIND",
+        "EDIT", f"BỘ CÀI ĐẶT ZABLIND v{version}",
         win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,
         10, 15, 410, 25, hwnd, 101, 0, None
     )
@@ -393,12 +546,23 @@ def main():
         except Exception as subclass_err:
             print(f"[INSTALLER] Subclassing error: {subclass_err}")
             
-    # Initial keyboard focus on title text
-    win32gui.SetFocus(h_title)
-    
     # Show main window
     win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
     win32gui.UpdateWindow(hwnd)
+    
+    # Bring the window to the foreground and activate it
+    try:
+        win32gui.SetForegroundWindow(hwnd)
+        win32gui.SetActiveWindow(hwnd)
+    except Exception as act_err:
+        print(f"[INSTALLER] Foreground activation warning: {act_err}")
+        
+    # Initial keyboard focus on title text
+    if h_title:
+        try:
+            win32gui.SetFocus(h_title)
+        except Exception as focus_err:
+            print(f"[INSTALLER] Initial SetFocus error: {focus_err}")
     
     # Message loop
     while True:

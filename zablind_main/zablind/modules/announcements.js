@@ -15,7 +15,7 @@ function playWelcomeMessage(liveRegion) {
       `Zablind phiên bản ${config.version || "2.0"} năm ${config.year || "2026"}`,
       `Zablind version ${config.version || "2.0"} ${config.year || "2026"}`
     ), liveRegion);
-  }, 1500);
+  }, 4000);
 }
 
 function initializeTypingIndicator(liveRegion) {

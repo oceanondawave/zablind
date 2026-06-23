@@ -39,6 +39,10 @@ function writeHeartbeat(status, errorDetails = null) {
   } catch (e) {}
 }
 
+// Write heartbeat immediately when preload loads — DOMContentLoaded may
+// already have fired by the time event listeners are registered in preload.
+writeHeartbeat("ok");
+
 window.addEventListener('error', (event) => {
     const msg = (event.message || "").toLowerCase();
     if (msg.includes("resizeobserver") || msg.includes("script error")) {
@@ -47,7 +51,7 @@ window.addEventListener('error', (event) => {
     writeHeartbeat("error", event.error || { message: event.message });
 });
 
-window.addEventListener("DOMContentLoaded", () => {
+function initZablind() {
   try {
       initializeAccessibility();
       
@@ -85,4 +89,11 @@ window.addEventListener("DOMContentLoaded", () => {
       console.error(criticalError);
       writeHeartbeat("error", criticalError);
   }
-});
+}
+
+// Handle the case where DOMContentLoaded already fired before preload ran
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", initZablind);
+} else {
+  initZablind();
+}
