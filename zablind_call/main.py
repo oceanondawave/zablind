@@ -5452,7 +5452,7 @@ def start_watchdog_thread(handler):
                     start_time = time.time()
                     error_details = None
                     
-                    while time.time() - start_time < 12.0:
+                    while time.time() - start_time < 30.0:
                         if os.path.exists(heartbeat_file):
                             try:
                                 with open(heartbeat_file, 'r', encoding='utf-8') as f:

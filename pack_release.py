@@ -48,6 +48,7 @@ def main():
     pyinstaller_args = [
         "pyinstaller", "--onefile",
         "--name=ZablindCallHandler",
+        "--icon=../docs/favicon.ico",
         "--hidden-import=psutil",
         "--hidden-import=comtypes",
         "--hidden-import=comtypes.client",
@@ -93,6 +94,7 @@ def main():
     installer_args = [
         "pyinstaller", "--onefile", "--noconsole",
         f"--name={installer_name}",
+        "--icon=docs/favicon.ico",
         "--add-data=zablind_call/ZablindCallHandler.exe;.",
         "--add-data=zablind_main/preload-wrapper.js;.",
         "--add-data=zablind_main/html/popup-viewer.html;.",
