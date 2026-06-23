@@ -481,6 +481,13 @@ def main():
     wc.hbrBackground = win32con.COLOR_BTNFACE + 1
     wc.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
     
+    # Load and set application icon from executable resource 1 (favicon)
+    hinstance = win32api.GetModuleHandle(None)
+    try:
+        wc.hIcon = win32gui.LoadIcon(hinstance, 1)
+    except:
+        wc.hIcon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+    
     try:
         class_atom = win32gui.RegisterClass(wc)
     except:
