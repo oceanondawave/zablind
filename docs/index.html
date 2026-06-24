@@ -136,6 +136,9 @@
 </head>
 
 <body class="min-h-screen antialiased py-10 px-4 md:px-0">
+    <!-- Hidden live region for accessibility announcements -->
+    <div id="accessibility-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
     <main class="max-w-3xl mx-auto space-y-8">
 
         <!-- Header -->
@@ -299,6 +302,46 @@
                             class="font-sans font-semibold">Shift + F10</kbd>. Nếu vẫn không được, hãy tải phần mềm
                         <a href="https://apps.microsoft.com/detail/xpffcg7m673d4f?hl=vi-VN&gl=US" target="_blank"
                             class="font-semibold underline decoration-2 underline-offset-2 hover:opacity-80">SharpKeys trên Microsoft Store</a> để gán lại phím.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Donation Section -->
+        <section class="space-y-4">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
+                Đồng hành & Ủng hộ
+            </h2>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
+                <p class="text-sm text-muted-foreground leading-relaxed">
+                    Nếu các bạn muốn ủng hộ tác giả một ly cà phê nhỏ (hoàn toàn không bắt buộc) để động viên đóng góp và công sức của mình dành cho dự án, tôi luôn vô cùng trân quý sự ủng hộ của các bạn. Thông tin ngân hàng nhận ủng hộ dưới đây (bạn vui lòng ghi nội dung chuyển khoản là <strong>ung ho Zablind</strong> để tôi biết nhé):
+                </p>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <!-- BVBank Account Card -->
+                    <div class="rounded-lg border bg-muted/20 p-4 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="text-xs text-muted-foreground uppercase font-semibold">Ngân hàng Bản Việt (BVBank)</div>
+                            <div class="text-lg font-bold text-foreground mt-1">9021622808735</div>
+                            <div class="text-sm text-muted-foreground mt-1">Chủ tài khoản: NGUYEN TRI MINH</div>
+                        </div>
+                        <button onclick="copyToClipboard(this, '9021622808735', 'BVBank')" 
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full shadow-sm"
+                            aria-label="Sao chép số tài khoản BVBank 9021622808735">
+                            Sao chép số tài khoản
+                        </button>
+                    </div>
+                    <!-- Timo Account Card -->
+                    <div class="rounded-lg border bg-muted/20 p-4 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="text-xs text-muted-foreground uppercase font-semibold">Ngân hàng Timo</div>
+                            <div class="text-lg font-bold text-foreground mt-1">0965567003</div>
+                            <div class="text-sm text-muted-foreground mt-1">Chủ tài khoản: NGUYEN TRI MINH</div>
+                        </div>
+                        <button onclick="copyToClipboard(this, '0965567003', 'Timo')" 
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full shadow-sm"
+                            aria-label="Sao chép số tài khoản Timo 0965567003">
+                            Sao chép số tài khoản
+                        </button>
                     </div>
                 </div>
             </div>
@@ -470,6 +513,29 @@
 
         // Set current copyright year dynamically
         document.getElementById("copyright-year").textContent = new Date().getFullYear();
+
+        // Accessible clipboard copy helper
+        function copyToClipboard(button, text, bankName) {
+            navigator.clipboard.writeText(text).then(() => {
+                const announcer = document.getElementById("accessibility-announcer");
+                if (announcer) {
+                    announcer.textContent = "";
+                    setTimeout(() => {
+                        announcer.textContent = "Đã sao chép số tài khoản " + bankName + ": " + text;
+                    }, 50);
+                }
+                
+                const originalText = button.textContent;
+                button.textContent = "Đã sao chép!";
+                button.classList.add("bg-green-500/10", "text-green-500", "border-green-500/30", "hover:bg-green-500/20");
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove("bg-green-500/10", "text-green-500", "border-green-500/30", "hover:bg-green-500/20");
+                }, 2000);
+            }).catch(err => {
+                console.error("Lỗi khi sao chép:", err);
+            });
+        }
     </script>
 </body>
 
