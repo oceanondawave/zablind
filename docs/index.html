@@ -483,24 +483,29 @@
                 }
 
                 releases.forEach(release => {
-                    const div = document.createElement("div");
-                    div.className = "rounded-lg border bg-card text-card-foreground shadow-sm mb-4";
+                    const details = document.createElement("details");
+                    details.className = "group rounded-lg border bg-card text-card-foreground shadow-sm mb-4 overflow-hidden [&_summary::-webkit-details-marker]:hidden";
 
                     const date = new Date(release.published_at).toLocaleDateString();
 
-                    div.innerHTML = `
-                        <div class="flex flex-col space-y-1.5 p-6 border-b border-border/40 bg-muted/30">
+                    details.innerHTML = `
+                        <summary class="flex flex-col space-y-1.5 p-6 border-b border-transparent bg-muted/30 hover:bg-muted/50 cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors select-none">
                             <div class="flex items-center justify-between">
-                                <h4 class="font-semibold leading-none tracking-tight">${release.name || release.tag_name}</h4>
+                                <div class="flex items-center gap-2">
+                                    <svg class="h-4 w-4 text-muted-foreground transition-transform duration-200 group-open:rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                    <h4 class="font-semibold leading-none tracking-tight">${release.name || release.tag_name}</h4>
+                                </div>
                                 <span class="text-xs text-muted-foreground font-mono bg-muted/60 px-2 py-1 rounded">${release.tag_name}</span>
                             </div>
-                             <p class="text-xs text-muted-foreground mt-1">${date}</p>
-                        </div>
-                        <div class="p-6 text-sm text-muted-foreground space-y-2 markdown-content">
+                            <p class="text-xs text-muted-foreground mt-1 ml-6">${date}</p>
+                        </summary>
+                        <div class="p-6 text-sm text-muted-foreground space-y-2 markdown-content border-t border-border/40">
                              ${release.body ? marked.parse(release.body) : "Không có mô tả."}
                         </div>
                     `;
-                    versions.appendChild(div);
+                    versions.appendChild(details);
                 });
             })
             .catch(err => {
