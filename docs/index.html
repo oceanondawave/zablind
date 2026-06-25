@@ -151,6 +151,72 @@
             </p>
         </header>
 
+        <!-- Backstory & Legal Section -->
+        <section class="space-y-6">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
+                Câu chuyện dự án &amp; Cơ sở pháp lý
+            </h2>
+            <div class="grid gap-6 md:grid-cols-2">
+                <!-- Backstory Card -->
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+                    <div class="p-6 space-y-3 text-sm text-muted-foreground">
+                        <h3 class="text-lg font-semibold text-foreground leading-none tracking-tight">Hành trình từ tình yêu đến cộng đồng</h3>
+                        <p class="leading-relaxed">
+                            Zablind bắt đầu từ tình yêu và mong muốn giúp người bạn gái khiếm thị của tôi sử dụng Zalo trên máy tính Windows một cách hiệu quả hơn. Dù hành trình ban đầu vô cùng gian nan và đầy thách thức về mặt công nghệ, tôi đã nỗ lực vượt qua để hoàn thiện nó. Giờ đây, Zablind đã trở thành một sản phẩm mã nguồn mở ý nghĩa dành cho toàn cộng đồng.
+                        </p>
+                        <p class="leading-relaxed">
+                            Dự án cũng tự hào thông báo đã xuất sắc đạt <strong>Giải Nhất tại Hội thi Tin học dành cho người mù toàn quốc năm 2025</strong> và vinh dự được nhận <strong>Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ</strong> trao tặng.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Legal Card -->
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 text-sm text-muted-foreground flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground leading-none tracking-tight">Hiệp ước Marrakesh &amp; Bản quyền</h3>
+                        <p class="leading-relaxed">
+                            Zablind là một dự án hoàn toàn <strong>mã nguồn mở (open-source) và phi lợi nhuận</strong>. Mọi sửa đổi giao diện để tăng tính năng hỗ trợ tiếp cận đều tuân thủ các hành lang pháp lý quốc tế.
+                        </p>
+                        <p class="leading-relaxed">
+                            Dự án được bảo vệ và hoạt động dưới khung pháp lý của <strong>Hiệp ước Marrakesh</strong> (Marrakesh Treaty) của Tổ chức Sở hữu Trí tuệ Thế giới (WIPO) nhằm tạo điều kiện tiếp cận các tác phẩm đã công bố cho người khuyết tật nhìn.
+                        </p>
+                        <p class="leading-relaxed">
+                            Việt Nam là thành viên chính thức ký kết Hiệp ước Marrakesh từ năm 2022, hợp pháp hóa các công cụ phi thương mại hỗ trợ người khiếm thị tiếp cận công nghệ thông tin.
+                        </p>
+                    </div>
+                    
+                    <div class="space-y-2 pt-2">
+                        <a href="https://www.wipo.int/edocs/pubdocs/en/wipo_pub_marrakesh_overview.pdf" target="_blank"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 w-full shadow-sm">
+                            Xem Tổng quan Hiệp ước Marrakesh (WIPO)
+                        </a>
+                        <a href="https://www.wipo.int/wipolex/en/treaties/ShowResults?search_what=C&treaty_id=843" target="_blank"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 w-full shadow-sm">
+                            Xem Thành viên Hiệp ước - WIPO Lex
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Certificates Grid (Full-Width Card) -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="rounded border overflow-hidden bg-muted/20 flex flex-col items-center justify-center">
+                        <img src="certificate-ocean.jpg" alt="Bằng khen Bộ trưởng Bộ Khoa học và Công nghệ - Nguyễn Trí Minh" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
+                            [Gắn ảnh certificate-ocean.jpg]
+                        </div>
+                    </div>
+                    <div class="rounded border overflow-hidden bg-muted/20 flex flex-col items-center justify-center">
+                        <img src="certificate-girlfriend.jpg" alt="Giấy chứng nhận Hội thi Tin học toàn quốc 2025" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
+                            [Gắn ảnh certificate-girlfriend.jpg]
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Installer Section (Dynamic) -->
         <section id="installer" class="space-y-4">
             <!-- Loading State -->
@@ -202,71 +268,6 @@
             </div>
         </div>
 
-        <!-- Backstory & Legal Section -->
-        <section class="space-y-6">
-            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
-                Câu chuyện dự án & Cơ sở pháp lý
-            </h2>
-            <div class="grid gap-6 md:grid-cols-2">
-                <!-- Backstory Card -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
-                    <div class="p-6 space-y-3 text-sm text-muted-foreground">
-                        <h3 class="text-lg font-semibold text-foreground leading-none tracking-tight">Hành trình từ tình yêu đến cộng đồng</h3>
-                        <p class="leading-relaxed">
-                            Zablind bắt đầu từ tình yêu và mong muốn giúp người bạn gái khiếm thị của tôi sử dụng Zalo trên máy tính Windows một cách hiệu quả hơn. Dù hành trình ban đầu vô cùng gian nan và đầy thách thức về mặt công nghệ, tôi đã nỗ lực vượt qua để hoàn thiện nó. Giờ đây, Zablind đã trở thành một sản phẩm mã nguồn mở ý nghĩa dành cho toàn cộng đồng.
-                        </p>
-                        <p class="leading-relaxed">
-                            Dự án cũng tự hào thông báo đã xuất sắc đạt <strong>Giải Nhất tại Hội thi Tin học dành cho người mù toàn quốc năm 2025</strong> và vinh dự được nhận <strong>Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ</strong> trao tặng.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Legal Card -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 text-sm text-muted-foreground flex flex-col justify-between">
-                    <div class="space-y-3">
-                        <h3 class="text-lg font-semibold text-foreground leading-none tracking-tight">Hiệp ước Marrakesh & Bản quyền</h3>
-                        <p class="leading-relaxed">
-                            Zablind là một dự án hoàn toàn <strong>mã nguồn mở (open-source) và phi lợi nhuận</strong>. Mọi sửa đổi giao diện để tăng tính năng hỗ trợ tiếp cận đều tuân thủ các hành lang pháp lý quốc tế.
-                        </p>
-                        <p class="leading-relaxed">
-                            Dự án được bảo vệ và hoạt động dưới khung pháp lý của <strong>Hiệp ước Marrakesh</strong> (Marrakesh Treaty) của Tổ chức Sở hữu Trí tuệ Thế giới (WIPO) nhằm tạo điều kiện tiếp cận các tác phẩm đã công bố cho người khuyết tật nhìn.
-                        </p>
-                        <p class="leading-relaxed">
-                            Việt Nam là thành viên chính thức ký kết Hiệp ước Marrakesh từ năm 2022, hợp pháp hóa các công cụ phi thương mại hỗ trợ người khiếm thị tiếp cận công nghệ thông tin.
-                        </p>
-                    </div>
-                    
-                    <div class="space-y-2 pt-2">
-                        <a href="https://www.wipo.int/edocs/pubdocs/en/wipo_pub_marrakesh_overview.pdf" target="_blank"
-                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 w-full shadow-sm">
-                            Xem Tổng quan Hiệp ước Marrakesh (WIPO)
-                        </a>
-                        <a href="https://www.wipo.int/wipolex/en/treaties/ShowResults?search_what=C&treaty_id=843" target="_blank"
-                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 w-full shadow-sm">
-                            Xem Thành viên Hiệp ước - WIPO Lex
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Certificates Grid (Full-Width Card) -->
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="rounded border overflow-hidden bg-muted/20 flex flex-col items-center justify-center">
-                        <img src="certificate-ocean.jpg" alt="Bằng khen Bộ trưởng Bộ Khoa học và Công nghệ - Nguyễn Trí Minh" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
-                            [Gắn ảnh certificate-ocean.jpg]
-                        </div>
-                    </div>
-                    <div class="rounded border overflow-hidden bg-muted/20 flex flex-col items-center justify-center">
-                        <img src="certificate-girlfriend.jpg" alt="Giấy chứng nhận Hội thi Tin học toàn quốc 2025" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
-                            [Gắn ảnh certificate-girlfriend.jpg]
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- Installation Instructions -->
         <section class="space-y-4">
