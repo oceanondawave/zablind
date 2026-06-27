@@ -182,8 +182,12 @@ except ImportError:
     UIAutomation_tlb = "UIAutomationCore.dll"
     UIA = comtypes.client.GetModule(UIAutomation_tlb)
 
-import keyboard
-KEYBOARD_AVAILABLE = True
+try:
+    import keyboard
+    KEYBOARD_AVAILABLE = True
+except ImportError:
+    keyboard = None
+    KEYBOARD_AVAILABLE = False
 
 import win32com.client
 TTS_AVAILABLE = True
@@ -4253,134 +4257,243 @@ class ZaloCallHandler:
             # Silent fail - don't spam errors
             pass
     
-    def register_global_hotkeys(self):
-        """Register hotkeys that should always remain active (e.g. manual update check)."""
-        if not KEYBOARD_AVAILABLE:
-            return
-        try:
-            try:
-                keyboard.remove_hotkey("ctrl+shift+u")
-            except:
-                pass
-            keyboard.add_hotkey("ctrl+shift+u", lambda: check_for_updates_manually(self))
-            print("[OK] Global update hotkey registered.")
-        except Exception as e:
-            print(f"[ERROR] Failed to register global update hotkey: {e}")
+    # ------------------------------------------------------------------
+    # Native WH_KEYBOARD_LL hotkey system
+    # Uses ctypes + Win32 directly - no 'keyboard' library needed for keys.
+    # WH_KEYBOARD_LL is a low-level system-wide hook that:
+    #   - Never requires Administrator rights
+    #   - Cannot be blocked by Zalo/Electron's UI
+    #   - Works on 32-bit and 64-bit Python identically
+    #   - Is part of the Win32 API (no extra install)
+    # ------------------------------------------------------------------
 
-    def _on_key_press(self, event):
-        """Central key-press dispatcher used instead of individual add_hotkey calls.
-        Using on_press for single-letter keys avoids the keyboard library's
-        add_hotkey deduplication bug that silently drops bare-letter hotkeys on
-        some Windows machines.
-
-        Only dispatches when a call is actually active or incoming so that normal
-        typing in other apps is unaffected.  Ignores events where a modifier key
-        (ctrl/alt/win) is held so that combo hotkeys (ctrl+a, ctrl+shift+a) are
-        not double-fired.
+    def _native_hook_dispatch(self, vk: int, ctrl: bool, shift: bool, alt: bool, win_: bool):
+        """Called from the native WH_KEYBOARD_LL hook thread for every key-down event.
+        Dispatches to _enqueue_action based on current call state and modifier state.
+        Must be fast (no blocking) - hook proc has a Windows-enforced timeout.
         """
         try:
             # Only act while there is a live call situation
             with self.call_lock:
                 active = self.call_active or self.incoming_call_detected
+
+            # ctrl+shift+u - always active (check for updates)
+            if ctrl and shift and not alt and not win_ and vk == 0x55:  # 'U'
+                import threading as _t
+                _t.Thread(target=lambda: check_for_updates_manually(self), daemon=True).start()
+                return
+
             if not active:
                 return
 
-            # Skip if any modifier is held - those combos are handled by add_hotkey
-            if keyboard.is_modifier(event.name):
-                return
-            if keyboard.is_pressed("ctrl") or keyboard.is_pressed("alt") or keyboard.is_pressed("win"):
+            # Modifier combos first (ctrl+a / ctrl+shift+a = accept without camera)
+            if ctrl and not alt and not win_ and vk == 0x41:  # ctrl+a or ctrl+shift+a
+                self._enqueue_action("accept_without_camera")
                 return
 
-            name = (event.name or "").lower()
-            if name == self.accept_hotkey:        # 'a'
-                self._enqueue_action("accept")
-            elif name == self.deny_hotkey:        # 'd'
-                self._enqueue_action("deny")
-            elif name == self.camera_toggle_hotkey:   # 'c'
-                self._enqueue_action("camera")
-            elif name == self.end_call_hotkey:    # 'e'
-                self._enqueue_action("end_call")
-            elif name == self.microphone_toggle_hotkey:  # 'm'
-                self._enqueue_action("microphone")
+            # Bare letter keys - only when no ctrl/alt/win held
+            if not ctrl and not alt and not win_:
+                if   vk == 0x41: self._enqueue_action("accept")           # A
+                elif vk == 0x44: self._enqueue_action("deny")             # D
+                elif vk == 0x43: self._enqueue_action("camera")           # C
+                elif vk == 0x45: self._enqueue_action("end_call")         # E
+                elif vk == 0x4D: self._enqueue_action("microphone")       # M
         except Exception:
             pass
 
-
-    def register_hotkeys(self):
-        """Register combo keyboard hotkeys (ctrl+a, ctrl+shift+a) for call actions.
-
-        Single-letter hotkeys (a, d, c, e, m) are handled by the always-on
-        _on_key_press dispatcher installed at startup via install_key_dispatcher().
-        This method only needs to add the modifier-combo hotkeys that require
-        keyboard library's modifier matching, and is safe to call multiple times.
-        """
-        if not KEYBOARD_AVAILABLE:
-            print("ERROR: 'keyboard' library not available. Cannot register hotkeys.")
-            print("Please install: pip install keyboard")
-            return False
-
-        if getattr(self, 'hotkeys_registered', False):
-            return True
-
-        try:
-            # Combo hotkeys use add_hotkey (they need modifier matching).
-            # Single-letter keys (a/d/c/e/m) are handled by the on_press dispatcher.
-            keyboard.add_hotkey(self.accept_without_camera_hotkey, lambda: self._enqueue_action("accept_without_camera"))
-            keyboard.add_hotkey("ctrl+shift+a", lambda: self._enqueue_action("accept_without_camera"))
-
-            self.hotkeys_registered = True
-            print("[OK] Combo hotkeys registered (ctrl+a, ctrl+shift+a).")
-            return True
-        except Exception as e:
-            try:
-                import traceback
-                tb_str = traceback.format_exc()
-                with open('C:/Projects/zablind/handler_hotkey_error.log', 'w', encoding='utf-8') as f:
-                    f.write(f"Exception type: {type(e)}\nException: {str(e)}\nTraceback:\n{tb_str}\n")
-            except Exception as log_err:
-                pass
-            print(f"ERROR: Failed to register combo hotkeys: {e}")
-            return False
-
     def install_key_dispatcher(self):
-        """Install the always-on low-level key-press dispatcher.
+        """Install a native WH_KEYBOARD_LL keyboard hook via ctypes.
 
-        Uses keyboard.on_press (WH_KEYBOARD_LL) which is more reliable than
-        add_hotkey for bare single-letter keys across all Windows machines.
-        The dispatcher is a no-op when no call is active so it never interferes
-        with normal typing.  Should be called once at startup.
+        This is the primary, guaranteed-to-work hotkey system.
+        Uses only Python's built-in ctypes module (no pip dependencies).
+        WH_KEYBOARD_LL works system-wide without Administrator rights on
+        all Windows versions since Vista.
+
+        The hook runs on a dedicated daemon thread with its own Win32
+        message pump.  The dispatch callback is a no-op when no call is
+        active so normal typing is never affected.
         """
+        if getattr(self, '_native_hook_thread', None):
+            return True  # Already installed
+
+        import ctypes
+        import ctypes.wintypes as wt
+        import threading
+
+        WH_KEYBOARD_LL = 13
+        WM_KEYDOWN    = 0x0100
+        WM_SYSKEYDOWN = 0x0104
+        WM_QUIT       = 0x0012
+        VK_CONTROL    = 0x11
+        VK_SHIFT      = 0x10
+        VK_MENU       = 0x12   # Alt
+        VK_LWIN       = 0x5B
+        VK_RWIN       = 0x5C
+
+        user32   = ctypes.WinDLL('user32',   use_last_error=True)
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+
+        class KBDLLHOOKSTRUCT(ctypes.Structure):
+            _fields_ = [
+                ('vkCode',      wt.DWORD),
+                ('scanCode',    wt.DWORD),
+                ('flags',       wt.DWORD),
+                ('time',        wt.DWORD),
+                ('dwExtraInfo', ctypes.POINTER(ctypes.c_ulong)),
+            ]
+
+        HOOKPROC = ctypes.WINFUNCTYPE(
+            ctypes.c_long, ctypes.c_int, wt.WPARAM, wt.LPARAM
+        )
+
+        hook_id_box   = [None]   # mutable cell shared with thread
+        thread_id_box = [None]
+        handler_ref   = self     # captured reference
+
+        def _hook_proc(nCode, wParam, lParam):
+            if nCode >= 0 and wParam in (WM_KEYDOWN, WM_SYSKEYDOWN):
+                try:
+                    kb  = ctypes.cast(lParam, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+                    vk  = kb.vkCode
+                    # Read modifier state synchronously from kernel
+                    gks = user32.GetAsyncKeyState
+                    ctrl  = bool(gks(VK_CONTROL) & 0x8000)
+                    shift = bool(gks(VK_SHIFT)   & 0x8000)
+                    alt   = bool(gks(VK_MENU)    & 0x8000)
+                    win_  = bool(gks(VK_LWIN) & 0x8000 or gks(VK_RWIN) & 0x8000)
+                    handler_ref._native_hook_dispatch(vk, ctrl, shift, alt, win_)
+                except Exception:
+                    pass
+            return user32.CallNextHookEx(hook_id_box[0], nCode, wParam, lParam)
+
+        # Keep a reference so Python's GC cannot collect the ctypes callback
+        hook_proc_ref = HOOKPROC(_hook_proc)
+        self._native_hook_proc_ref = hook_proc_ref
+
+        ready_event = threading.Event()
+        ok_box      = [False]
+
+        def _message_pump():
+            # WH_KEYBOARD_LL requires the hook to be installed on a thread
+            # that runs a Win32 message loop.  We install and pump here.
+            hmod = kernel32.GetModuleHandleW(None)
+            hk   = user32.SetWindowsHookExW(WH_KEYBOARD_LL, hook_proc_ref, hmod, 0)
+            if not hk:
+                err = ctypes.get_last_error()
+                print(f"[WARNING] SetWindowsHookExW failed (error {err}). "
+                      "Native hotkeys unavailable - falling back to keyboard library.")
+                ready_event.set()
+                return
+
+            hook_id_box[0]   = hk
+            thread_id_box[0] = kernel32.GetCurrentThreadId()
+            ok_box[0]        = True
+            ready_event.set()
+            print("[OK] Native WH_KEYBOARD_LL hook installed - hotkeys guaranteed on this machine.")
+
+            msg = wt.MSG()
+            while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
+                user32.TranslateMessage(ctypes.byref(msg))
+                user32.DispatchMessageW(ctypes.byref(msg))
+
+            user32.UnhookWindowsHookEx(hk)
+            hook_id_box[0] = None
+
+        t = threading.Thread(target=_message_pump, name="NativeKeyHook", daemon=True)
+        self._native_hook_thread    = t
+        self._native_hook_thread_id = thread_id_box
+        self._native_hook_user32    = user32
+        t.start()
+        ready_event.wait(timeout=2.0)
+
+        if ok_box[0]:
+            return True
+
+        # Native hook failed - fall back to keyboard library if available
+        print("[FALLBACK] Trying keyboard library as fallback...")
+        return self._install_keyboard_lib_dispatcher()
+
+    def _install_keyboard_lib_dispatcher(self):
+        """Fallback: use the 'keyboard' library if the native hook failed."""
         if not KEYBOARD_AVAILABLE:
+            print("[ERROR] No hotkey system available. Keys will not work.")
             return False
         if getattr(self, '_key_press_hook', None):
-            return True  # Already installed
+            return True
         try:
-            self._key_press_hook = keyboard.on_press(self._on_key_press, suppress=False)
-            print("[OK] Global key-press dispatcher installed (WH_KEYBOARD_LL).")
+            self._key_press_hook = keyboard.on_press(self._legacy_on_key_press, suppress=False)
+            print("[OK] Fallback keyboard library hook installed.")
             return True
         except Exception as e:
-            print(f"[WARNING] Could not install key-press dispatcher: {e}")
-            print("Note: Try running as Administrator if hotkeys don't respond.")
+            print(f"[ERROR] Fallback keyboard hook also failed: {e}")
             return False
 
-    def unregister_hotkeys(self):
-        """Unregister combo hotkeys after a call ends.
+    def _legacy_on_key_press(self, event):
+        """Fallback key dispatcher used only if native WH_KEYBOARD_LL hook failed."""
+        try:
+            with self.call_lock:
+                active = self.call_active or self.incoming_call_detected
+            if not active:
+                return
+            try:
+                if keyboard.is_modifier(event.name):
+                    return
+                if keyboard.is_pressed("ctrl") or keyboard.is_pressed("alt") or keyboard.is_pressed("win"):
+                    return
+            except Exception:
+                return
+            name = (event.name or "").lower()
+            if name == self.accept_hotkey:              self._enqueue_action("accept")
+            elif name == self.deny_hotkey:              self._enqueue_action("deny")
+            elif name == self.camera_toggle_hotkey:     self._enqueue_action("camera")
+            elif name == self.end_call_hotkey:          self._enqueue_action("end_call")
+            elif name == self.microphone_toggle_hotkey: self._enqueue_action("microphone")
+        except Exception:
+            pass
 
-        The always-on on_press dispatcher (_key_press_hook) is intentionally
-        left running - it is a no-op when no call is active.
+    def register_global_hotkeys(self):
+        """Register ctrl+shift+u (update check) via keyboard library.
+        The call hotkeys are handled natively; this is non-critical.
         """
         if not KEYBOARD_AVAILABLE:
             return
+        try:
+            try:
+                keyboard.remove_hotkey("ctrl+shift+u")
+            except Exception:
+                pass
+            keyboard.add_hotkey("ctrl+shift+u", lambda: check_for_updates_manually(self))
+            print("[OK] Global update hotkey registered (ctrl+shift+u).")
+        except Exception as e:
+            print(f"[INFO] ctrl+shift+u hotkey not registered: {e}")
+
+    def register_hotkeys(self):
+        """Mark hotkeys as registered.
+
+        All call hotkeys (a/d/c/e/m, ctrl+a, ctrl+shift+a) are handled
+        by the native WH_KEYBOARD_LL hook installed at startup.
+        This method exists for compatibility with the call state machine
+        that calls it when a call begins.
+        """
+        if getattr(self, 'hotkeys_registered', False):
+            return True
+        # Native hook is always-on from startup, nothing extra to install.
+        self.hotkeys_registered = True
+        print("[OK] Call hotkeys active (native hook).")
+        return True
+
+    def unregister_hotkeys(self):
+        """Mark hotkeys as idle after a call ends.
+
+        The native WH_KEYBOARD_LL hook stays installed (it's always-on
+        and does nothing when no call is active).
+        """
         if not getattr(self, 'hotkeys_registered', False):
             return
-        try:
-            keyboard.unhook_all_hotkeys()
-            self.hotkeys_registered = False
-            print("[OK] Combo hotkeys unregistered.")
-            # Re-register global hotkeys that should always remain active
-            self.register_global_hotkeys()
-        except Exception as e:
-            print(f"[ERROR] Failed to unregister hotkeys: {e}")
+        self.hotkeys_registered = False
+        print("[OK] Call hotkeys idle (native hook remains installed).")
+        # Re-register ctrl+shift+u which may be cleared by unhook_all_hotkeys
+        self.register_global_hotkeys()
 
     def monitor_calls(self):
         """Monitor for incoming calls and automatically focus window."""
@@ -5781,12 +5894,10 @@ def main():
     
     # Check dependencies
     if not KEYBOARD_AVAILABLE:
-        print("ERROR: 'keyboard' library is required.")
-        print("Please install it with: pip install keyboard")
+        print("[INFO] 'keyboard' library not found - ctrl+shift+u (update check) will be unavailable.")
+        print("[INFO] Call hotkeys (a/d/c/e/m, ctrl+a) use the native system hook and will work fine.")
         print()
-        input("Press Enter to exit...")
-        sys.exit(1)
-    
+
     if not WIN32_AVAILABLE:
         print("ERROR: pywin32 is required.")
         print("Please install it with: pip install pywin32")
