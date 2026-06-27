@@ -4267,6 +4267,36 @@ class ZaloCallHandler:
         except Exception as e:
             print(f"[ERROR] Failed to register global update hotkey: {e}")
 
+    def _on_key_press(self, event):
+        """Central key-press dispatcher used instead of individual add_hotkey calls.
+        Using on_press for single-letter keys avoids the keyboard library's
+        add_hotkey deduplication bug that silently drops bare-letter hotkeys on
+        some Windows machines.
+
+        Only dispatches when a call is actually active or incoming so that normal
+        typing in other apps is unaffected.
+        """
+        try:
+            # Only act while there is a live call situation
+            with self.call_lock:
+                active = self.call_active or self.incoming_call_detected
+            if not active:
+                return
+
+            name = (event.name or "").lower()
+            if name == self.accept_hotkey:        # 'a'
+                self._enqueue_action("accept")
+            elif name == self.deny_hotkey:        # 'd'
+                self._enqueue_action("deny")
+            elif name == self.camera_toggle_hotkey:   # 'c'
+                self._enqueue_action("camera")
+            elif name == self.end_call_hotkey:    # 'e'
+                self._enqueue_action("end_call")
+            elif name == self.microphone_toggle_hotkey:  # 'm'
+                self._enqueue_action("microphone")
+        except Exception:
+            pass
+
     def register_hotkeys(self):
         """Register global keyboard hotkeys."""
         if not KEYBOARD_AVAILABLE:
@@ -4278,19 +4308,18 @@ class ZaloCallHandler:
             return True
         
         try:
-            # Register hotkeys for incoming calls (enqueue to avoid COM STA thread marshaling issues)
-            keyboard.add_hotkey(self.accept_hotkey, lambda: self._enqueue_action("accept"))
+            # Single-letter hotkeys (a, d, c, e, m) are registered via a single
+            # on_press hook instead of individual add_hotkey calls.  The add_hotkey
+            # approach for bare letters silently fails on some Windows machines due
+            # to keyboard library's internal deduplication / hook ordering issues.
+            self._key_press_hook = keyboard.on_press(self._on_key_press, suppress=False)
+
+            # Combo hotkeys still use add_hotkey (they need modifier matching)
             keyboard.add_hotkey(self.accept_without_camera_hotkey, lambda: self._enqueue_action("accept_without_camera"))
             keyboard.add_hotkey("ctrl+shift+a", lambda: self._enqueue_action("accept_without_camera"))
-            keyboard.add_hotkey(self.deny_hotkey, lambda: self._enqueue_action("deny"))
-            
-            # Register hotkeys for active calls
-            keyboard.add_hotkey(self.camera_toggle_hotkey, lambda: self._enqueue_action("camera"))
-            keyboard.add_hotkey(self.end_call_hotkey, lambda: self._enqueue_action("end_call"))
-            keyboard.add_hotkey(self.microphone_toggle_hotkey, lambda: self._enqueue_action("microphone"))
             
             self.hotkeys_registered = True
-            print("[OK] Hotkeys registered successfully.")
+            print("[OK] Hotkeys registered successfully (on_press dispatcher + combo hotkeys).")
             return True
         except Exception as e:
             try:
@@ -4312,6 +4341,14 @@ class ZaloCallHandler:
         if not getattr(self, 'hotkeys_registered', False):
             return
         try:
+            # Remove the on_press dispatcher hook if it was set
+            hook = getattr(self, '_key_press_hook', None)
+            if hook:
+                try:
+                    keyboard.unhook(hook)
+                except Exception:
+                    pass
+                self._key_press_hook = None
             keyboard.unhook_all_hotkeys()
             self.hotkeys_registered = False
             print("[OK] Hotkeys unregistered successfully.")
@@ -5752,9 +5789,17 @@ def main():
     print("Call type detection: Using button count (4 = audio, 5 = video)")
     print()
     
-    # Register hotkeys dynamically (skipped at startup to avoid screen reader issues when idle)
-    # Hotkeys will be registered as soon as a call (incoming or active) is detected.
+    # Register global (always-on) hotkeys first
     handler.register_global_hotkeys()
+    # Install the on_press key dispatcher now so it is listening before the first call.
+    # It checks call_active / incoming_call_detected internally and is a no-op when idle,
+    # so it won't interfere with normal typing in other apps.
+    if KEYBOARD_AVAILABLE and not getattr(handler, '_key_press_hook', None):
+        try:
+            handler._key_press_hook = keyboard.on_press(handler._on_key_press, suppress=False)
+            print("[OK] Global key-press dispatcher installed.")
+        except Exception as _kp_err:
+            print(f"[WARNING] Could not install key-press dispatcher: {_kp_err}")
     
     # Try to find ZaloCall process (but don't exit if not found - it only runs during calls)
     print("Looking for ZaloCall.exe process...")
