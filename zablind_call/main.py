@@ -878,19 +878,40 @@ class ZaloCallHandler:
         if not PSUTIL_AVAILABLE:
             return pids
         try:
-            if self.zalocall_pid and psutil.pid_exists(self.zalocall_pid):
-                proc = psutil.Process(self.zalocall_pid)
-                for child in proc.children(recursive=True):
-                    try:
-                        child_name = (child.name() or "").lower()
-                    except Exception:
-                        child_name = ""
-                    if child_name == "zalocall.exe":
-                        pids.add(child.pid)
+            # Collect ALL ZaloCall.exe instances from the process list
+            zalocall_roots = set()
             for proc in psutil.process_iter(["pid", "name"]):
                 name = (proc.info.get("name") or "").lower()
                 if name == "zalocall.exe":
+                    zalocall_roots.add(proc.info["pid"])
                     pids.add(proc.info["pid"])
+
+            # Include ALL child processes of each ZaloCall root (Electron renderer/GPU
+            # processes own the actual UIA windows and may have different PIDs)
+            for root_pid in zalocall_roots:
+                try:
+                    if psutil.pid_exists(root_pid):
+                        proc = psutil.Process(root_pid)
+                        for child in proc.children(recursive=True):
+                            try:
+                                pids.add(child.pid)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            # Also include children of zalocall_pid itself
+            if self.zalocall_pid and self.zalocall_pid not in zalocall_roots:
+                try:
+                    if psutil.pid_exists(self.zalocall_pid):
+                        proc = psutil.Process(self.zalocall_pid)
+                        for child in proc.children(recursive=True):
+                            try:
+                                pids.add(child.pid)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
         except Exception:
             pass
         return pids
@@ -1046,6 +1067,63 @@ class ZaloCallHandler:
                         pass
             except Exception as pid_err:
                 print(f"[ROOT] UIA process lookup failed for pid={pid}: {pid_err}")
+
+        # If UIA PID-based search found nothing, try Win32 EnumWindows to find Electron
+        # windows (chrome_widgetwin) that belong to any process in the ZaloCall tree,
+        # then use ElementFromHandle to get the UIA element directly.
+        if not candidates and WIN32_AVAILABLE:
+            try:
+                def enum_for_uia(hwnd, ctx):
+                    try:
+                        if not win32gui.IsWindowVisible(hwnd):
+                            return True
+                        _, pid = win32api.GetWindowThreadProcessId(hwnd)
+                        if pid not in related_pids:
+                            return True
+                        class_name = (win32gui.GetClassName(hwnd) or "").lower()
+                        rect = win32gui.GetWindowRect(hwnd)
+                        width = rect[2] - rect[0]
+                        height = rect[3] - rect[1]
+                        if width <= 20 or height <= 20:
+                            return True
+                        if rect[0] <= -30000 or rect[1] <= -30000:
+                            return True
+                        # Accept Electron/Chrome widget windows and generic top-level windows
+                        if "chrome_widgetwin" in class_name or "electron" in class_name or width > 100:
+                            try:
+                                el = self.automation.ElementFromHandle(hwnd)
+                                if el:
+                                    name = ""
+                                    control_type = 0
+                                    try:
+                                        name = el.CurrentName or ""
+                                    except Exception:
+                                        pass
+                                    try:
+                                        control_type = el.CurrentControlType
+                                    except Exception:
+                                        pass
+                                    score = 50  # base score for hwnd-found element
+                                    if pid == self.zalocall_pid:
+                                        score += 100
+                                    if width > 80 and height > 80:
+                                        score += 40
+                                    if control_type == UIA.UIA_WindowControlTypeId:
+                                        score += 40
+                                    if any(kw in name.lower() for kw in ["zalo", "call", "cuoc goi", "goi", "gọi", "video", "audio"]):
+                                        score += 30
+                                    if "chrome_widgetwin" in class_name:
+                                        score += 20
+                                    candidates.append((score, width * height, el, pid, name, control_type,
+                                                       (rect[0], rect[1], rect[2], rect[3])))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    return True
+                win32gui.EnumWindows(enum_for_uia, None)
+            except Exception:
+                pass
 
         if not candidates:
             now = time.time()
@@ -4997,14 +5075,28 @@ def perform_self_update(zip_url, handler):
     
     try:
         handler.speak("Zablind đang tải bản cập nhật mới...", language="vi", clear_pending=True)
-        print(f"[UPDATER] Downloading update from {zip_url}")
         
-        req = urllib.request.Request(
-            zip_url,
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
-        )
-        with urllib.request.urlopen(req, timeout=30) as response, open(zip_path, 'wb') as out_file:
-            out_file.write(response.read())
+        # Route through ghproxy.net proxy to accelerate download in Vietnam
+        proxy_zip_url = f"https://ghproxy.net/{zip_url}"
+        print(f"[UPDATER] Downloading update from accelerated proxy: {proxy_zip_url}")
+        
+        try:
+            req = urllib.request.Request(
+                proxy_zip_url,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
+            )
+            with urllib.request.urlopen(req, timeout=30) as response, open(zip_path, 'wb') as out_file:
+                out_file.write(response.read())
+            print("[UPDATER] Download completed via proxy.")
+        except Exception as proxy_err:
+            print(f"[UPDATER] Proxy download failed: {proxy_err}. Falling back to direct download...")
+            req = urllib.request.Request(
+                zip_url,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
+            )
+            with urllib.request.urlopen(req, timeout=45) as response, open(zip_path, 'wb') as out_file:
+                out_file.write(response.read())
+            print("[UPDATER] Download completed via direct GitHub link.")
             
         print("[UPDATER] Download complete. Preparing files...")
         
