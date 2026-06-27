@@ -4274,13 +4274,21 @@ class ZaloCallHandler:
         some Windows machines.
 
         Only dispatches when a call is actually active or incoming so that normal
-        typing in other apps is unaffected.
+        typing in other apps is unaffected.  Ignores events where a modifier key
+        (ctrl/alt/win) is held so that combo hotkeys (ctrl+a, ctrl+shift+a) are
+        not double-fired.
         """
         try:
             # Only act while there is a live call situation
             with self.call_lock:
                 active = self.call_active or self.incoming_call_detected
             if not active:
+                return
+
+            # Skip if any modifier is held - those combos are handled by add_hotkey
+            if keyboard.is_modifier(event.name):
+                return
+            if keyboard.is_pressed("ctrl") or keyboard.is_pressed("alt") or keyboard.is_pressed("win"):
                 return
 
             name = (event.name or "").lower()
@@ -4297,29 +4305,31 @@ class ZaloCallHandler:
         except Exception:
             pass
 
+
     def register_hotkeys(self):
-        """Register global keyboard hotkeys."""
+        """Register combo keyboard hotkeys (ctrl+a, ctrl+shift+a) for call actions.
+
+        Single-letter hotkeys (a, d, c, e, m) are handled by the always-on
+        _on_key_press dispatcher installed at startup via install_key_dispatcher().
+        This method only needs to add the modifier-combo hotkeys that require
+        keyboard library's modifier matching, and is safe to call multiple times.
+        """
         if not KEYBOARD_AVAILABLE:
             print("ERROR: 'keyboard' library not available. Cannot register hotkeys.")
             print("Please install: pip install keyboard")
             return False
-        
+
         if getattr(self, 'hotkeys_registered', False):
             return True
-        
-        try:
-            # Single-letter hotkeys (a, d, c, e, m) are registered via a single
-            # on_press hook instead of individual add_hotkey calls.  The add_hotkey
-            # approach for bare letters silently fails on some Windows machines due
-            # to keyboard library's internal deduplication / hook ordering issues.
-            self._key_press_hook = keyboard.on_press(self._on_key_press, suppress=False)
 
-            # Combo hotkeys still use add_hotkey (they need modifier matching)
+        try:
+            # Combo hotkeys use add_hotkey (they need modifier matching).
+            # Single-letter keys (a/d/c/e/m) are handled by the on_press dispatcher.
             keyboard.add_hotkey(self.accept_without_camera_hotkey, lambda: self._enqueue_action("accept_without_camera"))
             keyboard.add_hotkey("ctrl+shift+a", lambda: self._enqueue_action("accept_without_camera"))
-            
+
             self.hotkeys_registered = True
-            print("[OK] Hotkeys registered successfully (on_press dispatcher + combo hotkeys).")
+            print("[OK] Combo hotkeys registered (ctrl+a, ctrl+shift+a).")
             return True
         except Exception as e:
             try:
@@ -4329,29 +4339,44 @@ class ZaloCallHandler:
                     f.write(f"Exception type: {type(e)}\nException: {str(e)}\nTraceback:\n{tb_str}\n")
             except Exception as log_err:
                 pass
-            print(f"ERROR: Failed to register hotkeys (logged to handler_hotkey_error.log): {e}")
-            print("Note: Global hotkeys may require Administrator privileges on Windows.")
-            print("Please try running as Administrator.")
+            print(f"ERROR: Failed to register combo hotkeys: {e}")
+            return False
+
+    def install_key_dispatcher(self):
+        """Install the always-on low-level key-press dispatcher.
+
+        Uses keyboard.on_press (WH_KEYBOARD_LL) which is more reliable than
+        add_hotkey for bare single-letter keys across all Windows machines.
+        The dispatcher is a no-op when no call is active so it never interferes
+        with normal typing.  Should be called once at startup.
+        """
+        if not KEYBOARD_AVAILABLE:
+            return False
+        if getattr(self, '_key_press_hook', None):
+            return True  # Already installed
+        try:
+            self._key_press_hook = keyboard.on_press(self._on_key_press, suppress=False)
+            print("[OK] Global key-press dispatcher installed (WH_KEYBOARD_LL).")
+            return True
+        except Exception as e:
+            print(f"[WARNING] Could not install key-press dispatcher: {e}")
+            print("Note: Try running as Administrator if hotkeys don't respond.")
             return False
 
     def unregister_hotkeys(self):
-        """Unregister global keyboard hotkeys."""
+        """Unregister combo hotkeys after a call ends.
+
+        The always-on on_press dispatcher (_key_press_hook) is intentionally
+        left running - it is a no-op when no call is active.
+        """
         if not KEYBOARD_AVAILABLE:
             return
         if not getattr(self, 'hotkeys_registered', False):
             return
         try:
-            # Remove the on_press dispatcher hook if it was set
-            hook = getattr(self, '_key_press_hook', None)
-            if hook:
-                try:
-                    keyboard.unhook(hook)
-                except Exception:
-                    pass
-                self._key_press_hook = None
             keyboard.unhook_all_hotkeys()
             self.hotkeys_registered = False
-            print("[OK] Hotkeys unregistered successfully.")
+            print("[OK] Combo hotkeys unregistered.")
             # Re-register global hotkeys that should always remain active
             self.register_global_hotkeys()
         except Exception as e:
@@ -5791,16 +5816,10 @@ def main():
     
     # Register global (always-on) hotkeys first
     handler.register_global_hotkeys()
-    # Install the on_press key dispatcher now so it is listening before the first call.
-    # It checks call_active / incoming_call_detected internally and is a no-op when idle,
-    # so it won't interfere with normal typing in other apps.
-    if KEYBOARD_AVAILABLE and not getattr(handler, '_key_press_hook', None):
-        try:
-            handler._key_press_hook = keyboard.on_press(handler._on_key_press, suppress=False)
-            print("[OK] Global key-press dispatcher installed.")
-        except Exception as _kp_err:
-            print(f"[WARNING] Could not install key-press dispatcher: {_kp_err}")
-    
+    # Install the always-on key-press dispatcher (WH_KEYBOARD_LL).
+    # It is a no-op when no call is active, so normal typing is unaffected.
+    handler.install_key_dispatcher()
+
     # Try to find ZaloCall process (but don't exit if not found - it only runs during calls)
     print("Looking for ZaloCall.exe process...")
     if handler.find_zalocall_process():
