@@ -129,18 +129,32 @@
         <!-- Search, Filters, and Admin Login row -->
         <section class="space-y-4" aria-label="Tìm kiếm và bộ lọc">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <!-- Search input -->
-                <div class="relative flex-1">
-                    <label for="search-input" class="sr-only">Tìm kiếm câu hỏi hoặc tên người gửi</label>
-                    <input id="search-input" type="text" placeholder="Tìm kiếm câu hỏi hoặc người gửi..."
-                        class="w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                <div class="flex flex-1 flex-col sm:flex-row gap-3">
+                    <!-- Search input -->
+                    <div class="relative flex-1">
+                        <label for="search-input" class="sr-only">Tìm kiếm câu hỏi hoặc tên người gửi</label>
+                        <input id="search-input" type="text" placeholder="Tìm kiếm câu hỏi hoặc người gửi..."
+                            class="w-full rounded-md border border-input bg-card px-3 py-[9px] text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                    </div>
+
+                    <!-- Time Filter select (assistive) -->
+                    <div class="w-full sm:w-48">
+                        <label for="time-filter" class="sr-only">Lọc theo thời gian</label>
+                        <select id="time-filter" onchange="renderFeed()"
+                            class="w-full rounded-md border border-input bg-card px-3 py-[9px] text-sm ring-offset-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            <option value="all">Tất cả thời gian</option>
+                            <option value="today">Hôm nay</option>
+                            <option value="week">7 ngày qua</option>
+                            <option value="month">30 ngày qua</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Admin Sign In Container -->
-                <div class="flex items-center gap-3">
-                    <div id="g-signin-button"></div>
-                    <div id="admin-user-info" class="hidden flex items-center gap-2 text-xs bg-muted/40 border p-1 px-2 rounded-md">
-                        <span id="admin-email" class="text-muted-foreground"></span>
+                <div class="flex items-center gap-3 h-[38px] justify-start md:justify-end">
+                    <div id="g-signin-button" class="h-[38px] flex items-center"></div>
+                    <div id="admin-user-info" class="hidden flex items-center gap-2 text-xs bg-muted/40 border h-[38px] px-3 rounded-md">
+                        <span id="admin-email" class="text-muted-foreground mr-1"></span>
                         <button onclick="handleSignOut()" class="text-red-400 hover:text-red-300 font-semibold underline underline-offset-2">Đăng xuất</button>
                     </div>
                 </div>
@@ -243,7 +257,7 @@
     <!-- Client-side FAQ Application Logic -->
     <script>
         // CONFIGURATION: Replace these with your actual deployed Web App URL and Google Client ID
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbz4nRldFSuj5zG6UQXLsu4PAU19UzKoHU6JdMdrVvn1d6s4Yac4tqRZVEU-IRCVh5l7Dg/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbigyj1ATwEUI6-TjggRg0dEBvkj34_7IF63hh2vgNKud3y8rc4c6-A0pexFAKY4iu8FQ/exec";
         const GOOGLE_CLIENT_ID = "261041121613-lvsf735ep46eo5ftvtk1llo2ir87263t.apps.googleusercontent.com";
 
         // Global states
@@ -309,7 +323,7 @@
                 });
                 google.accounts.id.renderButton(
                     document.getElementById("g-signin-button"),
-                    { theme: "dark", size: "medium", text: "signin_with" }
+                    { theme: "dark", size: "medium", text: "signin_with", height: 38 }
                 );
             }
         };
@@ -364,6 +378,31 @@
             announce(`Đã chuyển sang bộ lọc ${filter === 'all' ? 'Tất cả' : filter === 'answered' ? 'Đã trả lời' : 'Chưa trả lời'}`);
         }
 
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            try {
+                if (dateStr.includes("GMT") || dateStr.includes("-")) {
+                    return new Date(dateStr);
+                }
+                const parts = dateStr.split(" ");
+                const dateParts = parts[0].split("/");
+                if (dateParts.length !== 3) return null;
+                const day = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]) - 1;
+                const year = parseInt(dateParts[2]);
+                let hours = 0;
+                let minutes = 0;
+                if (parts[1]) {
+                    const timeParts = parts[1].split(":");
+                    hours = parseInt(timeParts[0]) || 0;
+                    minutes = parseInt(timeParts[1]) || 0;
+                }
+                return new Date(year, month, day, hours, minutes);
+            } catch (e) {
+                return null;
+            }
+        }
+
         // Render submissions feed matching filters and search text
         function renderFeed() {
             const container = document.getElementById("faq-feed");
@@ -375,11 +414,33 @@
             cards.forEach(card => card.remove());
 
             const searchText = document.getElementById("search-input").value.toLowerCase().trim();
+            const timeFilter = document.getElementById("time-filter").value;
 
             const filtered = submissionsList.filter(item => {
                 // Apply filter state
                 if (activeFilter === 'answered' && !item.replyUrl) return false;
                 if (activeFilter === 'unanswered' && item.replyUrl) return false;
+
+                // Apply time filter
+                if (timeFilter !== 'all') {
+                    const itemDate = parseDate(item.date);
+                    if (itemDate) {
+                        const now = new Date();
+                        const diffTime = Math.abs(now - itemDate);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        if (timeFilter === 'today') {
+                            const isSameDay = itemDate.getDate() === now.getDate() && 
+                                              itemDate.getMonth() === now.getMonth() && 
+                                              itemDate.getFullYear() === now.getFullYear();
+                            if (!isSameDay) return false;
+                        } else if (timeFilter === 'week' && diffDays > 7) {
+                            return false;
+                        } else if (timeFilter === 'month' && diffDays > 30) {
+                            return false;
+                        }
+                    }
+                }
 
                 // Apply search text
                 if (searchText) {
