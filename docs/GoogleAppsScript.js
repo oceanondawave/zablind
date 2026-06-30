@@ -80,7 +80,7 @@ function doGet(e) {
     }
     
     // Extract raw debug rows for diagnosis
-    var rawRows = data.slice(0, 3).map(function(r) { return r.map(function(c) { return c ? c.toString() : ""; }); });
+    var rawRows = data.slice(0, 15).map(function(r) { return r.map(function(c) { return c ? c.toString() : ""; }); });
     
     return ContentService.createTextOutput(JSON.stringify({ 
       headers: headers, 
