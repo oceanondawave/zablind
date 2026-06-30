@@ -163,7 +163,7 @@ function doPost(e) {
       var file = folder.createFile(blob);
       
       // Make file public to allow browser HTML5 playback
-      file.setSharing(Drive.Access.ANYONE_WITH_LINK, Drive.Permission.VIEW);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
       // Construct a direct download link for HTML5 <audio src="..."> element
       var directLink = "https://docs.google.com/uc?export=download&id=" + file.getId();
