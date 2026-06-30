@@ -79,10 +79,14 @@ function doGet(e) {
       });
     }
     
-    // Reverse list to show newest questions first
-    submissions.reverse();
+    // Extract raw debug rows for diagnosis
+    var rawRows = data.slice(0, 3).map(function(r) { return r.map(function(c) { return c ? c.toString() : ""; }); });
     
-    return ContentService.createTextOutput(JSON.stringify({ headers: headers, submissions: submissions }))
+    return ContentService.createTextOutput(JSON.stringify({ 
+      headers: headers, 
+      rawRows: rawRows,
+      submissions: submissions 
+    }))
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (err) {
