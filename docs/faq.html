@@ -310,8 +310,10 @@
             try {
                 const response = await fetch(API_ENDPOINT);
                 if (!response.ok) throw new Error("Fetch failed");
-                submissionsList = await response.json();
+                const data = await response.json();
+                submissionsList = Array.isArray(data) ? data : (data.submissions || []);
                 console.log("Loaded submissions:", submissionsList);
+
             } catch (err) {
                 console.error("Error loading submissions:", err);
                 submissionsList = [];
