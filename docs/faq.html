@@ -277,6 +277,12 @@
         window.onload = function () {
             fetchSubmissions();
 
+            // Check if there is an existing session token saved
+            const savedToken = localStorage.getItem("zablind_admin_token");
+            if (savedToken) {
+                verifyAdminSession(savedToken);
+            }
+
             // Setup Search event listener
             document.getElementById("search-input").addEventListener("input", function (e) {
                 renderFeed();
@@ -505,36 +511,53 @@
             announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
         }
 
+        // Verify Admin Session via Apps Script Backend
+        async function verifyAdminSession(token) {
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "verify_admin",
+                        idToken: token
+                    })
+                });
+                const result = response.ok ? await response.json() : { success: false };
+                if (result.success) {
+                    idToken = token;
+                    adminEmail = result.email;
+                    
+                    // Show admin UI elements
+                    document.getElementById("g-signin-button").classList.add("hidden");
+                    document.getElementById("admin-user-info").classList.remove("hidden");
+                    document.getElementById("admin-email").textContent = adminEmail;
+                    
+                    announce(`Chào mừng trở lại quản trị viên: ${adminEmail}`);
+                    renderFeed();
+                } else {
+                    handleSignOut();
+                }
+            } catch (err) {
+                console.error("Session verification failed:", err);
+                handleSignOut();
+            }
+        }
+
         // Handle Google credential sign-in token
         function handleCredentialResponse(response) {
-            idToken = response.credential;
-            
-            // Decode payload locally just to display email on frontend
-            try {
-                const base64Url = idToken.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-
-                const decoded = JSON.parse(jsonPayload);
-                adminEmail = decoded.email;
-                
-                // Show admin elements
-                document.getElementById("g-signin-button").classList.add("hidden");
-                document.getElementById("admin-user-info").classList.remove("hidden");
-                document.getElementById("admin-email").textContent = adminEmail;
-                
-                announce(`Đã đăng nhập quản trị viên: ${adminEmail}`);
-                renderFeed(); // Re-render to show admin control panels
-            } catch (e) {
-                console.error("Failed to parse token payload", e);
-            }
+            const token = response.credential;
+            verifyAdminSession(token).then(() => {
+                if (idToken === token) {
+                    localStorage.setItem("zablind_admin_token", token);
+                } else {
+                    alert("Tài khoản Google này không có quyền quản trị Zablind.");
+                }
+            });
         }
 
         function handleSignOut() {
             idToken = null;
             adminEmail = null;
+            localStorage.removeItem("zablind_admin_token");
             document.getElementById("admin-user-info").classList.add("hidden");
             document.getElementById("g-signin-button").classList.remove("hidden");
             announce("Đã đăng xuất quản trị viên");
