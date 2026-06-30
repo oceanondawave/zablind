@@ -110,8 +110,8 @@ function doGet(e) {
       if (rawReplyUrl) {
         var fileId = extractFileId(rawReplyUrl);
         if (fileId && activeFileIds.has(fileId)) {
-          // Normalize URL to high-performance cookie-less streaming format
-          replyUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+          // Normalize URL to drive.usercontent streaming format
+          replyUrl = "https://drive.usercontent.google.com/download?id=" + fileId + "&export=download";
         } else {
           // File was deleted on Google Drive! Sync-delete it from Google Sheets
           sheet.getRange(i + 1, replyIdx + 1).setValue("");
@@ -205,8 +205,8 @@ function doPost(e) {
       // Make file public to allow browser HTML5 playback
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
-      // Construct a direct download link for HTML5 <audio src="..."> element
-      var directLink = "https://lh3.googleusercontent.com/d/" + file.getId();
+      // Construct a direct streaming link for HTML5 <audio src="..."> element
+      var directLink = "https://drive.usercontent.google.com/download?id=" + file.getId() + "&export=download";
       
       // Update cell in Sheet
       sheet.getRange(rowIndex, replyIdx + 1).setValue(directLink);
