@@ -274,41 +274,8 @@
         let recordingDuration = 0;
         let recordedBlob = null;
 
-        // Dummy/Fallback data shown when Web App API is not yet configured
-        const dummySubmissions = [
-            {
-                rowIndex: 2,
-                date: "28/06/2026 14:15",
-                name: "Nguyễn Văn Hùng",
-                question: "Zablind có tương thích tốt với màn hình cảm ứng trên laptop chạy Windows không?",
-                replyUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-            },
-            {
-                rowIndex: 3,
-                date: "27/06/2026 09:30",
-                name: "Người dùng ẩn danh",
-                question: "Tại sao khi mở Zalo thì thỉnh thoảng phím tắt A và D không nhận cuộc gọi được ngay?",
-                replyUrl: ""
-            },
-            {
-                rowIndex: 4,
-                date: "25/06/2026 17:40",
-                name: "Trần Thị Lan",
-                question: "Mình nghe nói dự án này mã nguồn mở, mình muốn tham gia đóng góp mã nguồn thì gửi liên hệ qua đâu?",
-                replyUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-            }
-        ];
-
         window.onload = function () {
-            // Check if configurations are default
-            if (API_ENDPOINT.includes("PLACEHOLDER") || GOOGLE_CLIENT_ID.includes("PLACEHOLDER")) {
-                document.getElementById("config-warning").classList.remove("hidden");
-                announce("Cảnh báo: Bạn chưa cấu hình hệ thống web app. Hiện đang chạy dữ liệu mẫu.");
-                submissionsList = dummySubmissions;
-                renderFeed();
-            } else {
-                fetchSubmissions();
-            }
+            fetchSubmissions();
 
             // Setup Search event listener
             document.getElementById("search-input").addEventListener("input", function (e) {
@@ -316,16 +283,14 @@
             });
 
             // Initialize Google Identity Services (GIS) Sign-in
-            if (!GOOGLE_CLIENT_ID.includes("PLACEHOLDER")) {
-                google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
-                    callback: handleCredentialResponse
-                });
-                google.accounts.id.renderButton(
-                    document.getElementById("g-signin-button"),
-                    { theme: "dark", size: "medium", text: "signin_with", height: 38 }
-                );
-            }
+            google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("g-signin-button"),
+                { theme: "dark", size: "medium", text: "signin_with", height: 38 }
+            );
         };
 
         // Screen reader announcer helper
@@ -348,9 +313,9 @@
                 submissionsList = await response.json();
                 console.log("Loaded submissions:", submissionsList);
             } catch (err) {
-                console.error("Error loading submissions, falling back to offline dummy data:", err);
-                submissionsList = dummySubmissions;
-                announce("Lỗi kết nối máy chủ. Hiển thị dữ liệu ngoại tuyến.");
+                console.error("Error loading submissions:", err);
+                submissionsList = [];
+                announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
             } finally {
                 loader.classList.add("hidden");
                 renderFeed();
@@ -615,7 +580,10 @@
             
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                mediaRecorder = new MediaRecorder(stream, { 
+                    mimeType: 'audio/webm',
+                    audioBitsPerSecond: 24000 // 24 kbps compression for speech
+                });
                 
                 mediaRecorder.ondataavailable = e => {
                     if (e.data.size > 0) audioChunks.push(e.data);
