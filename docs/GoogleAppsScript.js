@@ -63,7 +63,27 @@ function doGet(e) {
       SpreadsheetApp.flush();
     }
     
+    // Load active file IDs from Drive folder for 2-way sync
+    var activeFileIds = new Set();
+    var folderId = PropertiesService.getScriptProperties().getProperty("DRIVE_FOLDER_ID");
+    if (folderId) {
+      try {
+        var folder = DriveApp.getFolderById(folderId);
+        var files = folder.getFiles();
+        while (files.hasNext()) {
+          var file = files.next();
+          if (!file.isTrashed()) {
+            activeFileIds.add(file.getId());
+          }
+        }
+      } catch (driveErr) {
+        console.error("Failed to read Drive folder: " + driveErr);
+      }
+    }
+    
     var submissions = [];
+    var sheetUpdated = false;
+    
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       if (!row[questionIdx]) continue; // Skip empty rows
@@ -84,13 +104,33 @@ function doGet(e) {
         dateStr = "";
       }
       
+      // Perform 2-way sync with Google Drive
+      var rawReplyUrl = row[replyIdx] ? row[replyIdx].toString().trim() : "";
+      var replyUrl = "";
+      if (rawReplyUrl) {
+        var fileId = extractFileId(rawReplyUrl);
+        if (fileId && activeFileIds.has(fileId)) {
+          // Normalize URL to high-performance cookie-less streaming format
+          replyUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+        } else {
+          // File was deleted on Google Drive! Sync-delete it from Google Sheets
+          sheet.getRange(i + 1, replyIdx + 1).setValue("");
+          sheetUpdated = true;
+          replyUrl = "";
+        }
+      }
+      
       submissions.push({
         rowIndex: i + 1, // 1-based row index for updating/deleting later
         date: dateStr,
         name: row[nameIdx] ? row[nameIdx].toString().trim() : "Người dùng ẩn danh",
         question: row[questionIdx] ? row[questionIdx].toString().trim() : "",
-        replyUrl: row[replyIdx] ? row[replyIdx].toString().trim() : ""
+        replyUrl: replyUrl
       });
+    }
+    
+    if (sheetUpdated) {
+      SpreadsheetApp.flush();
     }
     
     // Reverse list to show newest questions first
@@ -166,7 +206,7 @@ function doPost(e) {
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
       // Construct a direct download link for HTML5 <audio src="..."> element
-      var directLink = "https://docs.google.com/uc?export=download&id=" + file.getId();
+      var directLink = "https://lh3.googleusercontent.com/d/" + file.getId();
       
       // Update cell in Sheet
       sheet.getRange(rowIndex, replyIdx + 1).setValue(directLink);
@@ -206,10 +246,18 @@ function verifyGoogleToken(idToken) {
   return null;
 }
 
-function deleteFileFromDrive(url) {
+function extractFileId(url) {
+  if (!url) return null;
   var match = url.match(/id=([^&]+)/);
-  if (match) {
-    var fileId = match[1];
+  if (match) return match[1];
+  var matchD = url.match(/\/d\/([^/?]+)/);
+  if (matchD) return matchD[1];
+  return null;
+}
+
+function deleteFileFromDrive(url) {
+  var fileId = extractFileId(url);
+  if (fileId) {
     try {
       var file = DriveApp.getFileById(fileId);
       file.setTrashed(true); // Move to trash rather than permanent delete for safety
