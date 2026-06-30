@@ -308,25 +308,56 @@
             }, 100);
         }
 
-        // Fetch submissions from Google Apps Script Web App
+        // Fetch submissions from Google Apps Script Web App with Stale-While-Revalidate caching
         async function fetchSubmissions() {
             const loader = document.getElementById("loading-indicator");
-            loader.classList.remove("hidden");
             
+            // 1. Try to load from localStorage cache first (SWR: Stale)
+            const cachedData = localStorage.getItem("zablind_faq_cache");
+            if (cachedData) {
+                try {
+                    submissionsList = JSON.parse(cachedData);
+                    console.log("Loaded from cache:", submissionsList);
+                    loader.classList.add("hidden"); // Hide loader immediately since we have cache
+                    renderFeed();
+                } catch (e) {
+                    console.error("Failed to parse cache", e);
+                }
+            }
+            
+            // If no cache, make sure loader is visible
+            if (!submissionsList || submissionsList.length === 0) {
+                loader.classList.remove("hidden");
+            }
+            
+            // 2. Fetch fresh data from API in background (SWR: Revalidate)
             try {
                 const response = await fetch(API_ENDPOINT);
                 if (!response.ok) throw new Error("Fetch failed");
                 const data = await response.json();
-                submissionsList = Array.isArray(data) ? data : (data.submissions || []);
-                console.log("Loaded submissions:", submissionsList);
-
+                const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
+                
+                // Compare fresh data with cached data
+                const freshString = JSON.stringify(freshSubmissions);
+                const cachedString = JSON.stringify(submissionsList);
+                
+                if (freshString !== cachedString) {
+                    console.log("Data changed! Updating feed and cache.");
+                    submissionsList = freshSubmissions;
+                    localStorage.setItem("zablind_faq_cache", freshString);
+                    renderFeed();
+                } else {
+                    console.log("Data is up-to-date (no change).");
+                }
             } catch (err) {
-                console.error("Error loading submissions:", err);
-                submissionsList = [];
-                announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
+                console.error("Error loading submissions in background:", err);
+                if (!submissionsList || submissionsList.length === 0) {
+                    submissionsList = [];
+                    announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
+                    renderFeed();
+                }
             } finally {
                 loader.classList.add("hidden");
-                renderFeed();
             }
         }
 
