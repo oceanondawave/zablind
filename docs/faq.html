@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giải đáp thắc mắc (FAQ) - Zablind</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --background: 222.2 84% 4.9%;
+                --foreground: 210 40% 98%;
+                --card: 222.2 84% 4.9%;
+                --card-foreground: 210 40% 98%;
+                --primary: 217.2 91.2% 59.8%;
+                --primary-foreground: 222.2 47.4% 11.2%;
+                --secondary: 217.2 32.6% 17.5%;
+                --secondary-foreground: 210 40% 98%;
+                --muted: 217.2 32.6% 17.5%;
+                --muted-foreground: 215 20.2% 65.1%;
+                --accent: 217.2 32.6% 17.5%;
+                --accent-foreground: 210 40% 98%;
+                --border: 217.2 32.6% 17.5%;
+                --input: 217.2 32.6% 17.5%;
+                --ring: 224.3 76.3% 48%;
+                --radius: 0.5rem;
+            }
+        }
+        @layer base {
+            * {
+                @apply border-border;
+            }
+            body {
+                @apply bg-background text-foreground;
+                font-feature-settings: "rlig" 1, "calt" 1;
+            }
+        }
+    </style>
+
+    <!-- Google Identity Services (GIS) for Google Sign-in -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body class="min-h-screen antialiased py-10 px-4 md:px-0">
+    <!-- Live region for accessibility/screen reader announcements -->
+    <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <main class="max-w-3xl mx-auto space-y-8" role="main">
+        <!-- Back navigation & Title -->
+        <header class="space-y-4">
+            <a href="index.html" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Quay lại trang chủ
+            </a>
+            <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl text-primary">
+                Giải đáp thắc mắc (FAQ)
+            </h1>
+            <p class="text-lg text-muted-foreground leading-relaxed">
+                Nơi tổng hợp câu hỏi từ người dùng gửi qua biểu mẫu và phản hồi chính thức bằng giọng nói từ tác giả.
+            </p>
+        </header>
+
+        <!-- Configuration Warning (Displays only if API endpoints are placeholder) -->
+        <div id="config-warning" class="hidden rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 text-yellow-500 text-sm space-y-2">
+            <p class="font-bold">⚠️ Chưa cấu hình Web App Google Sheets &amp; Drive</p>
+            <p>Trang web hiện đang hiển thị dữ liệu mẫu. Để kết nối với Google Sheet của bạn:</p>
+            <ol class="list-decimal pl-5 space-y-1 text-xs">
+                <li>Sao chép mã nguồn của <strong>GoogleAppsScript.js</strong> trong thư mục của bạn.</li>
+                <li>Dán và triển khai nó dưới dạng Web App trong tài khoản Google chứa Sheet của bạn.</li>
+                <li>Mở file <code>docs/faq.html</code> và cập nhật giá trị <code>API_ENDPOINT</code> và <code>GOOGLE_CLIENT_ID</code>.</li>
+            </ol>
+        </div>
+
+        <!-- Search, Filters, and Admin Login row -->
+        <section class="space-y-4" aria-label="Tìm kiếm và bộ lọc">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <!-- Search input -->
+                <div class="relative flex-1">
+                    <label for="search-input" class="sr-only">Tìm kiếm câu hỏi hoặc tên người gửi</label>
+                    <input id="search-input" type="text" placeholder="Tìm kiếm câu hỏi hoặc người gửi..."
+                        class="w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                </div>
+
+                <!-- Admin Sign In Container -->
+                <div class="flex items-center gap-3">
+                    <div id="g-signin-button"></div>
+                    <div id="admin-user-info" class="hidden flex items-center gap-2 text-xs bg-muted/40 border p-1 px-2 rounded-md">
+                        <span id="admin-email" class="text-muted-foreground"></span>
+                        <button onclick="handleSignOut()" class="text-red-400 hover:text-red-300 font-semibold underline underline-offset-2">Đăng xuất</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters tab -->
+            <div class="flex items-center gap-2 border-b pb-2 flex-wrap" role="tablist">
+                <button onclick="setFilter('all')" id="filter-all" role="tab" aria-selected="true"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium transition-all bg-primary text-primary-foreground shadow-sm">
+                    Tất cả
+                </button>
+                <button onclick="setFilter('answered')" id="filter-answered" role="tab" aria-selected="false"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
+                    Đã trả lời
+                </button>
+                <button onclick="setFilter('unanswered')" id="filter-unanswered" role="tab" aria-selected="false"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
+                    Chưa trả lời
+                </button>
+            </div>
+        </section>
+
+        <!-- Submissions Feed -->
+        <section id="faq-feed" class="space-y-6" aria-label="Danh sách giải đáp">
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="rounded-lg border bg-card p-8 flex flex-col items-center justify-center space-y-3">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p class="text-sm text-muted-foreground">Đang tải danh sách câu hỏi...</p>
+            </div>
+            <!-- Submissions will render dynamically here -->
+        </section>
+    </main>
+
+    <!-- Voice Recording Admin Modal/Overlay -->
+    <div id="recorder-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="bg-card border rounded-lg max-w-md w-full p-6 shadow-lg space-y-6 relative m-4">
+            <button onclick="closeRecorderModal()" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground rounded-sm p-1 focus:ring-2 focus:ring-primary focus:outline-none" aria-label="Đóng bảng ghi âm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            
+            <div class="space-y-1">
+                <h2 id="modal-title" class="text-lg font-semibold">Trả lời bằng giọng nói</h2>
+                <p class="text-xs text-muted-foreground">Ghi âm trực tiếp từ trình duyệt để gửi phản hồi.</p>
+            </div>
+
+            <!-- Question summary inside modal -->
+            <div class="p-3 bg-muted/40 border rounded-md text-xs text-muted-foreground max-h-24 overflow-y-auto">
+                <strong class="text-foreground">Người gửi:</strong> <span id="modal-sender"></span><br>
+                <strong class="text-foreground">Câu hỏi:</strong> <span id="modal-question"></span>
+            </div>
+
+            <!-- Recorder Status & Visual Indicator -->
+            <div class="flex flex-col items-center justify-center py-6 bg-muted/20 border rounded-lg space-y-3">
+                <div id="record-indicator" class="h-10 w-10 rounded-full bg-red-600 flex items-center justify-center text-white animate-pulse hidden">
+                    <svg class="h-5 w-5 fill-current" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div id="idle-indicator" class="h-10 w-10 rounded-full bg-muted border flex items-center justify-center text-muted-foreground">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="22"/>
+                    </svg>
+                </div>
+                <span id="record-timer" class="text-sm font-mono font-medium">00:00</span>
+                <span id="record-status" class="text-xs text-muted-foreground">Sẵn sàng ghi âm</span>
+            </div>
+
+            <!-- Local playback for preview -->
+            <div id="preview-container" class="hidden space-y-2">
+                <label class="text-xs font-semibold text-muted-foreground block">Nghe thử bản ghi:</label>
+                <audio id="local-audio-player" controls class="w-full h-8"></audio>
+            </div>
+
+            <!-- Control Actions inside modal -->
+            <div class="flex items-center gap-2">
+                <button id="btn-start-record" onclick="startRecording()" class="flex-1 inline-flex items-center justify-center h-10 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-md text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2">
+                    Bắt đầu ghi
+                </button>
+                <button id="btn-stop-record" onclick="stopRecording()" disabled class="flex-1 inline-flex items-center justify-center h-10 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white rounded-md text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    Dừng ghi
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 pt-2 border-t">
+                <button id="btn-upload-reply" onclick="uploadAudio()" disabled class="flex-1 inline-flex items-center justify-center h-10 px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-md text-sm hover:opacity-90 disabled:opacity-50 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    Lưu câu trả lời
+                </button>
+                <button onclick="closeRecorderModal()" class="inline-flex items-center justify-center h-10 px-4 py-2 border rounded-md text-sm font-medium hover:bg-muted/40 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    Hủy
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-side FAQ Application Logic -->
+    <script>
+        // CONFIGURATION: Replace these with your actual deployed Web App URL and Google Client ID
+        const API_ENDPOINT = "https://script.google.com/macros/s/PLACEHOLDER/exec";
+        const GOOGLE_CLIENT_ID = "PLACEHOLDER.apps.googleusercontent.com";
+
+        // Global states
+        let submissionsList = [];
+        let activeFilter = 'all';
+        let idToken = null;
+        let adminEmail = null;
+        let selectedRowIndex = null;
+        
+        // Media Recorder variables
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordInterval = null;
+        let recordingDuration = 0;
+        let recordedBlob = null;
+
+        // Dummy/Fallback data shown when Web App API is not yet configured
+        const dummySubmissions = [
+            {
+                rowIndex: 2,
+                date: "28/06/2026 14:15",
+                name: "Nguyễn Văn Hùng",
+                question: "Zablind có tương thích tốt với màn hình cảm ứng trên laptop chạy Windows không?",
+                replyUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+            },
+            {
+                rowIndex: 3,
+                date: "27/06/2026 09:30",
+                name: "Người dùng ẩn danh",
+                question: "Tại sao khi mở Zalo thì thỉnh thoảng phím tắt A và D không nhận cuộc gọi được ngay?",
+                replyUrl: ""
+            },
+            {
+                rowIndex: 4,
+                date: "25/06/2026 17:40",
+                name: "Trần Thị Lan",
+                question: "Mình nghe nói dự án này mã nguồn mở, mình muốn tham gia đóng góp mã nguồn thì gửi liên hệ qua đâu?",
+                replyUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+            }
+        ];
+
+        window.onload = function () {
+            // Check if configurations are default
+            if (API_ENDPOINT.includes("PLACEHOLDER") || GOOGLE_CLIENT_ID.includes("PLACEHOLDER")) {
+                document.getElementById("config-warning").classList.remove("hidden");
+                announce("Cảnh báo: Bạn chưa cấu hình hệ thống web app. Hiện đang chạy dữ liệu mẫu.");
+                submissionsList = dummySubmissions;
+                renderFeed();
+            } else {
+                fetchSubmissions();
+            }
+
+            // Setup Search event listener
+            document.getElementById("search-input").addEventListener("input", function (e) {
+                renderFeed();
+            });
+
+            // Initialize Google Identity Services (GIS) Sign-in
+            if (!GOOGLE_CLIENT_ID.includes("PLACEHOLDER")) {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleCredentialResponse
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById("g-signin-button"),
+                    { theme: "dark", size: "medium", text: "signin_with" }
+                );
+            }
+        };
+
+        // Screen reader announcer helper
+        function announce(message) {
+            const announcer = document.getElementById("announcer");
+            announcer.textContent = "";
+            setTimeout(() => {
+                announcer.textContent = message;
+            }, 100);
+        }
+
+        // Fetch submissions from Google Apps Script Web App
+        async function fetchSubmissions() {
+            const loader = document.getElementById("loading-indicator");
+            loader.classList.remove("hidden");
+            
+            try {
+                const response = await fetch(API_ENDPOINT);
+                if (!response.ok) throw new Error("Fetch failed");
+                submissionsList = await response.json();
+                console.log("Loaded submissions:", submissionsList);
+            } catch (err) {
+                console.error("Error loading submissions, falling back to offline dummy data:", err);
+                submissionsList = dummySubmissions;
+                announce("Lỗi kết nối máy chủ. Hiển thị dữ liệu ngoại tuyến.");
+            } finally {
+                loader.classList.add("hidden");
+                renderFeed();
+            }
+        }
+
+        // Set list filter status and render
+        function setFilter(filter) {
+            activeFilter = filter;
+            
+            // Highlight active button
+            const buttons = ['all', 'answered', 'unanswered'];
+            buttons.forEach(btn => {
+                const element = document.getElementById(`filter-${btn}`);
+                if (btn === filter) {
+                    element.className = "rounded-md px-3 py-1.5 text-sm font-medium transition-all bg-primary text-primary-foreground shadow-sm";
+                    element.setAttribute("aria-selected", "true");
+                } else {
+                    element.className = "rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40";
+                    element.setAttribute("aria-selected", "false");
+                }
+            });
+
+            renderFeed();
+            announce(`Đã chuyển sang bộ lọc ${filter === 'all' ? 'Tất cả' : filter === 'answered' ? 'Đã trả lời' : 'Chưa trả lời'}`);
+        }
+
+        // Render submissions feed matching filters and search text
+        function renderFeed() {
+            const container = document.getElementById("faq-feed");
+            // Keep the loading indicator element
+            const loader = document.getElementById("loading-indicator");
+            
+            // Clean previous cards
+            const cards = container.querySelectorAll(".faq-card");
+            cards.forEach(card => card.remove());
+
+            const searchText = document.getElementById("search-input").value.toLowerCase().trim();
+
+            const filtered = submissionsList.filter(item => {
+                // Apply filter state
+                if (activeFilter === 'answered' && !item.replyUrl) return false;
+                if (activeFilter === 'unanswered' && item.replyUrl) return false;
+
+                // Apply search text
+                if (searchText) {
+                    const matchName = item.name.toLowerCase().includes(searchText);
+                    const matchQuestion = item.question.toLowerCase().includes(searchText);
+                    return matchName || matchQuestion;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                const emptyCard = document.createElement("div");
+                emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
+                emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
+                container.appendChild(emptyCard);
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "faq-card rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 transition-all hover:shadow-md";
+                card.setAttribute("role", "article");
+
+                // Headers & Info
+                let headerHtml = `
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-foreground text-sm">${escapeHtml(item.name)}</span>
+                            <span class="text-xs text-muted-foreground">${escapeHtml(item.date)}</span>
+                        </div>
+                    </div>
+                `;
+
+                // Submissions content
+                let contentHtml = `
+                    <p class="text-sm text-muted-foreground leading-relaxed">${escapeHtml(item.question)}</p>
+                `;
+
+                // Audio Reply section
+                let audioHtml = "";
+                if (item.replyUrl) {
+                    audioHtml = `
+                        <div class="pt-2 space-y-2 border-t">
+                            <div class="flex items-center gap-2 text-xs font-semibold text-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="22"/>
+                                </svg>
+                                Phản hồi bằng giọng nói của tác giả
+                            </div>
+                            <audio src="${item.replyUrl}" controls class="w-full h-9 rounded-md bg-muted/40" preload="none" aria-label="Âm thanh trả lời cho câu hỏi của ${escapeHtml(item.name)}"></audio>
+                        </div>
+                    `;
+                } else {
+                    audioHtml = `
+                        <div class="pt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1.5 border-t">
+                            <span class="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                            Đang chờ phản hồi bằng giọng nói từ tác giả...
+                        </div>
+                    `;
+                }
+
+                // Admin Controls
+                let adminHtml = "";
+                if (idToken) {
+                    adminHtml = `
+                        <div class="pt-3 border-t flex items-center gap-2 flex-wrap text-xs">
+                            <button onclick="openRecorderModal(${item.rowIndex}, '${escapeJs(item.name)}', '${escapeJs(item.question)}')" 
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="22"/>
+                                </svg>
+                                ${item.replyUrl ? 'Ghi âm đè/Sửa' : 'Trả lời bằng giọng nói'}
+                            </button>
+                            ${item.replyUrl ? `
+                                <button onclick="deleteReply(${item.rowIndex})" 
+                                    class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
+                                    </svg>
+                                    Xóa câu trả lời
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = headerHtml + contentHtml + audioHtml + adminHtml;
+                container.appendChild(card);
+            });
+
+            announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
+        }
+
+        // Handle Google credential sign-in token
+        function handleCredentialResponse(response) {
+            idToken = response.credential;
+            
+            // Decode payload locally just to display email on frontend
+            try {
+                const base64Url = idToken.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                const decoded = JSON.parse(jsonPayload);
+                adminEmail = decoded.email;
+                
+                // Show admin elements
+                document.getElementById("g-signin-button").classList.add("hidden");
+                document.getElementById("admin-user-info").classList.remove("hidden");
+                document.getElementById("admin-email").textContent = adminEmail;
+                
+                announce(`Đã đăng nhập quản trị viên: ${adminEmail}`);
+                renderFeed(); // Re-render to show admin control panels
+            } catch (e) {
+                console.error("Failed to parse token payload", e);
+            }
+        }
+
+        function handleSignOut() {
+            idToken = null;
+            adminEmail = null;
+            document.getElementById("admin-user-info").classList.add("hidden");
+            document.getElementById("g-signin-button").classList.remove("hidden");
+            announce("Đã đăng xuất quản trị viên");
+            renderFeed(); // Hide controls
+        }
+
+        // Recorder dialog functions
+        function openRecorderModal(rowIndex, name, question) {
+            selectedRowIndex = rowIndex;
+            document.getElementById("modal-sender").textContent = name;
+            document.getElementById("modal-question").textContent = question;
+            
+            // Reset recorder state inside modal
+            recordedBlob = null;
+            recordingDuration = 0;
+            audioChunks = [];
+            document.getElementById("record-timer").textContent = "00:00";
+            document.getElementById("record-status").textContent = "Sẵn sàng ghi âm";
+            document.getElementById("btn-upload-reply").disabled = true;
+            document.getElementById("preview-container").classList.add("hidden");
+            document.getElementById("idle-indicator").classList.remove("hidden");
+            document.getElementById("record-indicator").classList.add("hidden");
+            
+            // Show modal
+            document.getElementById("recorder-modal").classList.remove("hidden");
+            document.getElementById("btn-start-record").focus();
+            announce("Đã mở bảng ghi âm trả lời.");
+        }
+
+        function closeRecorderModal() {
+            // Stop recorder if active
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+            clearInterval(recordInterval);
+            document.getElementById("recorder-modal").classList.add("hidden");
+            selectedRowIndex = null;
+            announce("Đã đóng bảng ghi âm.");
+        }
+
+        // Web Audio recording functions
+        async function startRecording() {
+            audioChunks = [];
+            recordingDuration = 0;
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(recordedBlob);
+                    const localPlayer = document.getElementById("local-audio-player");
+                    localPlayer.src = audioUrl;
+                    
+                    document.getElementById("preview-container").classList.remove("hidden");
+                    document.getElementById("btn-upload-reply").disabled = false;
+                    document.getElementById("record-status").textContent = "Đã hoàn thành ghi âm. Hãy nghe thử trước khi lưu.";
+                    announce("Ghi âm hoàn tất. Nút nghe thử và lưu đã sẵn sàng.");
+                    
+                    // Stop all microphone tracks to release mic
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                
+                // UI changes
+                document.getElementById("idle-indicator").classList.add("hidden");
+                document.getElementById("record-indicator").classList.remove("hidden");
+                document.getElementById("btn-start-record").disabled = true;
+                document.getElementById("btn-stop-record").disabled = false;
+                document.getElementById("btn-stop-record").focus();
+                document.getElementById("record-status").textContent = "Đang ghi âm giọng nói của bạn...";
+                
+                announce("Bắt đầu ghi âm.");
+
+                recordInterval = setInterval(() => {
+                    recordingDuration++;
+                    const minutes = ("0" + Math.floor(recordingDuration / 60)).slice(-2);
+                    const seconds = ("0" + (recordingDuration % 60)).slice(-2);
+                    document.getElementById("record-timer").textContent = minutes + ":" + seconds;
+                }, 1000);
+
+            } catch (err) {
+                console.error("Microphone permission denied or unsupported", err);
+                document.getElementById("record-status").textContent = "Không thể sử dụng micro. Vui lòng cấp quyền.";
+                announce("Không thể bắt đầu ghi âm. Vui lòng kiểm tra quyền sử dụng Micro.");
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+            clearInterval(recordInterval);
+            
+            // UI changes
+            document.getElementById("btn-start-record").disabled = false;
+            document.getElementById("btn-stop-record").disabled = true;
+            document.getElementById("record-indicator").classList.add("hidden");
+            document.getElementById("idle-indicator").classList.remove("hidden");
+            document.getElementById("btn-upload-reply").focus();
+        }
+
+        // Convert audio blob to base64 and upload to Apps Script
+        function uploadAudio() {
+            if (!recordedBlob || !selectedRowIndex || !idToken) return;
+
+            document.getElementById("record-status").textContent = "Đang mã hóa và tải bản ghi âm lên Google Drive...";
+            document.getElementById("btn-upload-reply").disabled = true;
+            announce("Bắt đầu lưu câu trả lời...");
+
+            const reader = new FileReader();
+            reader.readAsDataURL(recordedBlob);
+            reader.onloadend = async function () {
+                const base64data = reader.result.split(',')[1]; // Strip base64 metadata prefix
+                
+                try {
+                    const response = await fetch(API_ENDPOINT, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            action: "save_reply",
+                            idToken: idToken,
+                            rowIndex: selectedRowIndex,
+                            audioBase64: base64data,
+                            mimeType: "audio/webm"
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        announce("Lưu câu trả lời thành công!");
+                        
+                        // Update UI list state locally without making a full reload
+                        const sub = submissionsList.find(x => x.rowIndex === selectedRowIndex);
+                        if (sub) sub.replyUrl = result.url;
+                        
+                        closeRecorderModal();
+                        renderFeed();
+                    } else {
+                        throw new Error(result.error || "Upload error");
+                    }
+                } catch (err) {
+                    console.error("Failed to upload audio:", err);
+                    document.getElementById("record-status").textContent = "Tải lên thất bại: " + err.message;
+                    document.getElementById("btn-upload-reply").disabled = false;
+                    announce("Có lỗi xảy ra: " + err.message);
+                }
+            };
+        }
+
+        // Delete reply cell from Sheet and Drive
+        async function deleteReply(rowIndex) {
+            if (!idToken || !confirm("Bạn có chắc chắn muốn xóa câu trả lời bằng giọng nói này?")) return;
+            
+            announce("Đang xóa câu trả lời...");
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "delete_reply",
+                        idToken: idToken,
+                        rowIndex: rowIndex
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    announce("Xóa câu trả lời thành công!");
+                    const sub = submissionsList.find(x => x.rowIndex === rowIndex);
+                    if (sub) sub.replyUrl = "";
+                    renderFeed();
+                } else {
+                    throw new Error(result.error || "Delete error");
+                }
+            } catch (err) {
+                console.error("Failed to delete audio:", err);
+                alert("Xóa thất bại: " + err.message);
+                announce("Lỗi: " + err.message);
+            }
+        }
+
+        // Sanitization helpers
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function escapeJs(str) {
+            if (!str) return '';
+            return str
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '\\r');
+        }
+    </script>
+</body>
+
+</html>
