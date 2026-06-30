@@ -486,10 +486,12 @@
                 // Audio Reply section
                 let audioHtml = "";
                 if (item.replyUrl) {
-                    // Extract file ID to build Google Drive preview embed URL
+                    // Extract file ID to build direct streaming URL
                     const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
                     const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
-                    const embedUrl = driveFileId ? `https://drive.google.com/file/d/${driveFileId}/preview` : item.replyUrl;
+                    const streamUrl = driveFileId
+                        ? `https://drive.usercontent.google.com/download?id=${driveFileId}&export=download`
+                        : item.replyUrl;
                     audioHtml = `
                         <div class="pt-2 space-y-2 border-t">
                             <div class="flex items-center gap-2 text-xs font-semibold text-primary">
@@ -500,7 +502,7 @@
                                 </svg>
                                 Phản hồi bằng giọng nói của tác giả
                             </div>
-                            <iframe src="${embedUrl}" allow="autoplay" width="100%" height="80" style="border:none;border-radius:6px;background:transparent" aria-label="Âm thanh trả lời cho câu hỏi của ${escapeHtml(item.name)}"></iframe>
+                            <audio src="${streamUrl}" crossorigin="anonymous" controls class="w-full h-9 rounded-md bg-muted/40" preload="none" aria-label="Âm thanh trả lời cho câu hỏi của ${escapeHtml(item.name)}"></audio>
                         </div>
                     `;
                 } else {
