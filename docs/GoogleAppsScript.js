@@ -128,6 +128,10 @@ function doPost(e) {
     if (!adminEmail || email.toLowerCase().trim() !== adminEmail.toLowerCase().trim()) {
       return makeJsonResponse({ success: false, error: "Forbidden: You are not authorized to answer FAQs." });
     }
+
+    if (action === "verify_admin") {
+      return makeJsonResponse({ success: true, email: email });
+    }
     
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
