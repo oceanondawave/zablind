@@ -82,7 +82,7 @@ function doGet(e) {
     // Reverse list to show newest questions first
     submissions.reverse();
     
-    return ContentService.createTextOutput(JSON.stringify(submissions))
+    return ContentService.createTextOutput(JSON.stringify({ headers: headers, submissions: submissions }))
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (err) {
