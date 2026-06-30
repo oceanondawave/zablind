@@ -27,23 +27,37 @@ function doGet(e) {
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
     
-    // Dynamically locate column indices (0-based)
-    var nameIdx = headers.indexOf(COL_NAME);
-    if (nameIdx === -1) nameIdx = headers.indexOf("Name");
-    if (nameIdx === -1) nameIdx = 2; // default fallback
+    // Dynamically locate column indices (0-based) using robust normalized headers
+    function normalizeHeader(str) {
+      if (!str) return "";
+      return str.toString().toLowerCase()
+        .replace(/\s+/g, "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
     
-    var questionIdx = headers.indexOf(COL_QUESTION);
-    if (questionIdx === -1) questionIdx = headers.indexOf("Câu hỏi / Góp ý");
-    if (questionIdx === -1) questionIdx = headers.indexOf("Question");
-    if (questionIdx === -1) questionIdx = 3; // default fallback
+    var nameIdx = -1;
+    var questionIdx = -1;
+    var dateIdx = -1;
+    var replyIdx = -1;
     
-    var dateIdx = headers.indexOf(COL_DATE);
-    if (dateIdx === -1) dateIdx = headers.indexOf("Thời gian");
-    if (dateIdx === -1) dateIdx = 1; // default fallback
+    for (var idx = 0; idx < headers.length; idx++) {
+      var h = normalizeHeader(headers[idx]);
+      if (h.indexOf("tencua") !== -1 || h.indexOf("hovaten") !== -1 || h.indexOf("name") !== -1) {
+        nameIdx = idx;
+      } else if (h.indexOf("muonhoi") !== -1 || h.indexOf("gopy") !== -1 || h.indexOf("cauhoi") !== -1 || h.indexOf("question") !== -1 || h.indexOf("feedback") !== -1) {
+        questionIdx = idx;
+      } else if (h.indexOf("submittedat") !== -1 || h.indexOf("thoigian") !== -1 || h.indexOf("date") !== -1 || h.indexOf("timestamp") !== -1) {
+        dateIdx = idx;
+      } else if (h.indexOf("zablindvoicereply") !== -1 || h.indexOf("reply") !== -1) {
+        replyIdx = idx;
+      }
+    }
     
-    var replyIdx = headers.indexOf(COL_REPLY);
+    // Fallbacks if not found
+    if (nameIdx === -1) nameIdx = 3;
+    if (questionIdx === -1) questionIdx = 4;
+    if (dateIdx === -1) dateIdx = 2;
     if (replyIdx === -1) {
-      // Create Zablind Voice Reply column header if it doesn't exist
       replyIdx = headers.length;
       sheet.getRange(1, replyIdx + 1).setValue(COL_REPLY);
       SpreadsheetApp.flush();
@@ -79,14 +93,10 @@ function doGet(e) {
       });
     }
     
-    // Extract raw debug rows for diagnosis
-    var rawRows = data.slice(0, 15).map(function(r) { return r.map(function(c) { return c ? c.toString() : ""; }); });
+    // Reverse list to show newest questions first
+    submissions.reverse();
     
-    return ContentService.createTextOutput(JSON.stringify({ 
-      headers: headers, 
-      rawRows: rawRows,
-      submissions: submissions 
-    }))
+    return ContentService.createTextOutput(JSON.stringify(submissions))
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (err) {
