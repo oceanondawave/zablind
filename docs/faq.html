@@ -650,17 +650,37 @@
             
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream, { 
-                    mimeType: 'audio/webm',
-                    audioBitsPerSecond: 24000 // 24 kbps compression for speech
-                });
+                
+                // Determine a supported MIME type dynamically to support iOS/macOS Safari and various browsers
+                let options = { audioBitsPerSecond: 24000 };
+                let mimeType = '';
+                
+                if (typeof MediaRecorder.isTypeSupported === 'function') {
+                    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                        mimeType = 'audio/webm;codecs=opus';
+                    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                        mimeType = 'audio/webm';
+                    } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                        mimeType = 'audio/ogg;codecs=opus';
+                    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        mimeType = 'audio/mp4';
+                    } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+                        mimeType = 'audio/aac';
+                    }
+                }
+                
+                if (mimeType) {
+                    options.mimeType = mimeType;
+                }
+                
+                mediaRecorder = new MediaRecorder(stream, options);
                 
                 mediaRecorder.ondataavailable = e => {
                     if (e.data.size > 0) audioChunks.push(e.data);
                 };
                 
                 mediaRecorder.onstop = () => {
-                    recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    recordedBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
                     const audioUrl = URL.createObjectURL(recordedBlob);
                     const localPlayer = document.getElementById("local-audio-player");
                     localPlayer.src = audioUrl;
@@ -735,7 +755,7 @@
                             idToken: idToken,
                             rowIndex: selectedRowIndex,
                             audioBase64: base64data,
-                            mimeType: "audio/webm"
+                            mimeType: recordedBlob.type
                         })
                     });
                     

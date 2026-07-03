@@ -195,7 +195,15 @@ function doPost(e) {
     if (action === "save_reply") {
       var audioBase64 = payload.audioBase64;
       var mimeType = payload.mimeType || "audio/webm";
-      var fileName = "reply_row_" + rowIndex + "_" + new Date().getTime() + ".webm";
+      var ext = "webm";
+      if (mimeType.indexOf("mp4") !== -1 || mimeType.indexOf("m4a") !== -1 || mimeType.indexOf("aac") !== -1) {
+        ext = "m4a";
+      } else if (mimeType.indexOf("ogg") !== -1) {
+        ext = "ogg";
+      } else if (mimeType.indexOf("wav") !== -1) {
+        ext = "wav";
+      }
+      var fileName = "reply_row_" + rowIndex + "_" + new Date().getTime() + "." + ext;
       
       // Decode Base64 and write file to Drive
       var audioBytes = Utilities.base64Decode(audioBase64);
