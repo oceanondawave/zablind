@@ -631,13 +631,12 @@
             });
         }
 
-        // Update aria-expanded status on details element toggle for screen readers
+        // Dynamically update aria-expanded state on toggle events
         document.addEventListener('toggle', (event) => {
             if (event.target.tagName === 'DETAILS') {
-                const details = event.target;
-                const summary = details.querySelector('summary');
+                const summary = event.target.querySelector('summary');
                 if (summary) {
-                    summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+                    summary.setAttribute('aria-expanded', event.target.open ? 'true' : 'false');
                 }
             }
         }, true);
