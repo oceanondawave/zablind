@@ -527,7 +527,7 @@
                 if (idToken) {
                     adminHtml = `
                         <div class="pt-3 border-t flex items-center gap-2 flex-wrap text-xs">
-                            <button onclick="openRecorderModal(${item.rowIndex}, '${escapeJs(item.name)}', '${escapeJs(item.question)}')" 
+                            <button onclick="openRecorderModal(${item.rowIndex})" 
                                 class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -610,10 +610,12 @@
         }
 
         // Recorder dialog functions
-        function openRecorderModal(rowIndex, name, question) {
+        function openRecorderModal(rowIndex) {
+            const item = submissionsList.find(x => x.rowIndex === rowIndex);
+            if (!item) return;
             selectedRowIndex = rowIndex;
-            document.getElementById("modal-sender").textContent = name;
-            document.getElementById("modal-question").textContent = question;
+            document.getElementById("modal-sender").textContent = item.name;
+            document.getElementById("modal-question").textContent = item.question;
             
             // Reset recorder state inside modal
             recordedBlob = null;
