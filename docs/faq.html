@@ -113,7 +113,25 @@
             <p class="text-lg text-muted-foreground leading-relaxed">
                 Nơi tổng hợp câu hỏi từ người dùng gửi qua biểu mẫu và phản hồi chính thức bằng giọng nói từ tác giả.
             </p>
+            <a href="https://tally.so/r/3X6NKd" target="_blank" rel="noopener noreferrer"
+                class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                Gửi câu hỏi hoặc góp ý
+            </a>
         </header>
+
+        <section role="note" aria-labelledby="faq-warning-title"
+            class="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-5 text-yellow-100 space-y-3">
+            <h2 id="faq-warning-title" class="text-base font-semibold text-yellow-300">Lưu ý trước khi gửi câu hỏi</h2>
+            <p class="text-sm leading-relaxed">
+                Nếu bạn spam hoặc hỏi đi hỏi lại một câu hỏi mà mình đã trả lời rồi, trong khi lỗi không nằm ở phía mình
+                như việc bạn sử dụng sai thao tác, cố tình hiểu sai, dùng sai tính năng nhưng vẫn đổ lỗi cho phía của mình,
+                mình sẽ không tiếp tục trả lời bạn. Nếu vẫn tiếp tục, bạn sẽ bị cấm khỏi trang trả lời.
+            </p>
+            <p class="text-sm leading-relaxed">
+                Những câu hỏi nào mình cho "ra đảo" ở mục "Đã tiễn ra đảo" là những câu mình sẽ không bao giờ phản hồi nữa
+                từ người dùng đó, xin lưu ý.
+            </p>
+        </section>
 
         <!-- Configuration Warning (Displays only if API endpoints are placeholder) -->
         <div id="config-warning" class="hidden rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 text-yellow-500 text-sm space-y-2">
@@ -173,6 +191,10 @@
                 <button onclick="setFilter('unanswered')" id="filter-unanswered" role="tab" aria-selected="false"
                     class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
                     Chưa trả lời
+                </button>
+                <button onclick="setFilter('island')" id="filter-island" role="tab" aria-selected="false"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
+                    Đã tiễn ra đảo
                 </button>
             </div>
         </section>
@@ -257,7 +279,7 @@
     <!-- Client-side FAQ Application Logic -->
     <script>
         // CONFIGURATION: Replace these with your actual deployed Web App URL and Google Client ID
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbw8UsqCe9KYvTgYG1HkOOl8_sHCfzreAwERSPfC_wlbZvfKcC8GIMrLYi5IYPp5pzLOwg/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbzF5lo3LS7LN-1Z-b8K2OFpS95Gm1ZXqDmKJN_nsZpbNqgjxBwv1yR4mU6navs2swOIpw/exec";
         const GOOGLE_CLIENT_ID = "261041121613-lvsf735ep46eo5ftvtk1llo2ir87263t.apps.googleusercontent.com";
 
         // Global states
@@ -366,7 +388,7 @@
             activeFilter = filter;
             
             // Highlight active button
-            const buttons = ['all', 'answered', 'unanswered'];
+            const buttons = ['all', 'answered', 'unanswered', 'island'];
             buttons.forEach(btn => {
                 const element = document.getElementById(`filter-${btn}`);
                 if (btn === filter) {
@@ -379,7 +401,21 @@
             });
 
             renderFeed();
-            announce(`Đã chuyển sang bộ lọc ${filter === 'all' ? 'Tất cả' : filter === 'answered' ? 'Đã trả lời' : 'Chưa trả lời'}`);
+            announce(`Đã chuyển sang bộ lọc ${getFilterLabel(filter)}`);
+        }
+
+        function getFilterLabel(filter) {
+            const labels = {
+                all: 'Tất cả',
+                answered: 'Đã trả lời',
+                unanswered: 'Chưa trả lời',
+                island: 'Đã tiễn ra đảo'
+            };
+            return labels[filter] || filter;
+        }
+
+        function isIslanded(item) {
+            return String(item.status || '').toLowerCase() === 'island';
         }
 
         function parseDate(dateStr) {
@@ -422,8 +458,14 @@
 
             const filtered = submissionsList.filter(item => {
                 // Apply filter state
-                if (activeFilter === 'answered' && !item.replyUrl) return false;
-                if (activeFilter === 'unanswered' && item.replyUrl) return false;
+                const islanded = isIslanded(item);
+                if (activeFilter === 'island') {
+                    if (!islanded) return false;
+                } else {
+                    if (islanded) return false;
+                    if (activeFilter === 'answered' && !item.replyUrl) return false;
+                    if (activeFilter === 'unanswered' && item.replyUrl) return false;
+                }
 
                 // Apply time filter
                 if (timeFilter !== 'all') {
@@ -485,7 +527,14 @@
 
                 // Audio Reply section
                 let audioHtml = "";
-                if (item.replyUrl) {
+                if (isIslanded(item)) {
+                    audioHtml = `
+                        <div class="pt-2 text-xs text-red-300/90 italic flex items-center gap-1.5 border-t">
+                            <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span>
+                            Đã tiễn ra đảo. Câu hỏi này sẽ không được phản hồi thêm.
+                        </div>
+                    `;
+                } else if (item.replyUrl) {
                     // Extract file ID to build Google Drive preview embed URL
                     const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
                     const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
@@ -525,9 +574,21 @@
                 // Admin Controls
                 let adminHtml = "";
                 if (idToken) {
+                    const islandButton = isIslanded(item) ? `
+                            <button onclick="restoreQuestion(${item.rowIndex})"
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-green-500/10 text-green-300 border border-green-500/20 hover:bg-green-500/20 transition-colors font-semibold">
+                                Đưa về danh sách
+                            </button>
+                        ` : `
+                            <button onclick="sendToIsland(${item.rowIndex})"
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors font-semibold">
+                                Tiễn ra đảo
+                            </button>
+                        `;
                     adminHtml = `
                         <div class="pt-3 border-t flex items-center gap-2 flex-wrap text-xs">
-                            <button onclick="openRecorderModal(${item.rowIndex})" 
+                            ${!isIslanded(item) ? `
+                            <button onclick="openRecorderModal(${item.rowIndex})"
                                 class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -536,6 +597,7 @@
                                 </svg>
                                 ${item.replyUrl ? 'Ghi âm đè/Sửa' : 'Trả lời bằng giọng nói'}
                             </button>
+                            ` : ''}
                             ${item.replyUrl ? `
                                 <button onclick="deleteReply(${item.rowIndex})" 
                                     class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
@@ -545,6 +607,7 @@
                                     Xóa câu trả lời
                                 </button>
                             ` : ''}
+                            ${islandButton}
                         </div>
                     `;
                 }
@@ -768,6 +831,7 @@
                         // Update UI list state locally without making a full reload
                         const sub = submissionsList.find(x => x.rowIndex === selectedRowIndex);
                         if (sub) sub.replyUrl = result.url;
+                        updateFaqCache();
                         
                         closeRecorderModal();
                         renderFeed();
@@ -803,6 +867,7 @@
                     announce("Xóa câu trả lời thành công!");
                     const sub = submissionsList.find(x => x.rowIndex === rowIndex);
                     if (sub) sub.replyUrl = "";
+                    updateFaqCache();
                     renderFeed();
                 } else {
                     throw new Error(result.error || "Delete error");
@@ -812,6 +877,72 @@
                 alert("Xóa thất bại: " + err.message);
                 announce("Lỗi: " + err.message);
             }
+        }
+
+        async function sendToIsland(rowIndex) {
+            if (!idToken || !confirm("Bạn có chắc chắn muốn tiễn câu hỏi này ra đảo và không phản hồi nữa?")) return;
+
+            announce("Đang tiễn câu hỏi ra đảo...");
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "island_question",
+                        idToken: idToken,
+                        rowIndex: rowIndex
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    const sub = submissionsList.find(x => x.rowIndex === rowIndex);
+                    if (sub) sub.status = "island";
+                    updateFaqCache();
+                    renderFeed();
+                    announce("Đã tiễn câu hỏi ra đảo.");
+                } else {
+                    throw new Error(result.error || "Island action error");
+                }
+            } catch (err) {
+                console.error("Failed to send question to island:", err);
+                alert("Không thể tiễn ra đảo: " + err.message);
+                announce("Lỗi: " + err.message);
+            }
+        }
+
+        async function restoreQuestion(rowIndex) {
+            if (!idToken || !confirm("Đưa câu hỏi này về lại danh sách bình thường?")) return;
+
+            announce("Đang đưa câu hỏi về lại danh sách...");
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "restore_question",
+                        idToken: idToken,
+                        rowIndex: rowIndex
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    const sub = submissionsList.find(x => x.rowIndex === rowIndex);
+                    if (sub) sub.status = "";
+                    updateFaqCache();
+                    renderFeed();
+                    announce("Đã đưa câu hỏi về lại danh sách.");
+                } else {
+                    throw new Error(result.error || "Restore action error");
+                }
+            } catch (err) {
+                console.error("Failed to restore question:", err);
+                alert("Khôi phục thất bại: " + err.message);
+                announce("Lỗi: " + err.message);
+            }
+        }
+
+        function updateFaqCache() {
+            localStorage.setItem("zablind_faq_cache", JSON.stringify(submissionsList));
         }
 
         // Sanitization helpers

@@ -20,6 +20,8 @@ const COL_NAME = "Họ và tên";
 const COL_QUESTION = "Nội dung góp ý / Câu hỏi";
 const COL_DATE = "Submitted At";
 const COL_REPLY = "Zablind Voice Reply";
+const COL_STATUS = "Zablind Moderation Status";
+const STATUS_ISLAND = "island";
 
 function doGet(e) {
   try {
@@ -39,6 +41,7 @@ function doGet(e) {
     var questionIdx = -1;
     var dateIdx = -1;
     var replyIdx = -1;
+    var statusIdx = -1;
     
     for (var idx = 0; idx < headers.length; idx++) {
       var h = normalizeHeader(headers[idx]);
@@ -50,6 +53,8 @@ function doGet(e) {
         dateIdx = idx;
       } else if (h.indexOf("zablindvoicereply") !== -1 || h.indexOf("reply") !== -1) {
         replyIdx = idx;
+      } else if (h.indexOf("zablindmoderationstatus") !== -1 || h.indexOf("moderationstatus") !== -1 || h.indexOf("zablindstatus") !== -1) {
+        statusIdx = idx;
       }
     }
     
@@ -60,6 +65,11 @@ function doGet(e) {
     if (replyIdx === -1) {
       replyIdx = headers.length;
       sheet.getRange(1, replyIdx + 1).setValue(COL_REPLY);
+      headers.push(COL_REPLY);
+    }
+    if (statusIdx === -1) {
+      statusIdx = headers.length;
+      sheet.getRange(1, statusIdx + 1).setValue(COL_STATUS);
       SpreadsheetApp.flush();
     }
     
@@ -125,7 +135,8 @@ function doGet(e) {
         date: dateStr,
         name: row[nameIdx] ? row[nameIdx].toString().trim() : "Người dùng ẩn danh",
         question: row[questionIdx] ? row[questionIdx].toString().trim() : "",
-        replyUrl: replyUrl
+        replyUrl: replyUrl,
+        status: row[statusIdx] ? row[statusIdx].toString().trim() : ""
       });
     }
     
@@ -177,22 +188,42 @@ function doPost(e) {
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var replyIdx = headers.indexOf(COL_REPLY);
     if (replyIdx === -1) {
-      return makeJsonResponse({ success: false, error: "Reply column index not found." });
+      replyIdx = headers.length;
+      sheet.getRange(1, replyIdx + 1).setValue(COL_REPLY);
+      headers.push(COL_REPLY);
     }
-    
+    var statusIdx = headers.indexOf(COL_STATUS);
+    if (statusIdx === -1) {
+      statusIdx = headers.length;
+      sheet.getRange(1, statusIdx + 1).setValue(COL_STATUS);
+      SpreadsheetApp.flush();
+    }
+
+    if (action === "island_question") {
+      sheet.getRange(rowIndex, statusIdx + 1).setValue(STATUS_ISLAND);
+      SpreadsheetApp.flush();
+      return makeJsonResponse({ success: true, status: STATUS_ISLAND });
+    }
+
+    if (action === "restore_question") {
+      sheet.getRange(rowIndex, statusIdx + 1).setValue("");
+      SpreadsheetApp.flush();
+      return makeJsonResponse({ success: true, status: "" });
+    }
+
     var folderId = PropertiesService.getScriptProperties().getProperty("DRIVE_FOLDER_ID");
     if (!folderId) {
       return makeJsonResponse({ success: false, error: "Drive Folder ID is not configured in settings." });
     }
     var folder = DriveApp.getFolderById(folderId);
     
-    // Delete existing file if any before updating or deleting
-    var currentReplyUrl = sheet.getRange(rowIndex, replyIdx + 1).getValue();
-    if (currentReplyUrl) {
-      deleteFileFromDrive(currentReplyUrl);
-    }
-    
     if (action === "save_reply") {
+      // Delete existing file if any before replacing it
+      var currentReplyUrl = sheet.getRange(rowIndex, replyIdx + 1).getValue();
+      if (currentReplyUrl) {
+        deleteFileFromDrive(currentReplyUrl);
+      }
+
       var audioBase64 = payload.audioBase64;
       var mimeType = payload.mimeType || "audio/webm";
       var ext = "webm";
@@ -221,9 +252,14 @@ function doPost(e) {
       SpreadsheetApp.flush();
       
       return makeJsonResponse({ success: true, url: directLink });
-    } 
-    
+    }
+
     else if (action === "delete_reply") {
+      var currentReplyUrl = sheet.getRange(rowIndex, replyIdx + 1).getValue();
+      if (currentReplyUrl) {
+        deleteFileFromDrive(currentReplyUrl);
+      }
+
       // Clear cell in Sheet (Drive deletion was already handled above)
       sheet.getRange(rowIndex, replyIdx + 1).setValue("");
       SpreadsheetApp.flush();
