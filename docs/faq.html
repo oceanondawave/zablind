@@ -253,6 +253,9 @@
             <div id="preview-container" class="hidden space-y-2">
                 <label class="text-xs font-semibold text-muted-foreground block">Nghe thử bản ghi:</label>
                 <audio id="local-audio-player" controls class="w-full h-8"></audio>
+                <div id="audio-fallback-link" class="text-xs text-muted-foreground pt-1">
+                    Nếu trình duyệt của bạn không phát được, bạn có thể <a id="download-preview-btn" href="#" download="nghe-thu.webm" class="text-primary hover:underline font-semibold">tải về máy để nghe thử</a>.
+                </div>
             </div>
 
             <!-- Control Actions inside modal -->
@@ -527,14 +530,17 @@
 
                 // Audio Reply section
                 let audioHtml = "";
+                let islandHtml = "";
                 if (isIslanded(item)) {
-                    audioHtml = `
+                    islandHtml = `
                         <div class="pt-2 text-xs text-red-300/90 italic flex items-center gap-1.5 border-t">
                             <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span>
                             Đã tiễn ra đảo. Câu hỏi này sẽ không được phản hồi thêm.
                         </div>
                     `;
-                } else if (item.replyUrl) {
+                }
+                
+                if (item.replyUrl) {
                     // Extract file ID to build Google Drive preview embed URL
                     const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
                     const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
@@ -562,7 +568,7 @@
                             ></iframe>
                         </div>
                     `;
-                } else {
+                } else if (!isIslanded(item)) {
                     audioHtml = `
                         <div class="pt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1.5 border-t">
                             <span class="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
@@ -612,7 +618,7 @@
                     `;
                 }
 
-                card.innerHTML = headerHtml + contentHtml + audioHtml + adminHtml;
+                card.innerHTML = headerHtml + contentHtml + audioHtml + islandHtml + adminHtml;
                 container.appendChild(card);
             });
 
@@ -749,6 +755,15 @@
                     const audioUrl = URL.createObjectURL(recordedBlob);
                     const localPlayer = document.getElementById("local-audio-player");
                     localPlayer.src = audioUrl;
+                    
+                    // Setup download fallback link
+                    const downloadBtn = document.getElementById("download-preview-btn");
+                    if (downloadBtn) {
+                        downloadBtn.href = audioUrl;
+                        const extension = (mediaRecorder.mimeType && mediaRecorder.mimeType.includes('mp4')) ? 'mp4' : 
+                                          (mediaRecorder.mimeType && mediaRecorder.mimeType.includes('aac')) ? 'aac' : 'webm';
+                        downloadBtn.download = `nghe-thu.${extension}`;
+                    }
                     
                     document.getElementById("preview-container").classList.remove("hidden");
                     document.getElementById("btn-upload-reply").disabled = false;
