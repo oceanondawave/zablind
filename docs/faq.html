@@ -783,7 +783,7 @@
                     }
                 } catch (err) {
                     console.error("Decoding error:", err);
-                    container.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi giải mã âm thanh.</div>`;
+                    container.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi giải mã âm thanh: ${err.name}: ${err.message}</div>`;
                 }
             };
             
