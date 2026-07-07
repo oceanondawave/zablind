@@ -655,53 +655,34 @@
             const container = document.getElementById(`audio-container-${fileId}`);
             if (!container) return;
             
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `
-                <svg class="animate-spin h-3.5 w-3.5 text-current inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Đang kết nối...</span>
+            // Swap button with native player controls synchronously to preserve Safari user gesture context
+            const directUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+            container.innerHTML = `
+                <audio
+                    src="${directUrl}"
+                    controls
+                    class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                ></audio>
             `;
             
-            // 1. Setup native HTML5 audio stream probe
-            const directUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
-            const nativeAudio = new Audio();
-            nativeAudio.src = directUrl;
-            
-            // 3-second timeout fallback for browsers that hang/freeze instead of throwing an immediate error
-            let playTimeout = setTimeout(() => {
-                console.log("Native playback probe timed out. Triggering compatible fallback...");
-                nativeAudio.pause();
-                nativeAudio.src = "";
-                triggerFallback(fileId, container);
-            }, 3000);
-            
-            nativeAudio.play().then(() => {
-                clearTimeout(playTimeout);
-                console.log("Native playback succeeded!");
-                // Swap container layout with direct native controller (instant and clean)
-                container.innerHTML = `
-                    <audio
-                        src="${directUrl}"
-                        controls
-                        autoplay
-                        class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
-                    ></audio>
-                `;
-                const player = container.querySelector('audio');
-                if (player) {
-                    try {
-                        player.load();
-                        player.play();
-                    } catch(e) {}
-                }
-            }).catch((err) => {
-                clearTimeout(playTimeout);
-                console.log("Native playback failed, loading compatibility fallback:", err);
-                triggerFallback(fileId, container);
-            });
+            const player = container.querySelector('audio');
+            if (player) {
+                // If it fails to decode or load WebM (common in older iOS WebKit), trigger the WebAssembly fallback
+                player.addEventListener("error", function() {
+                    console.log("Native playback failed (error event). Triggering compatible fallback...");
+                    triggerFallback(fileId, container);
+                });
+                
+                // Try playing immediately
+                player.play().catch((err) => {
+                    console.log("Native autoplay blocked or failed:", err.name);
+                    // If the browser blocked autoplay (NotAllowedError/AbortError), we DO NOT trigger the fallback
+                    // because the native controller is now visible, and the user can just tap the play button manually!
+                    if (err.name !== "NotAllowedError" && err.name !== "AbortError") {
+                        triggerFallback(fileId, container);
+                    }
+                });
+            }
         }
 
         // Compatibility fallback - fetches bytes via JSONP and loads them inside WebAssembly OGVPlayer
@@ -733,6 +714,7 @@
                 }
                 
                 try {
+                    // Decode base64 to binary blob
                     const binaryString = atob(result.base64.replace(/\s/g, ''));
                     const len = binaryString.length;
                     const bytes = new Uint8Array(len);
@@ -743,10 +725,12 @@
                     const audioUrl = URL.createObjectURL(blob);
                     
                     if (typeof OGVPlayer !== 'undefined') {
+                        // Create OGVPlayer instance
                         const ogvPlayer = new OGVPlayer();
                         ogvPlayer.src = audioUrl;
                         window.ogvPlayers[fileId] = ogvPlayer;
                         
+                        // Render Custom Controls UI (ensures visibility on old WebKit instead of showing a blank canvas)
                         container.innerHTML = `
                             <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700/60 px-3 py-1.5 rounded-md w-full">
                                 <button onclick="toggleOGVPlay('${fileId}')" id="ogv-play-btn-${fileId}" class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 focus:outline-none">
@@ -756,6 +740,17 @@
                                 <div class="text-[10px] text-zinc-500 italic ml-auto font-medium">Chế độ tương thích</div>
                             </div>
                         `;
+                        
+                        // Subscribe to player events to change play/pause UI state dynamically and accurately
+                        ogvPlayer.addEventListener("play", function() {
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+                        });
+                        
+                        ogvPlayer.addEventListener("pause", function() {
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                        });
                         
                         ogvPlayer.addEventListener("timeupdate", function() {
                             const timeEl = document.getElementById(`ogv-time-${fileId}`);
@@ -771,14 +766,12 @@
                             if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
                         });
                         
-                        try {
-                            ogvPlayer.play();
-                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
-                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-                        } catch (playErr) {
-                            console.error("OGVPlayer autoplay blocked:", playErr);
-                        }
+                        // Attempt autoplay, catch if blocked (which is fine, user can click play manually)
+                        ogvPlayer.play().catch(playErr => {
+                            console.log("OGVPlayer autoplay blocked by Safari gesture policies. Awaiting user click.", playErr);
+                        });
                     } else {
+                        // Standard player fallback
                         container.innerHTML = `
                             <audio
                                 src="${audioUrl}"
