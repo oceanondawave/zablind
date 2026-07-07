@@ -645,8 +645,11 @@
             announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
         }
 
-        // Fetch and Play Voice Reply dynamically via Apps Script (CORS-free & direct stream fallback)
-        async function playVoiceReply(fileId, btn) {
+        // Global map to hold dynamic JSONP callbacks
+        window.zablindAudioCallbacks = {};
+
+        // Fetch and Play Voice Reply dynamically via Apps Script (JSONP to bypass iOS 17 CORS/redirect blocks)
+        function playVoiceReply(fileId, btn) {
             const container = document.getElementById(`audio-container-${fileId}`);
             if (!container) return;
             
@@ -667,47 +670,83 @@
                 <span>Đang tải...</span>
             `;
             
-            try {
-                const response = await fetch(`${API_ENDPOINT}?action=get_audio&fileId=${fileId}`);
-                if (!response.ok) throw new Error("Lỗi mạng khi kết nối server");
-                const result = await response.json();
-                if (!result.success) throw new Error(result.error || "Không thể truy cập tệp tin");
+            // Generate a unique callback name
+            const callbackName = "cb_" + Math.random().toString(36).substring(2, 15);
+            
+            // Define the callback function globally
+            window.zablindAudioCallbacks[callbackName] = function(result) {
+                // Clean up script tag and global callback
+                try {
+                    const scriptTag = document.getElementById(callbackName);
+                    if (scriptTag) scriptTag.remove();
+                    delete window.zablindAudioCallbacks[callbackName];
+                } catch(e) {}
                 
-                // Decode base64 to binary blob (stripping any newlines/whitespace for mobile Safari compatibility)
-                const binaryString = atob(result.base64.replace(/\s/g, ''));
-                const len = binaryString.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
+                if (!result.success) {
+                    console.error("Error loading voice reply:", result.error);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    alert("Không thể tải phản hồi: " + (result.error || "Lỗi truy cập"));
+                    return;
                 }
-                const blob = new Blob([bytes], { type: result.mimeType || 'audio/webm' });
-                const audioUrl = URL.createObjectURL(blob);
                 
-                // Render native audio player
-                container.innerHTML = `
-                    <audio
-                        src="${audioUrl}"
-                        controls
-                        autoplay
-                        class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
-                    ></audio>
-                `;
-                container.classList.remove("hidden");
-                btn.style.display = "none";
-                
-                // Force reload for Safari compatibility
-                const player = container.querySelector('audio');
-                if (player) {
-                    try {
-                        player.load();
-                    } catch (e) {}
+                try {
+                    // Decode base64 to binary blob (stripping any newlines/whitespace for mobile Safari compatibility)
+                    const binaryString = atob(result.base64.replace(/\s/g, ''));
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    const blob = new Blob([bytes], { type: result.mimeType || 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    // Render native audio player
+                    container.innerHTML = `
+                        <audio
+                            src="${audioUrl}"
+                            controls
+                            autoplay
+                            class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                        ></audio>
+                    `;
+                    container.classList.remove("hidden");
+                    btn.style.display = "none";
+                    
+                    // Force reload for Safari compatibility
+                    const player = container.querySelector('audio');
+                    if (player) {
+                        try {
+                            player.load();
+                        } catch (e) {}
+                    }
+                } catch (err) {
+                    console.error("Error decoding audio:", err);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    alert("Lỗi giải mã âm thanh: " + err.message);
                 }
-            } catch (err) {
-                console.error("Error loading voice reply:", err);
+            };
+            
+            // Create script element to perform JSONP request
+            const script = document.createElement("script");
+            script.id = callbackName;
+            script.src = `${API_ENDPOINT}?action=get_audio&fileId=${fileId}&callback=window.zablindAudioCallbacks.${callbackName}`;
+            script.async = true;
+            
+            // Handle loading errors (e.g. network failure)
+            script.onerror = function() {
+                try {
+                    const scriptTag = document.getElementById(callbackName);
+                    if (scriptTag) scriptTag.remove();
+                    delete window.zablindAudioCallbacks[callbackName];
+                } catch(e) {}
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
-                alert("Không thể tải phản hồi: " + err.message);
-            }
+                alert("Không thể kết nối máy chủ. Vui lòng kiểm tra lại mạng.");
+            };
+            
+            document.body.appendChild(script);
         }
 
         // Verify Admin Session via Apps Script Backend

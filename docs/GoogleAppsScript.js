@@ -35,13 +35,25 @@ function doGet(e) {
         mimeType: blob.getContentType(),
         base64: base64
       };
+      
+      // JSONP support
+      if (e.parameter.callback) {
+        var callback = e.parameter.callback;
+        var output = callback + "(" + JSON.stringify(result) + ");";
+        return ContentService.createTextOutput(output)
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      
       return ContentService.createTextOutput(JSON.stringify(result))
         .setMimeType(ContentService.MimeType.JSON);
     } catch (err) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: err.toString()
-      })).setMimeType(ContentService.MimeType.JSON);
+      var errResult = { success: false, error: err.toString() };
+      if (e.parameter.callback) {
+        return ContentService.createTextOutput(e.parameter.callback + "(" + JSON.stringify(errResult) + ");")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return ContentService.createTextOutput(JSON.stringify(errResult))
+        .setMimeType(ContentService.MimeType.JSON);
     }
   }
 
