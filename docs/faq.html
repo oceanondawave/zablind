@@ -630,36 +630,14 @@
                                     class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
-                                    </svg>
-                                    Xóa câu trả lời
-                                </button>
-                            ` : ''}
-                            ${islandButton}
-                        </div>
-                    `;
-                }
-
-                card.innerHTML = headerHtml + contentHtml + audioHtml + islandHtml + adminHtml;
-                container.appendChild(card);
-            });
-
-            announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
-        }
-
-        // Global map to hold dynamic JSONP callbacks and OGVPlayers
-        window.zablindAudioCallbacks = {};
-        window.ogvPlayers = {};
-
-        // Handles initial play trigger - attempts native playback and falls back to JSONP + OGVPlayer on demand
+                                       // Handles initial play trigger - attempts native playback and falls back to JSONP + OGVPlayer on demand
         function startVoiceReply(fileId, btn) {
             const container = document.getElementById(`audio-container-${fileId}`);
             if (!container) return;
             
-            // Swap button with native player controls synchronously to preserve Safari user gesture context
-            const directUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+            // Create audio tag without src first to avoid race conditions with fast error fires
             container.innerHTML = `
                 <audio
-                    src="${directUrl}"
                     controls
                     class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
                 ></audio>
@@ -667,13 +645,16 @@
             
             const player = container.querySelector('audio');
             if (player) {
-                // If it fails to decode or load WebM (common in older iOS WebKit), trigger the WebAssembly fallback
+                // Listen to load/format errors first
                 player.addEventListener("error", function() {
                     console.log("Native playback failed (error event). Triggering compatible fallback...");
                     triggerFallback(fileId, container);
                 });
                 
-                // Try playing immediately
+                // Set the source after adding the listener
+                const directUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+                player.src = directUrl;
+                
                 try {
                     const playPromise = player.play();
                     if (playPromise && typeof playPromise.catch === "function") {
@@ -688,23 +669,140 @@
                     }
                 } catch (playErr) {
                     console.error("Native play execution failed:", playErr);
-                    triggerFallback(fileId, container);
+                    // Standard browsers might throw synchronously, format failures will trigger the error event listener
                 }
             }
         }
 
-        // Compatibility fallback - loads the Google Drive preview player iframe (which transcodes WebM on Google servers dynamically)
+        // Compatibility fallback - fetches bytes via JSONP and loads them inside WebAssembly OGVPlayer
         function triggerFallback(fileId, container) {
             container.innerHTML = `
-                <div class="relative w-full h-[60px] overflow-hidden rounded-md border border-zinc-700/60 bg-zinc-900/40">
-                    <iframe 
-                        src="https://drive.google.com/file/d/${fileId}/preview" 
-                        class="absolute -top-[48px] left-0 w-full h-[156px] border-none"
-                        allow="autoplay"
-                        title="Phản hồi bằng giọng nói"
-                    ></iframe>
+                <div class="flex items-center gap-2 text-xs text-muted-foreground/80 italic py-1">
+                    <svg class="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Trình duyệt của bạn cần tải thêm bộ giải mã âm thanh...</span>
                 </div>
             `;
+            
+            const callbackName = "cb_" + Math.random().toString(36).substring(2, 15);
+            
+            window.zablindAudioCallbacks[callbackName] = function(result) {
+                try {
+                    const scriptTag = document.getElementById(callbackName);
+                    if (scriptTag) scriptTag.remove();
+                    delete window.zablindAudioCallbacks[callbackName];
+                } catch(e) {}
+                
+                if (!result.success) {
+                    container.innerHTML = `
+                        <div class="text-xs text-red-400 py-1">Không thể tải âm thanh từ máy chủ.</div>
+                    `;
+                    return;
+                }
+                
+                try {
+                    // Decode base64 to binary blob
+                    const binaryString = atob(result.base64.replace(/\s/g, ''));
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    if (typeof OGVPlayer !== 'undefined') {
+                        // Create OGVPlayer instance pointing to CDN files
+                        const ogvPlayer = new OGVPlayer({
+                            base: "https://cdn.jsdelivr.net/npm/ogv@1.8.9/dist",
+                            worker: false,
+                            options: {
+                                worker: false
+                            }
+                        });
+                        ogvPlayer.src = audioUrl;
+                        window.ogvPlayers[fileId] = ogvPlayer;
+                        
+                        // Render Custom Controls UI
+                        container.innerHTML = `
+                            <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700/60 px-3 py-1.5 rounded-md w-full">
+                                <button onclick="toggleOGVPlay('${fileId}')" id="ogv-play-btn-${fileId}" class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 focus:outline-none">
+                                    <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                                <div class="text-xs font-mono text-zinc-300" id="ogv-time-${fileId}">0:00 / 0:00</div>
+                                <div class="text-[10px] text-zinc-500 italic ml-auto font-medium">Chế độ tương thích</div>
+                            </div>
+                        `;
+                        
+                        // Subscribe to player events to change play/pause UI state dynamically and accurately
+                        ogvPlayer.addEventListener("play", function() {
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+                        });
+                        
+                        ogvPlayer.addEventListener("pause", function() {
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                        });
+                        
+                        ogvPlayer.addEventListener("timeupdate", function() {
+                            const timeEl = document.getElementById(`ogv-time-${fileId}`);
+                            if (timeEl) {
+                                const cur = formatTime(ogvPlayer.currentTime);
+                                const dur = formatTime(ogvPlayer.duration || 0);
+                                timeEl.textContent = `${cur} / ${dur}`;
+                            }
+                        });
+                        
+                        ogvPlayer.addEventListener("ended", function() {
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                        });
+                        
+                        // Attempt autoplay, catch if blocked (which is fine, user can click play manually)
+                        try {
+                            const playPromise = ogvPlayer.play();
+                            if (playPromise && typeof playPromise.catch === "function") {
+                                playPromise.catch(playErr => {
+                                    console.log("OGVPlayer autoplay blocked by Safari gesture policies.", playErr);
+                                });
+                            }
+                        } catch (playErr) {
+                            console.error("OGVPlayer autoplay failed:", playErr);
+                        }
+                    } else {
+                        // Standard player fallback
+                        container.innerHTML = `
+                            <audio
+                                src="${audioUrl}"
+                                controls
+                                autoplay
+                                class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                            ></audio>
+                        `;
+                    }
+                } catch (err) {
+                    console.error("Decoding error:", err);
+                    container.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi giải mã âm thanh: ${err.name}: ${err.message}</div>`;
+                }
+            };
+            
+            const script = document.createElement("script");
+            script.id = callbackName;
+            script.crossOrigin = "anonymous";
+            script.src = `${API_ENDPOINT}?action=get_audio&fileId=${fileId}&callback=window.zablindAudioCallbacks.${callbackName}`;
+            script.async = true;
+            script.onerror = function() {
+                try {
+                    const scriptTag = document.getElementById(callbackName);
+                    if (scriptTag) scriptTag.remove();
+                    delete window.zablindAudioCallbacks[callbackName];
+                } catch(e) {}
+                container.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi mạng khi tải bộ giải mã.</div>`;
+            };
+            document.body.appendChild(script);
         }
 
         window.toggleOGVPlay = function(fileId) {
