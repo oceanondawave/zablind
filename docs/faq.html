@@ -630,7 +630,27 @@
                                     class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
-                                       // Handles initial play trigger - attempts native playback and falls back to JSONP + OGVPlayer on demand
+                                    </svg>
+                                    Xóa câu trả lời
+                                </button>
+                            ` : ''}
+                            ${islandButton}
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = headerHtml + contentHtml + audioHtml + islandHtml + adminHtml;
+                container.appendChild(card);
+            });
+
+            announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
+        }
+
+        // Global map to hold dynamic JSONP callbacks and OGVPlayers
+        window.zablindAudioCallbacks = {};
+        window.ogvPlayers = {};
+
+        // Handles initial play trigger - attempts native playback and falls back to JSONP + OGVPlayer on demand
         function startVoiceReply(fileId, btn) {
             const container = document.getElementById(`audio-container-${fileId}`);
             if (!container) return;
