@@ -7,6 +7,7 @@ const MESSAGE_HIGHLIGHT_CLASS = "highlight-chat-message";
 
 const ALLOWED_MENU_KEYS = new Set([
   "STR_REPLY_MSG",
+  "STR_FORWARD_MSG",
   "STR_COPY_TEXT",
   "STR_COPY_LINK",
   "STR_COPY_PHOTO",
@@ -28,7 +29,7 @@ const SELECTORS = {
   typingIndicator: ".doing-something.message-view__typing",
   menuPopup: ".popover-v3",
   menuItems: ".zmenu-item",
-  attachmentBtn: '[data-translate-title="STR_TIP_ATTACH_FILE"]',
+  attachmentBtn: '[data-translate-title="STR_TIP_ATTACH_FILE"], [data-translate-title="STR_TIP_ATTACH_FILE_AND_PRODUCT"]',
   chatView: "#chatView",
   chatInput: "#chatInput",
   richInput: "#richInput",

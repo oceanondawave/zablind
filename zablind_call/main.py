@@ -282,7 +282,20 @@ class ZaloCallHandler:
         self.pending_incoming_until: float = 0.0
         self.pending_video_incoming_announced: bool = False
         # File-based IPC for instant outgoing call detection
-        self.outgoing_call_type_file = os.path.join(get_system_temp_dir(), "zablind_outgoing_call_type.json")
+        _local_appdata = os.getenv("LOCALAPPDATA") or os.path.join(os.getenv("USERPROFILE", tempfile.gettempdir()), "AppData", "Local")
+        zablind_dir = os.path.join(_local_appdata, "Zablind")
+        os.makedirs(zablind_dir, exist_ok=True)
+        self.zablind_dir = zablind_dir
+        self.outgoing_call_type_file = os.path.join(zablind_dir, "zablind_outgoing_call_type.json")
+        # File-based IPC for incoming notifications
+        self.notification_file = os.path.join(zablind_dir, "zablind_notification.json")
+        # Also watch the temp fallback path in case JS writes there
+        _temp_zablind = os.path.join(tempfile.gettempdir(), "Zablind")
+        self.notification_file_candidates = list(dict.fromkeys([
+            self.notification_file,
+            os.path.join(os.getenv("USERPROFILE", ""), "AppData", "Local", "Zablind", "zablind_notification.json"),
+            os.path.join(_temp_zablind, "zablind_notification.json"),
+        ]))
         
         # Initialize speech queue and worker thread
         self.speech_queue = queue.Queue()
@@ -1473,6 +1486,49 @@ class ZaloCallHandler:
         except Exception as e:
             print(f"[gTTS] Error speaking text: {e}")
             return False
+
+    def send_native_notification(self, title: str, message: str, app_id: str = "com.vng.zalo"):
+        """Show native Windows 10/11 toast notification using PowerShell WinRT API."""
+        import subprocess
+        safe_title = (title or "").replace('"', '`"').replace('$', '`$')
+        safe_message = (message or "").replace('"', '`"').replace('$', '`$')
+        ps_command = f"""
+$title = "{safe_title}"
+$message = "{safe_message}"
+$xml = @"
+<toast duration="short">
+  <visual>
+    <binding template="ToastGeneric">
+      <text>$title</text>
+      <text>$message</text>
+    </binding>
+  </visual>
+</toast>
+"@
+try {{
+    $XmlDocType = [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime]
+    $ToastNotifType = [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime]
+    $XmlDocument = [Activator]::CreateInstance($XmlDocType)
+    $XmlDocument.LoadXml($xml)
+    $Toast = [Activator]::CreateInstance($ToastNotifType, $XmlDocument)
+    $tag = if ($title) {{ if ($title.Length -gt 64) {{ $title.Substring(0, 64) }} else {{ $title }} }} else {{ "zablind_msg" }}
+    $Toast.Tag = $tag
+    $Toast.Group = "zablind"
+    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("{app_id}").Show($Toast)
+}} catch {{}}
+"""
+        try:
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+            subprocess.Popen(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
+                startupinfo=startupinfo,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        except Exception as e:
+            print(f"[NOTIFICATION] Error launching powershell toast: {e}")
 
     def speak(self, text: str, language: Optional[str] = None, clear_pending: bool = False):
         """Queue text-to-speech task.
@@ -4277,11 +4333,7 @@ class ZaloCallHandler:
             with self.call_lock:
                 active = self.call_active or self.incoming_call_detected
 
-            # ctrl+shift+u - always active (check for updates)
-            if ctrl and shift and not alt and not win_ and vk == 0x55:  # 'U'
-                import threading as _t
-                _t.Thread(target=lambda: check_for_updates_manually(self), daemon=True).start()
-                return
+
 
             if not active:
                 return
@@ -4458,14 +4510,10 @@ class ZaloCallHandler:
         if not KEYBOARD_AVAILABLE:
             return
         try:
-            try:
-                keyboard.remove_hotkey("ctrl+shift+u")
-            except Exception:
-                pass
-            keyboard.add_hotkey("ctrl+shift+u", lambda: check_for_updates_manually(self))
-            print("[OK] Global update hotkey registered (ctrl+shift+u).")
+            # Global hotkey is disabled in python process so Zalo JS can capture it directly
+            pass
         except Exception as e:
-            print(f"[INFO] ctrl+shift+u hotkey not registered: {e}")
+            pass
 
     def register_hotkeys(self):
         """Mark hotkeys as registered.
@@ -4507,6 +4555,38 @@ class ZaloCallHandler:
             
             while self.monitoring:
                 try:
+                    # Check for incoming notifications from file (can happen at any time, even if no call is active)
+                    try:
+                        for noti_path in self.notification_file_candidates:
+                            if os.path.exists(noti_path):
+                                with open(noti_path, 'r', encoding='utf-8') as f:
+                                    noti_data = json.load(f)
+                                title = noti_data.get('title', '')
+                                prefix = noti_data.get('titlePrefix', '')
+                                body = noti_data.get('body', '')
+                                timestamp = noti_data.get('timestamp', 0)
+                                if (time.time() * 1000 - timestamp) < 10000:
+                                    # Create the announcement string
+                                    announcement = ""
+                                    if prefix:
+                                        announcement += f"Trong {prefix}, "
+                                    announcement += f"{title}: {body}"
+                                    print(f"[NOTIFICATION] Announcing: {announcement}")
+                                    self.speak(announcement, language="vi", clear_pending=False)
+                                    
+                                    # Trigger native Windows notification
+                                    toast_title = title
+                                    if prefix:
+                                        toast_title = f"{title} ({prefix})"
+                                    self.send_native_notification(toast_title, body)
+                                try:
+                                    os.remove(noti_path)
+                                except:
+                                    pass
+                                break  # Only process one notification at a time
+                    except Exception as noti_err:
+                        print(f"[NOTIFICATION] Error reading notification file: {noti_err}")
+
                     # 1. Check if ZaloCall is running at all
                     was_running = (self.zalocall_pid is not None)
                     if was_running and not self.is_zalocall_running():
@@ -5185,7 +5265,21 @@ def collect_zablind_assets(asset_source):
             with open(full_path, 'rb') as f:
                 files_to_add[f'main-dist/zablind/{rel}'] = f.read()
                 
-    files_to_add['main-dist/zablind/bin/ZablindCallHandler.exe'] = sys.executable
+    # Use compiled ZablindCallHandler.exe if running under Python interpreter
+    exe_source = sys.executable
+    if "python" in os.path.basename(sys.executable).lower():
+        # Look for precompiled ZablindCallHandler.exe
+        candidates = [
+            os.path.join(zablind_dir, 'bin', 'ZablindCallHandler.exe'),
+            os.path.join(os.path.dirname(zablind_dir), 'bin', 'ZablindCallHandler.exe'),
+            os.path.join(os.path.dirname(os.path.dirname(zablind_dir)), 'zablind_call', 'ZablindCallHandler.exe'),
+            os.path.join(os.path.dirname(os.path.dirname(zablind_dir)), 'ZablindCallHandler.exe'),
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                exe_source = c
+                break
+    files_to_add['main-dist/zablind/bin/ZablindCallHandler.exe'] = exe_source
     return files_to_add
 
 
@@ -5207,6 +5301,44 @@ def get_local_version(assets_source):
 
 
 def get_latest_github_release():
+    # 1. Try fetching docs/version.json via ghproxy.net proxy first to accelerate in Vietnam
+    proxy_url = "https://ghproxy.net/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json"
+    req_proxy = urllib.request.Request(
+        proxy_url,
+        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
+    )
+    try:
+        with urllib.request.urlopen(req_proxy, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            tag_name = data.get('version', '')
+            zip_url = data.get('zipUrl', '')
+            if not tag_name.startswith('v') and not tag_name.startswith('V'):
+                tag_name = f"v{tag_name}"
+            
+            # Write cache file for JS client
+            try:
+                import datetime
+                local_appdata = os.getenv("LOCALAPPDATA")
+                if local_appdata:
+                    settings_dir = os.path.join(local_appdata, "Zablind")
+                    os.makedirs(settings_dir, exist_ok=True)
+                    info_path = os.path.join(settings_dir, "zablind_latest_release.json")
+                    with open(info_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "version": tag_name,
+                            "releaseDate": data.get('releaseDate', 'N/A'),
+                            "checkedAt": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                        }, f, ensure_ascii=False, indent=2)
+            except Exception as write_err:
+                print(f"[UPDATER] Error caching proxy release info to file: {write_err}")
+                
+            if tag_name and zip_url:
+                print(f"[UPDATER] Successfully fetched latest release via proxy: {tag_name}")
+                return tag_name, zip_url
+    except Exception as proxy_err:
+        print(f"[UPDATER] Error checking proxy version.json: {proxy_err}. Falling back to GitHub API...")
+
+    # 2. Fallback to direct GitHub API
     url = "https://api.github.com/repos/oceanondawave/zablind/releases/latest"
     req = urllib.request.Request(
         url,
@@ -5224,6 +5356,34 @@ def get_latest_github_release():
                     break
             if not zip_url:
                 zip_url = data.get('zipball_url')
+                
+            # Write to zablind_latest_release.json for the JS client to read
+            try:
+                import datetime
+                pub_date = data.get('published_at', '')
+                formatted_date = 'N/A'
+                if pub_date:
+                    try:
+                        # Convert "2026-06-30T04:49:00Z" to "30/06/2026"
+                        dt = datetime.datetime.strptime(pub_date[:10], "%Y-%m-%d")
+                        formatted_date = dt.strftime("%d/%m/%Y")
+                    except:
+                        pass
+                
+                local_appdata = os.getenv("LOCALAPPDATA")
+                if local_appdata:
+                    settings_dir = os.path.join(local_appdata, "Zablind")
+                    os.makedirs(settings_dir, exist_ok=True)
+                    info_path = os.path.join(settings_dir, "zablind_latest_release.json")
+                    with open(info_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "version": tag_name,
+                            "releaseDate": formatted_date,
+                            "checkedAt": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                        }, f, ensure_ascii=False, indent=2)
+            except Exception as write_err:
+                print(f"[UPDATER] Error caching latest release info to file: {write_err}")
+                
             return tag_name, zip_url
     except Exception as e:
         print(f"[UPDATER] Error checking GitHub releases: {e}")
@@ -5245,6 +5405,8 @@ def is_new_version(local_v, remote_v):
 
 
 def perform_self_update(zip_url, handler):
+    global PATCHING_IN_PROGRESS
+    PATCHING_IN_PROGRESS = True
     exe_dir = os.path.dirname(os.path.abspath(sys.executable))
     zip_path = os.path.join(tempfile.gettempdir(), "zablind_update.zip")
     
@@ -5260,7 +5422,7 @@ def perform_self_update(zip_url, handler):
                 proxy_zip_url,
                 headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
             )
-            with urllib.request.urlopen(req, timeout=30) as response, open(zip_path, 'wb') as out_file:
+            with urllib.request.urlopen(req, timeout=5) as response, open(zip_path, 'wb') as out_file:
                 out_file.write(response.read())
             print("[UPDATER] Download completed via proxy.")
         except Exception as proxy_err:
@@ -5269,7 +5431,7 @@ def perform_self_update(zip_url, handler):
                 zip_url,
                 headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
             )
-            with urllib.request.urlopen(req, timeout=45) as response, open(zip_path, 'wb') as out_file:
+            with urllib.request.urlopen(req, timeout=15) as response, open(zip_path, 'wb') as out_file:
                 out_file.write(response.read())
             print("[UPDATER] Download completed via direct GitHub link.")
             
@@ -5398,6 +5560,7 @@ def perform_self_update(zip_url, handler):
         sys.exit(0)
         
     except Exception as update_err:
+        PATCHING_IN_PROGRESS = False
         print(f"[UPDATER] Self-update failed: {update_err}")
         traceback.print_exc()
         handler.speak("Cập nhật Zablind thất bại. Vui lòng thử lại sau.", language="vi")
@@ -5491,8 +5654,8 @@ def run_zalo_patch(handler=None, is_patch_once=False):
                             except Exception as e:
                                 print(f"[PATCHER] Error reading patched config version: {e}")
                                 
-                        if not patched_v or patched_v != local_v:
-                            print(f"[PATCHER] Detected version mismatch. Patched version: {patched_v}, Local version: {local_v}. Re-patching Zalo...")
+                        if is_patch_once or not patched_v or patched_v != local_v:
+                            print(f"[PATCHER] Detected version mismatch or force patch run. Patched version: {patched_v}, Local version: {local_v}. Re-patching Zalo...")
                             should_patch = True
                             
                             # Restore clean backup before patching
@@ -5621,9 +5784,22 @@ def start_zalo_patcher_thread(handler):
 
 def start_updater_thread(handler):
     def updater_job():
-        time.sleep(5.0)
+        time.sleep(120.0)
         while True:
             try:
+                # Load auto-update setting from LOCALAPPDATA
+                auto_update = True
+                local_appdata = os.getenv("LOCALAPPDATA")
+                if local_appdata:
+                    settings_path = os.path.join(local_appdata, "Zablind", "zablind_settings.json")
+                    if os.path.exists(settings_path):
+                        try:
+                            with open(settings_path, 'r', encoding='utf-8') as f:
+                                settings = json.load(f)
+                                auto_update = settings.get("auto_update", True)
+                        except Exception as e:
+                            print(f"[UPDATER] Error reading settings file: {e}")
+                
                 assets_source = find_zablind_assets()
                 if not assets_source:
                     print("[UPDATER] Zablind assets not found, skipping update check.")
@@ -5635,8 +5811,11 @@ def start_updater_thread(handler):
                         print(f"[UPDATER] Latest remote version: {remote_tag}")
                         if is_new_version(local_v, remote_tag):
                             print(f"[UPDATER] New version available! Local: {local_v}, Remote: {remote_tag}")
-                            perform_self_update(zip_url, handler)
-                            break
+                            if not auto_update:
+                                print("[UPDATER] Auto-update is disabled by user. Skipping background installation.")
+                            else:
+                                perform_self_update(zip_url, handler)
+                                break
                         else:
                             print("[UPDATER] Zablind is up to date.")
                     else:
@@ -5648,6 +5827,28 @@ def start_updater_thread(handler):
             time.sleep(6 * 3600)
             
     threading.Thread(target=updater_job, daemon=True).start()
+
+
+def start_update_request_checker(handler):
+    def checker():
+        import tempfile
+        import time
+        zablind_dir = os.path.join(os.getenv("LOCALAPPDATA", tempfile.gettempdir()), "Zablind")
+        req_file = os.path.join(zablind_dir, "zablind_update_request.json")
+        while True:
+            try:
+                if os.path.exists(req_file):
+                    print("[UPDATER] Update request file found. Deleting request file and triggering update check.")
+                    try:
+                        os.remove(req_file)
+                    except Exception as rm_err:
+                        print(f"[UPDATER] Error removing request file: {rm_err}")
+                    check_for_updates_manually(handler)
+            except Exception as e:
+                print(f"[UPDATER] Error in update request checker: {e}")
+            time.sleep(1.0)
+            
+    threading.Thread(target=checker, daemon=True).start()
 
 
 def check_for_updates_manually(handler):
@@ -5681,8 +5882,8 @@ def start_watchdog_thread(handler):
     def watchdog_loop():
         zalo_was_running = False
         zalo_exe_name = "zalo.exe"
-        temp_dir = get_system_temp_dir()
-        heartbeat_file = os.path.join(temp_dir, "zablind_heartbeat.json")
+        zablind_dir = os.path.join(os.getenv("LOCALAPPDATA", tempfile.gettempdir()), "Zablind")
+        heartbeat_file = os.path.join(zablind_dir, "zablind_heartbeat.json")
         crash_log_file = "C:/Projects/zablind/zablind_crash.log"
         
         if not os.path.exists(os.path.dirname(crash_log_file)):
@@ -5719,21 +5920,40 @@ def start_watchdog_thread(handler):
                     start_time = time.time()
                     error_details = None
                     
+                    # Build candidate paths to match the JS fallback chain
+                    zablind_dir_candidates = [
+                        heartbeat_file,  # Primary: %LOCALAPPDATA%\Zablind\zablind_heartbeat.json
+                        os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local', 'Zablind', 'zablind_heartbeat.json'),
+                        os.path.join(tempfile.gettempdir(), 'Zablind', 'zablind_heartbeat.json'),
+                    ]
+                    # Also check if APPDATA is set and compute the local sibling
+                    appdata = os.environ.get('APPDATA', '')
+                    if appdata:
+                        local_sibling = os.path.join(os.path.dirname(appdata), 'Local', 'Zablind', 'zablind_heartbeat.json')
+                        zablind_dir_candidates.append(local_sibling)
+                    zablind_dir_candidates = list(dict.fromkeys(zablind_dir_candidates))  # dedupe
+                    
                     while time.time() - start_time < 30.0:
-                        if os.path.exists(heartbeat_file):
-                            try:
-                                with open(heartbeat_file, 'r', encoding='utf-8') as f:
-                                    data = json.load(f)
-                                if data.get('status') == 'ok':
-                                    handshake_success = True
-                                    print("[WATCHDOG] Handshake successful! Zablind loaded correctly inside Zalo.")
-                                    break
-                                elif data.get('status') == 'error':
-                                    error_details = data
-                                    print("[WATCHDOG] Handshake reports initialization error!")
-                                    break
-                            except:
-                                pass
+                        for hb_path in zablind_dir_candidates:
+                            if os.path.exists(hb_path):
+                                try:
+                                    with open(hb_path, 'r', encoding='utf-8') as f:
+                                        data = json.load(f)
+                                    if hb_path != heartbeat_file:
+                                        print(f"[WATCHDOG] Heartbeat found at non-primary path: {hb_path}")
+                                        print(f"[WATCHDOG] env_LOCALAPPDATA={data.get('env_LOCALAPPDATA')} homedir={data.get('homedir')}")
+                                    if data.get('status') == 'ok':
+                                        handshake_success = True
+                                        print("[WATCHDOG] Handshake successful! Zablind loaded correctly inside Zalo.")
+                                        break
+                                    elif data.get('status') == 'error':
+                                        error_details = data
+                                        print("[WATCHDOG] Handshake reports initialization error!")
+                                        break
+                                except:
+                                    pass
+                        if handshake_success or error_details:
+                            break
                         time.sleep(0.5)
                     if not handshake_success:
                         print("[WATCHDOG] Handshake failed or timed out!")
@@ -5912,6 +6132,7 @@ def main():
     register_startup()
     start_watchdog_thread(handler)
     start_updater_thread(handler)
+    start_update_request_checker(handler)
     start_zalo_patcher_thread(handler)
     
     # Initialize UI Automation (required even if process not found yet)

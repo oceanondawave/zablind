@@ -2,6 +2,10 @@
 // Keyboard Event Handler
 // ======================
 
+const path = require("path");
+const fs = require("fs");
+const CONFIG = require("../config.js");
+
 const { SELECTORS } = require("./constants.js");
 const { state, setFocusContext } = require("./state.js");
 const { isTyping, loc } = require("./utils.js");
@@ -14,10 +18,108 @@ const { announce } = require("./accessibility.js");
 const { focusCallButtons, navigateCallButtons } = require("./calls.js");
 const { focusContactSearch, handleSearchNavigation, handleAddFriendNavigation, handleFriendProfileNavigation } = require("./search.js");
 
+function isCheckboxChecked(el) {
+    if (!el) return false;
+    if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+        return el.checked;
+    }
+    const input = el.querySelector('input[type="checkbox"]');
+    if (input && input.checked) return true;
+    
+    return el.classList.contains('--active') || 
+           el.classList.contains('z-checkbox--checked') || 
+           el.classList.contains('checked') || 
+           el.classList.contains('selected') || 
+           el.getAttribute('aria-checked') === 'true' ||
+           (el.className && typeof el.className === 'string' && (
+               el.className.includes('--active') || 
+               el.className.includes('--checked') || 
+               el.className.includes('-checked') ||
+               el.className.includes('selected')
+           ));
+}
+
+function getSettingsPath() {
+    const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+    return path.join(localAppData, 'Zablind', 'zablind_settings.json');
+}
+
+function loadZablindSettings() {
+    const filepath = getSettingsPath();
+    try {
+        if (fs.existsSync(filepath)) {
+            const content = fs.readFileSync(filepath, 'utf8');
+            return JSON.parse(content);
+        }
+    } catch (e) {
+        console.error("[SETTINGS] Error reading settings file:", e);
+    }
+    return { auto_update: true };
+}
+
+function saveZablindSettings(settings) {
+    const filepath = getSettingsPath();
+    try {
+        const dir = path.dirname(filepath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filepath, JSON.stringify(settings, null, 2), 'utf8');
+    } catch (e) {
+        console.error("[SETTINGS] Error writing settings file:", e);
+    }
+}
+
+function getLatestReleaseInfoCached() {
+    const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+    const infoPath = path.join(localAppData, 'Zablind', 'zablind_latest_release.json');
+    try {
+        if (fs.existsSync(infoPath)) {
+            return JSON.parse(fs.readFileSync(infoPath, 'utf8'));
+        }
+    } catch (e) {
+        console.error("[SETTINGS] Error reading cached release info:", e);
+    }
+    return null;
+}
+
+async function getLatestReleaseInfo() {
+    // Try reading local cached info first (written by background python process) to bypass Zalo's CSP/CORS
+    const cached = getLatestReleaseInfoCached();
+    if (cached) {
+        return cached;
+    }
+    try {
+        const response = await fetch("https://ghproxy.net/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json");
+        if (response.ok) {
+            const data = await response.json();
+            return {
+                version: data.version.startsWith('v') ? data.version : `v${data.version}`,
+                releaseDate: data.releaseDate || 'N/A'
+            };
+        }
+    } catch (e) {
+        console.error("Failed to check updates via ghproxy version.json:", e);
+    }
+    try {
+        const response = await fetch("https://api.github.com/repos/oceanondawave/zablind/releases/latest");
+        if (response.ok) {
+            const data = await response.json();
+            return {
+                version: data.tag_name,
+                releaseDate: data.published_at ? new Date(data.published_at).toLocaleDateString('vi-VN') : 'N/A'
+            };
+        }
+    } catch (e) {
+        console.error("Failed to check updates directly:", e);
+    }
+    return null;
+}
+
 function setupContextListeners() {
     document.addEventListener("mousedown", (e) => {
         // Do not change focus context while a modal is open
-        if (state.focusContext === "help_modal" || state.focusContext === "sync_modal" || state.focusContext === "logout_modal" || state.focusContext === "find_friend_modal") {
+        if (state.focusContext === "help_modal" || state.focusContext === "sync_modal" || state.focusContext === "logout_modal" || state.focusContext === "find_friend_modal" || state.focusContext === "share_modal" || state.focusContext === "update_modal") {
             return;
         }
         const target = e.target;
@@ -34,7 +136,7 @@ function setupContextListeners() {
     
     document.addEventListener("focus", (e) => {
         // Do not change focus context while a modal is open
-        if (state.focusContext === "help_modal" || state.focusContext === "sync_modal" || state.focusContext === "logout_modal" || state.focusContext === "find_friend_modal") {
+        if (state.focusContext === "help_modal" || state.focusContext === "sync_modal" || state.focusContext === "logout_modal" || state.focusContext === "find_friend_modal" || state.focusContext === "share_modal" || state.focusContext === "update_modal") {
             return;
         }
         const target = e.target;
@@ -58,6 +160,12 @@ function createKeyboardHandler(liveRegion) {
     const isCtrl = event.ctrlKey || event.metaKey; 
     const isShift = event.shiftKey;
     const isCtrlShift = isCtrl && isShift;
+    
+    if (isCtrl && isShift) {
+        try {
+            fs.appendFileSync("C:/Projects/zablind/keyboard_keys.log", `Key: ${key}, lowerKey: ${lowerKey}, code: ${event.code}\n`, "utf8");
+        } catch(e) {}
+    }
     
     let handled = false;
 
@@ -139,6 +247,186 @@ function createKeyboardHandler(liveRegion) {
             } else {
                 // Completely block all other key presses inside the modal to prevent background triggers!
                 handled = true;
+            }
+        }
+    }
+
+    // --- SHARE/FORWARD MODAL CONTEXT TRAP ---
+    if (state.focusContext === "share_modal") {
+        const shareModal = document.querySelector('.share-msg__conv-list-container')?.closest('.zl-modal__dialog');
+        if (!shareModal) {
+            setFocusContext(state.previousFocusContext || "conversations");
+        } else {
+            const k = event.key;
+            const active = document.activeElement;
+            const isInput = active && (active.tagName === 'INPUT' || active.id === 'richInput' || active.classList.contains('rich-input'));
+            
+            const isNavigationKey = k === 'Tab' || k === 'Escape' || k === 'ArrowDown' || k === 'ArrowUp';
+            const isActionKey = !isInput && (k === ' ' || k === 'Enter');
+            
+            if (!event.ctrlKey && !event.metaKey && (isNavigationKey || isActionKey)) {
+                handled = true;
+                
+                if (event.type === 'keydown') {
+
+                    const items = [];
+                    
+                    // 1. Close button
+                    const closeBtn = shareModal.querySelector('.modal-header-icon, [icon="close f16"]');
+                    if (closeBtn && closeBtn.offsetWidth > 0) items.push(closeBtn);
+                    
+                    // 2. Search Input
+                    const searchInput = shareModal.querySelector('[data-id="txt_SpamMsg_Search"]') || 
+                                        shareModal.querySelector('input[type="text"]') || 
+                                        shareModal.querySelector('input');
+                    if (searchInput) items.push(searchInput);
+                    
+                    // 3. Tabs
+                    const tabs = shareModal.querySelectorAll('.tab-item');
+                    tabs.forEach(tab => {
+                        if (tab && tab.offsetWidth > 0) items.push(tab);
+                    });
+                    
+                    // 4. Conversation Items in the list (Add only the currently active one to items list to skip list on Tab)
+                    const convItems = Array.from(shareModal.querySelectorAll('.share-msg__conv-item'))
+                                           .filter(item => item && item.offsetWidth > 0 && !item.classList.contains('invalid-item'));
+                    
+                    if (convItems.length > 0) {
+                        const activeConv = convItems.find(item => item === active || item.contains(active));
+                        if (activeConv) {
+                            items.push(activeConv);
+                        } else {
+                            items.push(convItems[0]); // default candidate
+                        }
+                    }
+                    
+                    // 5. Message Compose Input
+                    const composeInput = shareModal.querySelector('#richInput, .rich-input');
+                    if (composeInput && composeInput.offsetWidth > 0) items.push(composeInput);
+                    
+                    // 6. Footer buttons
+                    const cancelBtn = shareModal.querySelector('.zl-modal__footer__button--cancel');
+                    if (cancelBtn && cancelBtn.offsetWidth > 0) items.push(cancelBtn);
+                    
+                    const forwardBtn = shareModal.querySelector('.zl-modal__footer__button:not(.zl-modal__footer__button--cancel)');
+                    if (forwardBtn && forwardBtn.offsetWidth > 0) items.push(forwardBtn);
+                    
+                    if (k === 'Escape') {
+                        if (closeBtn) {
+                            fireClick(closeBtn);
+                        } else {
+                            if (state.previousActiveElement && document.body.contains(state.previousActiveElement)) {
+                                state.previousActiveElement.focus();
+                            }
+                            setFocusContext(state.previousFocusContext || "conversations");
+                        }
+                    }
+                    else if (k === 'Tab') {
+                        const isShift = event.shiftKey;
+                        let idx = items.indexOf(active);
+                        if (idx === -1) {
+                            idx = items.findIndex(el => el.contains(active));
+                        }
+                        
+                        if (idx === -1) {
+                            idx = isShift ? items.length - 1 : 0;
+                        }
+                        
+                        const step = isShift ? -1 : 1;
+                        const next = items[(idx + step + items.length) % items.length];
+                        
+                        items.forEach(el => { if (el) el.style.outline = 'none'; });
+                        next.setAttribute("tabindex", "0");
+                        next.focus();
+                        next.style.outline = '2px solid #0068ff';
+                        next.style.outlineOffset = '2px';
+                        
+                        announceShareElement(next, liveRegion);
+                    }
+                    else if (k === 'ArrowDown' || k === 'ArrowUp') {
+                        if (active.classList.contains('share-msg__conv-item')) {
+                            // Navigate inside the contact list using arrows (ARIA listbox pattern)
+                            const step = k === 'ArrowDown' ? 1 : -1;
+                            const idx = convItems.indexOf(active);
+                            if (idx !== -1) {
+                                const nextConv = convItems[(idx + step + convItems.length) % convItems.length];
+                                
+                                shareModal.querySelectorAll('*').forEach(el => { if (el) el.style.outline = 'none'; });
+                                nextConv.setAttribute("tabindex", "0");
+                                nextConv.focus();
+                                nextConv.style.outline = '2px solid #0068ff';
+                                nextConv.style.outlineOffset = '2px';
+                                
+                                announceShareElement(nextConv, liveRegion);
+                            }
+                        } else {
+                            // Standard flat list arrow navigation for other controls
+                            const isArrowDown = k === 'ArrowDown';
+                            const step = isArrowDown ? 1 : -1;
+                            
+                            let idx = items.indexOf(active);
+                            if (idx === -1) {
+                                idx = items.findIndex(el => el.contains(active));
+                            }
+                            
+                            if (idx !== -1) {
+                                let nextIdx = (idx + step + items.length) % items.length;
+                                const next = items[nextIdx];
+                                
+                                items.forEach(el => { if (el) el.style.outline = 'none'; });
+                                next.setAttribute("tabindex", "0");
+                                next.focus();
+                                next.style.outline = '2px solid #0068ff';
+                                next.style.outlineOffset = '2px';
+                                
+                                announceShareElement(next, liveRegion);
+                            }
+                        }
+                    }
+                    else if (k === ' ' || k === 'Enter') {
+                        if (isInput && k === 'Enter' && active.id !== 'richInput') {
+                            // Let type naturally in input fields
+                        } else if (items.includes(active)) {
+                            writeDebugLog(`Action key ${k} in share modal on active element: ${active.tagName}.${Array.from(active.classList).join('.')}`);
+                            if (active.classList.contains('share-msg__conv-item')) {
+                                writeDebugLog(`Action key: target is share-msg__conv-item row`);
+                                const nameDiv = active.querySelector('.share-msg__conv-item__name .truncate') || active.querySelector('.share-msg__conv-item__name');
+                                const clickTarget = nameDiv || active;
+                                writeDebugLog(`Clicking target element: ${clickTarget.tagName}.${Array.from(clickTarget.classList).join('.')}`);
+                                
+                                const originalActive = active;
+                                fireClick(clickTarget, true);
+                                
+                                // Restore focus to the item to override Zalo's automatic focus redirection to the search bar
+                                setTimeout(() => {
+                                    if (originalActive && document.body.contains(originalActive)) {
+                                        originalActive.setAttribute("tabindex", "0");
+                                        originalActive.focus();
+                                        writeDebugLog("Restored focus to contact row");
+                                    }
+                                }, 50);
+                                
+                                setTimeout(() => {
+                                    const nameDiv = originalActive.querySelector('.share-msg__conv-item__name .truncate');
+                                    const name = nameDiv ? nameDiv.innerText.trim() : "";
+                                    const freshCb = originalActive.querySelector('.share-msg__conv-item__check-box') || originalActive.querySelector('.z-checkbox') || originalActive.querySelector('input');
+                                    const isChecked = isCheckboxChecked(freshCb) || isCheckboxChecked(originalActive);
+                                    writeDebugLog(`After click check: name=${name}, isChecked=${isChecked}`);
+                                    announce(`${name}. ${isChecked ? loc("Đã chọn", "Selected") : loc("Đã bỏ chọn", "Deselected")}`, liveRegion);
+                                }, 150);
+                            } else {
+                                writeDebugLog(`Action key: target is other element`);
+                                fireClick(active);
+                            }
+                        } else {
+                            writeDebugLog(`Action key ${k} but active element NOT in items list! items length: ${items.length}, active: ${active ? active.tagName + '.' + Array.from(active.classList).join('.') : 'null'}`);
+                        }
+                    }
+                }
+            } else {
+                if (!isInput) {
+                    handled = true;
+                }
             }
         }
     }
@@ -260,7 +548,7 @@ function createKeyboardHandler(liveRegion) {
                         
                         if (next === cb) {
                             const lbl = cb.querySelector('[data-translate-inner]');
-                            const isChecked = cb.getAttribute('data-id') !== 'false';
+                            const isChecked = isCheckboxChecked(cb);
                             announce(`${lbl ? lbl.innerText.trim() : ''}, ${isChecked ? loc('đã chọn', 'checked') : loc('chưa chọn', 'unchecked')}`, liveRegion);
                         } else {
                             announce(next.innerText.trim(), liveRegion);
@@ -274,11 +562,12 @@ function createKeyboardHandler(liveRegion) {
                             const freshCb = document.querySelector('.zl-modal__dialog .z-checkbox');
                             if (freshCb) {
                                 const lbl = freshCb.querySelector('[data-translate-inner]');
-                                const isChecked = freshCb.getAttribute('data-id') !== 'false';
+                                const isChecked = isCheckboxChecked(freshCb);
                                 announce(`${lbl ? lbl.innerText.trim() : ''}, ${isChecked ? loc('đã chọn', 'checked') : loc('chưa chọn', 'unchecked')}`, liveRegion);
                             }
                         }, 100);
                     }
+                    // Removed updateToggle handler
                     else if (k === ' ' && (document.activeElement === no || document.activeElement === yes || document.activeElement === restart)) {
                         const target = document.activeElement;
                         setTimeout(() => {
@@ -303,10 +592,11 @@ function createKeyboardHandler(liveRegion) {
                                 const freshCb = document.querySelector('.zl-modal__dialog .z-checkbox');
                                 if (freshCb) {
                                     const lbl = freshCb.querySelector('[data-translate-inner]');
-                                    const isChecked = freshCb.getAttribute('data-id') !== 'false';
+                                    const isChecked = isCheckboxChecked(freshCb);
                                     announce(`${lbl ? lbl.innerText.trim() : ''}, ${isChecked ? loc('đã chọn', 'checked') : loc('chưa chọn', 'unchecked')}`, liveRegion);
                                 }
                             }, 100);
+                        // Removed updateToggle handler
                         } else {
                             setTimeout(() => {
                                 if (target === no) {
@@ -361,6 +651,24 @@ function createKeyboardHandler(liveRegion) {
         }
     }
 
+    // --- UPDATE MODAL CONTEXT TRAP ---
+    if (state.focusContext === "update_modal") {
+        const k = event.key;
+        if (state.updateInProgress) {
+            // Block Escape, Enter, Space. Only allow Tab.
+            if (k === 'Escape' || k === 'Esc' || k === 'Enter' || k === ' ') {
+                handled = true;
+                return;
+            }
+        }
+        handled = true;
+        if (!event.ctrlKey && !event.metaKey && (k === 'Tab' || k === 'Enter' || k === 'Escape' || k === 'Esc' || k === ' ')) {
+            if (event.type === 'keydown') {
+                handleUpdateModalKeys(event, liveRegion);
+            }
+        }
+    }
+
     // --- HELP MODAL CONTEXT TRAP ---
     if (state.focusContext === "help_modal") {
         const k = event.key;
@@ -397,7 +705,19 @@ function createKeyboardHandler(liveRegion) {
     if (isCtrlShift && lowerKey === "f") {
         handled = true;
         document.activeElement?.blur();
-        focusContactSearch(liveRegion);
+        if (state.focusContext === "share_modal") {
+            const shareModal = document.querySelector('.share-msg__conv-list-container')?.closest('.zl-modal__dialog');
+            const searchInput = shareModal?.querySelector('[data-id="txt_SpamMsg_Search"]') || 
+                                shareModal?.querySelector('input[type="text"]') || 
+                                shareModal?.querySelector('input');
+            if (searchInput) {
+                searchInput.focus();
+                const { announce } = require("./accessibility.js");
+                announce(loc("Hộp nhập tìm kiếm liên hệ.", "Search input box for contacts."), liveRegion);
+            }
+        } else {
+            focusContactSearch(liveRegion);
+        }
     }
     
     // --- CONVERSATIONS ---
@@ -478,6 +798,10 @@ function createKeyboardHandler(liveRegion) {
       handled = true;
       const { openHelpModal } = require("./help.js");
       openHelpModal(liveRegion);
+    }
+    else if (isCtrlShift && lowerKey === "u") {
+      handled = true;
+      openUpdateModal(liveRegion);
     }
 
     // (logout_modal handled at top of function)
@@ -885,7 +1209,35 @@ function toggleFullscreenQR(liveRegion) {
     
     const openBrowser = () => {
         if (state.qrServerPort) {
-            shell.openExternal(`http://127.0.0.1:${state.qrServerPort}/`);
+            const url = `http://127.0.0.1:${state.qrServerPort}/`;
+            try {
+                const { exec } = require('child_process');
+                const script = `
+Start-Process '${url}'
+$code = '[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);'
+Add-Type -MemberDefinition $code -Name 'Win32' -Namespace 'Win32' -ErrorAction SilentlyContinue
+for ($i=0; $i -lt 30; $i++) {
+    $p = Get-Process | Where-Object { $_.MainWindowTitle -like '*Zablind Accessible*' } | Select-Object -First 1
+    if ($p) {
+        $hwnd = $p.MainWindowHandle
+        if ($hwnd -ne [IntPtr]::Zero) {
+            [Win32.Win32]::ShowWindow($hwnd, 3)
+            [Win32.Win32]::SetForegroundWindow($hwnd)
+            break
+        }
+    }
+    Start-Sleep -Milliseconds 150
+}
+`;
+                const encoded = Buffer.from(script, 'utf16le').toString('base64');
+                exec(`powershell -NoProfile -EncodedCommand ${encoded}`, (err) => {
+                    if (err) {
+                        shell.openExternal(url);
+                    }
+                });
+            } catch (e) {
+                shell.openExternal(url);
+            }
             announce(loc(
                 "Đã mở mã QR trong trình duyệt web của bạn.",
                 "Opened QR code in your web browser."
@@ -1060,6 +1412,10 @@ async function signOut(liveRegion) {
         }
     } catch (e) {}
 
+    // Removed Zablind updater settings insertion from signOut modal (moved to dedicated Update Management modal)
+
+
+
     // TRAP VIRTUAL CURSOR: Tell NVDA this is a true modal dialog
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
@@ -1085,7 +1441,7 @@ async function signOut(liveRegion) {
         // We poll multiple times over 400ms to override any asynchronous React state restoring from localStorage/DB.
         for (let attempt = 0; attempt < 4; attempt++) {
             try {
-                const isChecked = checkbox.getAttribute('data-id') !== 'false';
+                const isChecked = isCheckboxChecked(checkbox);
                 if (isChecked) {
                     fireClick(checkbox);
                 }
@@ -1096,7 +1452,7 @@ async function signOut(liveRegion) {
         checkbox.setAttribute("tabindex", "0");
         checkbox.focus();
         const checkLabel = checkbox.querySelector('[data-translate-inner]');
-        const checked = checkbox.getAttribute('data-id') !== 'false';
+        const checked = isCheckboxChecked(checkbox);
         const cbText = `${checkLabel ? checkLabel.innerText.trim() : ''}, ${checked ? loc('đã chọn', 'checked') : loc('chưa chọn', 'unchecked')}`;
         announce(`${title}. ${body}. ${cbText}`, liveRegion);
     } else {
@@ -1214,24 +1570,95 @@ async function toggleLanguage(liveRegion) {
     }
 }
 
-function fireClick(btn) {
-    if (!btn) return;
+function writeDebugLog(msg) {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+        const zablindDir = path.join(localAppData, 'Zablind');
+        if (!fs.existsSync(zablindDir)) {
+            fs.mkdirSync(zablindDir, { recursive: true });
+        }
+        const logFile = path.join(zablindDir, "zablind_keyboard_debug.txt");
+        const timestamp = new Date().toISOString();
+        fs.appendFileSync(logFile, `[${timestamp}] ${msg}\n`, 'utf8');
+    } catch (e) {}
+}
+
+function fireClick(btn, skipNativeClick = false) {
+    if (!btn) {
+        writeDebugLog("fireClick: btn is null or undefined");
+        return;
+    }
     
     const target = btn;
     
     try {
         let rect = target.getBoundingClientRect();
+        writeDebugLog(`fireClick target: ${target.tagName}.${Array.from(target.classList).join('.')}, initial rect: l=${rect.left}, t=${rect.top}, w=${rect.width}, h=${rect.height}`);
         let currentTarget = target;
         while ((rect.width === 0 || rect.height === 0 || (rect.left === 0 && rect.top === 0)) && currentTarget.parentElement) {
             currentTarget = currentTarget.parentElement;
             rect = currentTarget.getBoundingClientRect();
         }
+        writeDebugLog(`fireClick loop finished, currentTarget: ${currentTarget.tagName}.${Array.from(currentTarget.classList).join('.')}, rect: l=${rect.left}, t=${rect.top}, w=${rect.width}, h=${rect.height}`);
         let x = Math.floor(rect.left + (rect.width / 2));
         let y = Math.floor(rect.top + (rect.height / 2));
         
         if (x === 0 && y === 0) {
             x = window.innerWidth / 2;
             y = window.innerHeight / 2;
+        }
+        writeDebugLog(`fireClick final coordinates: x=${x}, y=${y}`);
+        
+        // --- React Handler Invocation ---
+        let reactHandled = false;
+        try {
+            let current = target;
+            let levels = 3; // search up to 3 levels of ancestors
+            
+            while (current && levels > 0) {
+                const key = Object.keys(current).find(k => k.startsWith('__reactProps$') || k.startsWith('__reactEventHandlers$'));
+                if (key && current[key]) {
+                    const props = current[key];
+                    const handlers = ['onClick', 'onMouseDown', 'onMouseUp', 'onPointerDown', 'onPointerUp'];
+                    for (const h of handlers) {
+                        if (typeof props[h] === 'function') {
+                            try {
+                                const nativeEvent = new MouseEvent(h.replace(/^on/, '').toLowerCase(), {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    view: window,
+                                    clientX: x,
+                                    clientY: y
+                                });
+                                const dummyEvent = {
+                                    nativeEvent,
+                                    target,
+                                    currentTarget: current,
+                                    type: nativeEvent.type,
+                                    bubbles: true,
+                                    cancelable: true,
+                                    preventDefault() { try { nativeEvent.preventDefault(); } catch(e){} },
+                                    stopPropagation() { try { nativeEvent.stopPropagation(); } catch(e){} },
+                                    stopImmediatePropagation() { try { nativeEvent.stopImmediatePropagation(); } catch(e){} },
+                                    persist() {}
+                                };
+                                props[h](dummyEvent);
+                                reactHandled = true;
+                                writeDebugLog(`React internal handler ${h} invoked successfully on ${current.tagName}`);
+                            } catch(re) {
+                                writeDebugLog(`React handler ${h} error: ${re.message}`);
+                            }
+                        }
+                    }
+                    if (reactHandled) break;
+                }
+                current = current.parentElement;
+                levels--;
+            }
+        } catch (reactErr) {
+            writeDebugLog(`React handler invocation crash: ${reactErr.message}`);
         }
         
         const opts = { 
@@ -1249,10 +1676,12 @@ function fireClick(btn) {
         target.dispatchEvent(new MouseEvent("mousedown", opts));
         target.dispatchEvent(new MouseEvent("mouseup", opts));
         target.dispatchEvent(new MouseEvent("click", opts));
-        if (typeof target.click === "function") {
+        if (!skipNativeClick && typeof target.click === "function") {
             target.click();
         }
-    } catch(e) {}
+    } catch(e) {
+        writeDebugLog(`fireClick error: ${e.message}`);
+    }
 };
 
 async function syncData(liveRegion) {
@@ -1595,4 +2024,565 @@ function announceElement(el, liveRegion) {
     } else {
         announce(loc("Nút hành động", "Action button"), liveRegion);
     }
+}
+
+function announceShareElement(el, liveRegion) {
+    if (!el) return;
+    
+    // 1. Close button
+    if (el.classList.contains('modal-header-icon') || el.getAttribute('icon') === 'close f16') {
+        announce(loc("Đóng, Nút", "Close, Button"), liveRegion);
+        return;
+    }
+    
+    // 2. Search Input
+    if (el.tagName === 'INPUT' && (el.getAttribute('data-id') === 'txt_SpamMsg_Search' || el.closest('.zl-modal__dialog')?.querySelector('.share-msg__conv-list-container'))) {
+        announce(loc("Hộp nhập tìm kiếm liên hệ.", "Search input box for contacts."), liveRegion);
+        return;
+    }
+    
+    // 3. Tab Item
+    if (el.classList.contains('tab-item')) {
+        const span = el.querySelector('[data-translate-inner]');
+        const name = span ? span.innerText.trim() : (el.getAttribute('aria-label') || "");
+        const isSelected = el.classList.contains('selected') || el.getAttribute('aria-pressed') === 'true';
+        announce(`${name}. ${loc("Tab", "Tab")}. ${isSelected ? loc("Đang được chọn", "Selected") : ""}`, liveRegion);
+        return;
+    }
+    // 4. Conversation Checkbox Item
+    if (el.classList.contains('share-msg__conv-item')) {
+        const nameDiv = el.querySelector('.share-msg__conv-item__name .truncate');
+        const name = nameDiv ? nameDiv.innerText.trim() : "";
+        const checkbox = el.querySelector('.share-msg__conv-item__check-box') || el.querySelector('.z-checkbox') || el.querySelector('input');
+        const isChecked = isCheckboxChecked(checkbox) || isCheckboxChecked(el);
+        announce(`${name}. ${isChecked ? loc("Đã chọn, Hộp kiểm", "Selected, Checkbox") : loc("Chưa chọn, Hộp kiểm", "Unselected, Checkbox")}`, liveRegion);
+        return;
+    }
+    
+    // 6. Compose Input
+    if (el.id === 'richInput' || el.classList.contains('rich-input')) {
+        announce(loc("Hộp nhập lời nhắn kèm theo.", "Attached message input box."), liveRegion);
+        return;
+    }
+    
+    // 7. Footer Cancel Button
+    if (el.classList.contains('zl-modal__footer__button--cancel')) {
+        announce(loc("Hủy, Nút", "Cancel, Button"), liveRegion);
+        return;
+    }
+    
+    // 8. Footer Share/Send Button
+    if (el.classList.contains('zl-modal__footer__button') && !el.classList.contains('zl-modal__footer__button--cancel')) {
+        const isDisabled = el.getAttribute('data-disabled') === 'disabled' || el.classList.contains('disabled');
+        announce(`${loc("Chia sẻ, Nút", "Share, Button")} ${isDisabled ? loc("(Bị mờ)", "(Disabled)") : ""}`, liveRegion);
+        return;
+    }
+}
+
+function openUpdateModal(liveRegion) {
+  try {
+    injectUpdateStyles();
+    
+    if (document.getElementById("zablind-update-modal-overlay")) {
+        closeUpdateModal(liveRegion);
+        return;
+    }
+    
+    previousActiveElement = document.activeElement;
+    previousFocusContext = state.focusContext;
+    
+    const overlay = document.createElement("div");
+    overlay.id = "zablind-update-modal-overlay";
+    overlay.className = "zablind-modal-overlay";
+    
+    const settings = loadZablindSettings();
+    
+    overlay.innerHTML = `
+      <div id="zablind-update-modal" class="zablind-modal" role="dialog" aria-modal="true" tabindex="-1" style="max-height: 380px !important;">
+        <div class="zablind-modal-header" style="grid-template-columns: 1fr !important; padding: 20px 24px 10px 24px !important;">
+          <h2 class="zablind-modal-title">${loc("Quản lý Cập nhật Zablind", "Zablind Update Management")}</h2>
+          <button id="zablind-update-close-btn" class="zablind-close-btn" aria-label="${loc("Đóng quản lý cập nhật", "Close update management")}" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="zablind-modal-body" tabindex="-1" style="padding: 10px 24px 20px 24px !important;">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            
+            <div class="zablind-update-card" style="padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+              <div id="zablind-update-current" tabindex="0" style="font-size: 14px; font-weight: bold; color: #ffffff; outline: none; border-radius: 4px; padding: 2px;">
+                ${loc("Phiên bản hiện tại", "Current version")}: ${CONFIG.version} (${loc("ngày", "date")} ${CONFIG.releaseDate || '30/06/2026'})
+              </div>
+              <div id="zablind-update-latest" tabindex="0" style="font-size: 14px; color: #a0aec0; outline: none; border-radius: 4px; padding: 2px;">
+                ${loc("Phiên bản mới nhất", "Latest version")}: ${loc("Đang kiểm tra...", "Checking...")}
+              </div>
+            </div>
+
+            <label id="zablind-update-toggle-container" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px; outline: none; width: 100%;">
+              <input type="checkbox" id="zablind-update-checkbox" ${settings.auto_update ? 'checked' : ''} tabindex="0" style="cursor: pointer; width: 16px; height: 16px; margin: 0; outline: none;" />
+              <span style="font-size: 14px; color: #e2e8f0; user-select: none;">${loc("Tự động tải và cài đặt cập nhật khi có bản mới", "Auto-download and install updates when available")}</span>
+            </label>
+            
+            <button id="zablind-update-manual-btn" class="zablind-btn-primary" tabindex="0" style="padding: 12px; font-size: 14px; display: flex; justify-content: center; align-items: center; width: 100%; border: none; border-radius: 8px; cursor: pointer; background: #0084ff; color: #ffffff; font-weight: 600;">
+              ${loc("Kiểm tra và Cập nhật thủ công", "Check and Update Manually")}
+            </button>
+
+          </div>
+        </div>
+        <div class="zablind-modal-footer" style="padding: 16px 24px !important; border-top: 1px solid rgba(255, 255, 255, 0.08) !important; display: flex !important; justify-content: space-between !important; align-items: center !important; font-size: 12px !important; color: #718096 !important;">
+          <span>Zablind Accessibility Suite</span>
+          <button id="zablind-update-footer-close" class="zablind-btn-primary" tabindex="0" style="padding: 6px 16px; font-size: 12px; background: #0084ff; border: none; border-radius: 8px; color: #ffffff; cursor: pointer; font-weight: 600;">${loc("Đóng", "Close")}</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Trap accessibility/focus for all sibling elements of the overlay
+    Array.from(document.body.children).forEach(child => {
+        if (child !== overlay && child.id !== "zablind-live-region") {
+            child.setAttribute("data-zablind-inert", child.getAttribute("aria-hidden") || "false");
+            child.setAttribute("aria-hidden", "true");
+            child.setAttribute("inert", "true");
+        }
+    });
+    
+    // Bind toggle action
+    const checkbox = overlay.querySelector("#zablind-update-checkbox");
+    checkbox.addEventListener("change", () => {
+        settings.auto_update = checkbox.checked;
+        saveZablindSettings(settings);
+        const statusText = settings.auto_update ? 
+            loc("Đã bật tự động cập nhật Zablind.", "Auto-update enabled.") : 
+            loc("Đã tắt tự động cập nhật Zablind.", "Auto-update disabled.");
+        announce(statusText, liveRegion);
+    });
+    
+    // Bind manual check
+    const manualBtn = overlay.querySelector("#zablind-update-manual-btn");
+    manualBtn.addEventListener("click", () => triggerManualUpdate(liveRegion));
+    
+    // Bind close buttons
+    const closeBtn = overlay.querySelector("#zablind-update-close-btn");
+    closeBtn.addEventListener("click", () => closeUpdateModal(liveRegion));
+    const footerClose = overlay.querySelector("#zablind-update-footer-close");
+    footerClose.addEventListener("click", () => closeUpdateModal(liveRegion));
+    
+    // Close on click outside
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+            closeUpdateModal(liveRegion);
+        }
+    });
+    
+    setFocusContext("update_modal");
+    
+    // Fetch latest release info in background
+    const latestText = overlay.querySelector("#zablind-update-latest");
+    getLatestReleaseInfo().then(info => {
+        if (info) {
+            if (latestText) {
+                latestText.innerText = `${loc("Phiên bản mới nhất", "Latest version")}: ${info.version} (${loc("ngày", "date")} ${info.releaseDate})`;
+                if (info.version !== `v${CONFIG.version}` && info.version !== CONFIG.version) {
+                    latestText.style.color = "#ef4444";
+                    latestText.style.fontWeight = "bold";
+                } else {
+                    latestText.style.color = "#22c55e";
+                    latestText.innerText += ` - ${loc("Bạn đang dùng bản mới nhất", "You are using the latest version")}`;
+                }
+            }
+        } else {
+            if (latestText) {
+                latestText.innerText = `${loc("Phiên bản mới nhất", "Latest version")}: ${loc("Không thể kiểm tra", "Unable to check")}`;
+            }
+        }
+    });
+    
+    announce(loc("Đã mở cửa sổ quản lý cập nhật Zablind.", "Zablind update management dialog opened."), liveRegion);
+    
+    setTimeout(() => {
+        if (checkbox) checkbox.focus();
+    }, 100);
+  } catch (err) {
+    try {
+        fs.writeFileSync("C:/Projects/zablind/keyboard_error.log", err.stack || err.message, "utf8");
+    } catch(fsErr) {}
+    console.error("Error in openUpdateModal:", err);
+  }
+}
+
+function closeUpdateModal(liveRegion) {
+    const overlay = document.getElementById("zablind-update-modal-overlay");
+    if (!overlay) return;
+    
+    // Restore accessibility/focus for all sibling elements of the overlay
+    Array.from(document.body.children).forEach(child => {
+        if (child.hasAttribute("data-zablind-inert")) {
+            const wasHidden = child.getAttribute("data-zablind-inert");
+            if (wasHidden === "true") {
+                child.setAttribute("aria-hidden", "true");
+            } else {
+                child.removeAttribute("aria-hidden");
+            }
+            child.removeAttribute("inert");
+            child.removeAttribute("data-zablind-inert");
+        }
+    });
+    
+    overlay.remove();
+    
+    if (previousActiveElement && document.body.contains(previousActiveElement)) {
+        previousActiveElement.focus();
+    }
+    setFocusContext(previousFocusContext);
+    
+    announce(loc("Đã đóng cửa sổ cập nhật.", "Update dialog closed."), liveRegion);
+}
+
+function triggerManualUpdate(liveRegion) {
+    state.updateInProgress = true;
+    
+    // Announce the check starting
+    const statusText = loc(
+        "Đang tiến hành kiểm tra và tải bản cập nhật Zablind. Vui lòng không đóng cửa sổ và chờ trong giây lát.",
+        "Checking and downloading Zablind update. Please keep the window open and wait a moment."
+    );
+    announce(statusText, liveRegion);
+    
+    // Replace the modal body with the loading indicator
+    const modalBody = document.querySelector(".zablind-modal-body");
+    if (modalBody) {
+        modalBody.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 30px 0;">
+              <div class="zablind-spinner"></div>
+              <div id="zablind-update-status-text" tabindex="0" style="font-size: 15px; font-weight: bold; color: #ffffff; text-align: center; outline: none; border-radius: 4px; padding: 2px;">
+                ${loc("Đang tiến hành tải bản cập nhật Zablind...", "Downloading Zablind update in progress...")}
+              </div>
+              <div id="zablind-update-status-subtext" tabindex="0" style="font-size: 13px; color: #a0aec0; text-align: center; outline: none; border-radius: 4px; padding: 2px;">
+                ${loc("Vui lòng chờ trong giây lát. Ứng dụng sẽ tự động tải...", "Please wait a moment. The app will download automatically...")}
+              </div>
+            </div>
+        `;
+    }
+    
+    // Disable all modal close buttons and remove them from tab index
+    const closeBtn = document.getElementById("zablind-update-close-btn");
+    if (closeBtn) {
+        closeBtn.disabled = true;
+        closeBtn.style.opacity = "0.3";
+        closeBtn.style.cursor = "not-allowed";
+        closeBtn.removeAttribute("tabindex");
+    }
+    const footerClose = document.getElementById("zablind-update-footer-close");
+    if (footerClose) {
+        footerClose.disabled = true;
+        footerClose.style.opacity = "0.3";
+        footerClose.style.cursor = "not-allowed";
+        footerClose.removeAttribute("tabindex");
+    }
+    
+    // Write request file to notify background Python process
+    try {
+        const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+        const zablindDir = path.join(localAppData, 'Zablind');
+        if (!fs.existsSync(zablindDir)) {
+            fs.mkdirSync(zablindDir, { recursive: true });
+        }
+        const reqFile = path.join(zablindDir, "zablind_update_request.json");
+        fs.writeFileSync(reqFile, JSON.stringify({ timestamp: Date.now() }), 'utf8');
+    } catch(e) {
+        writeDebugLog("Error writing update request file: " + e.message);
+    }
+    
+    // Check latest release info dynamically in parallel
+    setTimeout(() => {
+        getLatestReleaseInfo().then(info => {
+            if (info) {
+                const isNew = (info.version !== `v${CONFIG.version}` && info.version !== CONFIG.version);
+                if (!isNew) {
+                    // Already up-to-date! Restore the UI.
+                    state.updateInProgress = false;
+                    
+                    if (closeBtn) {
+                        closeBtn.disabled = false;
+                        closeBtn.style.opacity = "1";
+                        closeBtn.style.cursor = "pointer";
+                        closeBtn.setAttribute("tabindex", "0");
+                    }
+                    if (footerClose) {
+                        footerClose.disabled = false;
+                        footerClose.style.opacity = "1";
+                        footerClose.style.cursor = "pointer";
+                        footerClose.setAttribute("tabindex", "0");
+                    }
+                    
+                    if (modalBody) {
+                        modalBody.innerHTML = `
+                          <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div class="zablind-update-card" style="padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+                              <div id="zablind-update-current" tabindex="0" style="font-size: 14px; font-weight: bold; color: #ffffff; outline: none; border-radius: 4px; padding: 2px;">
+                                ${loc("Phiên bản hiện tại", "Current version")}: ${CONFIG.version} (${loc("ngày", "date")} ${CONFIG.releaseDate || '30/06/2026'})
+                              </div>
+                              <div id="zablind-update-latest" tabindex="0" style="font-size: 14px; color: #22c55e; outline: none; border-radius: 4px; padding: 2px;">
+                                ${loc("Phiên bản mới nhất", "Latest version")}: ${info.version} - ${loc("Bạn đang dùng bản mới nhất", "You are using the latest version")}
+                              </div>
+                            </div>
+                            <button id="zablind-update-manual-btn" class="zablind-btn-primary" tabindex="0" style="padding: 12px; font-size: 14px; display: flex; justify-content: center; align-items: center; width: 100%; border: none; border-radius: 8px; cursor: pointer; background: #0084ff; color: #ffffff; font-weight: 600;">
+                              ${loc("Kiểm tra và Cập nhật thủ công", "Check and Update Manually")}
+                            </button>
+                          </div>
+                        `;
+                        const newManualBtn = modalBody.querySelector("#zablind-update-manual-btn");
+                        newManualBtn.addEventListener("click", () => triggerManualUpdate(liveRegion));
+                    }
+                    
+                    announce(loc("Zablind đã ở phiên bản mới nhất.", "Zablind is already on the latest version."), liveRegion);
+                    
+                    setTimeout(() => {
+                        const cur = document.getElementById("zablind-update-current");
+                        if (cur) cur.focus();
+                    }, 100);
+                } else {
+                    // Update is in progress in the background (self-updater is running and will restart Zalo).
+                    // In case of error/hang, unlock it after 15 seconds.
+                    setTimeout(() => {
+                        if (state.updateInProgress) {
+                            state.updateInProgress = false;
+                            if (closeBtn) {
+                                closeBtn.disabled = false;
+                                closeBtn.style.opacity = "1";
+                                closeBtn.style.cursor = "pointer";
+                                closeBtn.setAttribute("tabindex", "0");
+                            }
+                            if (footerClose) {
+                                footerClose.disabled = false;
+                                footerClose.style.opacity = "1";
+                                footerClose.style.cursor = "pointer";
+                                footerClose.setAttribute("tabindex", "0");
+                            }
+                            const statusText = document.getElementById("zablind-update-status-text");
+                            if (statusText) {
+                                statusText.innerText = loc("Quá trình tải bản cập nhật đang mất nhiều thời gian hơn dự kiến. Vui lòng chờ trong giây lát...", "The update download is taking longer than expected. Please wait a moment...");
+                                statusText.style.color = "#cca700";
+                            }
+                        }
+                    }, 60000);
+                }
+            } else {
+                // Connection failed
+                state.updateInProgress = false;
+                if (closeBtn) {
+                    closeBtn.disabled = false;
+                    closeBtn.style.opacity = "1";
+                    closeBtn.style.cursor = "pointer";
+                    closeBtn.setAttribute("tabindex", "0");
+                }
+                if (footerClose) {
+                    footerClose.disabled = false;
+                    footerClose.style.opacity = "1";
+                    footerClose.style.cursor = "pointer";
+                    footerClose.setAttribute("tabindex", "0");
+                }
+                const statusText = document.getElementById("zablind-update-status-text");
+                if (statusText) {
+                    statusText.innerText = loc("Lỗi kết nối tới máy chủ.", "Connection server error.");
+                    statusText.style.color = "#ef4444";
+                }
+            }
+        });
+    }, 3000);
+}
+
+function handleUpdateModalKeys(event, liveRegion) {
+    const k = event.key;
+    const overlay = document.getElementById("zablind-update-modal-overlay");
+    if (!overlay) return;
+    
+    const closeBtn = document.getElementById("zablind-update-close-btn");
+    const currentVer = document.getElementById("zablind-update-current");
+    const latestVer = document.getElementById("zablind-update-latest");
+    const checkbox = document.getElementById("zablind-update-checkbox");
+    const manualBtn = document.getElementById("zablind-update-manual-btn");
+    const footerClose = document.getElementById("zablind-update-footer-close");
+    
+    // Loading/Error elements
+    const statusText = document.getElementById("zablind-update-status-text");
+    const statusSubtext = document.getElementById("zablind-update-status-subtext");
+    
+    let items;
+    if (state.updateInProgress) {
+        items = [statusText, statusSubtext].filter(Boolean);
+    } else {
+        items = [closeBtn, statusText, statusSubtext, currentVer, latestVer, checkbox, manualBtn, footerClose].filter(Boolean);
+    }
+    
+    const active = document.activeElement;
+    
+    if (k === "Escape" || k === "Esc") {
+        if (!state.updateInProgress) {
+            closeUpdateModal(liveRegion);
+        }
+        return;
+    }
+    
+    if (k === "Tab") {
+        event.preventDefault();
+        const isShift = event.shiftKey;
+        let idx = items.indexOf(active);
+        if (idx === -1) {
+            idx = items.findIndex(el => el.contains(active));
+        }
+        
+        if (idx === -1) {
+            const next = isShift ? items[items.length - 1] : items[0];
+            items.forEach(el => { if (el) el.style.outline = 'none'; });
+            next.focus();
+            next.style.outline = '2px solid #0084ff';
+            next.style.outlineOffset = '2px';
+            
+            // Announce focused element
+            if (next === closeBtn) {
+                announce(loc("Nút đóng", "Close button"), liveRegion);
+            } else if (next === currentVer) {
+                announce(currentVer.innerText, liveRegion);
+            } else if (next === latestVer) {
+                announce(latestVer.innerText, liveRegion);
+            } else if (next === checkbox) {
+                announce(loc(`Tự động tải và cài đặt cập nhật khi có bản mới, hộp kiểm ${checkbox.checked ? "đã chọn" : "chưa chọn"}`, `Auto-download and install updates when available, checkbox ${checkbox.checked ? "checked" : "unchecked"}`), liveRegion);
+            } else if (next === manualBtn) {
+                announce(loc("Nút Kiểm tra và Cập nhật thủ công", "Check and Update Manually button"), liveRegion);
+            } else if (next === footerClose) {
+                announce(loc("Nút đóng", "Close button"), liveRegion);
+            } else if (next === statusText) {
+                announce(statusText.innerText, liveRegion);
+            } else if (next === statusSubtext) {
+                announce(statusSubtext.innerText, liveRegion);
+            }
+            return;
+        }
+        
+        const step = isShift ? -1 : 1;
+        const next = items[(idx + step + items.length) % items.length];
+        
+        items.forEach(el => { if (el) el.style.outline = 'none'; });
+        next.focus();
+        next.style.outline = '2px solid #0084ff';
+        next.style.outlineOffset = '2px';
+        
+        // Announce focused element
+        if (next === closeBtn) {
+            announce(loc("Nút đóng", "Close button"), liveRegion);
+        } else if (next === currentVer) {
+            announce(currentVer.innerText, liveRegion);
+        } else if (next === latestVer) {
+            announce(latestVer.innerText, liveRegion);
+        } else if (next === checkbox) {
+            announce(loc(`Tự động tải và cài đặt cập nhật khi có bản mới, hộp kiểm ${checkbox.checked ? "đã chọn" : "chưa chọn"}`, `Auto-download and install updates when available, checkbox ${checkbox.checked ? "checked" : "unchecked"}`), liveRegion);
+        } else if (next === manualBtn) {
+            announce(loc("Nút Kiểm tra và Cập nhật thủ công", "Check and Update Manually button"), liveRegion);
+        } else if (next === footerClose) {
+            announce(loc("Nút đóng", "Close button"), liveRegion);
+        } else if (next === statusText) {
+            announce(statusText.innerText, liveRegion);
+        } else if (next === statusSubtext) {
+            announce(statusSubtext.innerText, liveRegion);
+        }
+    }
+    
+    if (k === "Enter" || k === " ") {
+        if (active === closeBtn || active === footerClose) {
+            closeUpdateModal(liveRegion);
+        } else if (active === checkbox) {
+            if (k === "Enter") {
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            }
+        } else if (active === manualBtn) {
+            triggerManualUpdate(liveRegion);
+        }
+    }
+}
+
+function injectUpdateStyles() {
+    if (document.getElementById("zablind-update-styles")) return;
+    
+    const style = document.createElement("style");
+    style.id = "zablind-update-styles";
+    style.textContent = `
+        .zablind-modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: rgba(0, 0, 0, 0.75) !important;
+            backdrop-filter: blur(12px) !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            z-index: 100000 !important;
+        }
+        .zablind-modal {
+            width: 90% !important;
+            max-width: 500px !important;
+            background: rgba(22, 22, 28, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            color: #e2e8f0 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+            outline: none !important;
+        }
+        .zablind-modal-header {
+            padding: 20px 24px !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            position: relative !important;
+        }
+        .zablind-modal-title {
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+            color: #ffffff !important;
+        }
+        .zablind-close-btn {
+            background: transparent !important;
+            border: none !important;
+            color: #a0aec0 !important;
+            cursor: pointer !important;
+            position: absolute !important;
+            top: 16px !important;
+            right: 16px !important;
+            padding: 6px !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .zablind-close-btn:hover {
+            color: #ffffff !important;
+        }
+        .zablind-modal-body {
+            padding: 20px 24px !important;
+            outline: none !important;
+        }
+        .zablind-spinner {
+            width: 48px !important;
+            height: 48px !important;
+            border: 4px solid rgba(255, 255, 255, 0.1) !important;
+            border-top-color: #0084ff !important;
+            border-radius: 50% !important;
+            animation: zablind-spin 1s linear infinite !important;
+        }
+        @keyframes zablind-spin {
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
 }

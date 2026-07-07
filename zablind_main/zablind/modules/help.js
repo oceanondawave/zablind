@@ -14,8 +14,8 @@ const shortcutsData = [
   },
   {
     keys: ["Ctrl", "Shift", "F"],
-    descVi: "Tập trung vào ô tìm kiếm danh bạ / liên hệ",
-    descEn: "Focus the contact search input box",
+    descVi: "Tập trung vào ô tìm kiếm danh bạ (hoặc ô tìm kiếm liên hệ khi trong cửa sổ Chia sẻ)",
+    descEn: "Focus the contact search input box (or the search input inside the Share/Forward dialog)",
     category: "Navigation"
   },
   {
@@ -188,9 +188,21 @@ const shortcutsData = [
   },
   {
     keys: ["Ctrl", "Shift", "U"],
-    descVi: "Kiểm tra bản cập nhật mới nhất cho Zablind",
-    descEn: "Check for the latest updates for Zablind",
+    descVi: "Mở hộp thoại quản lý cập nhật Zablind",
+    descEn: "Open Zablind update management dialog",
     category: "General"
+  },
+  {
+    keys: ["ArrowDown"],
+    descVi: "Di chuyển xuống liên hệ tiếp theo (khi trong cửa sổ Chia sẻ)",
+    descEn: "Move down to the next contact (inside the Share/Forward dialog)",
+    category: "Navigation"
+  },
+  {
+    keys: ["ArrowUp"],
+    descVi: "Di chuyển lên liên hệ phía trước (khi trong cửa sổ Chia sẻ)",
+    descEn: "Move up to the previous contact (inside the Share/Forward dialog)",
+    category: "Navigation"
   }
 ];
 

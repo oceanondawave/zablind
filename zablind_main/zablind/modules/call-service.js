@@ -419,16 +419,58 @@ if (process.type === 'browser') {
 
   const { app } = require('electron');
 
-  // Open DevTools on browser window creation if enabled
-  if (CONFIG.enableDevTools) {
-    app.on('browser-window-created', (event, window) => {
+  const monkeypatchWindow = (win) => {
+    if (!win || !win.webContents || win.webContents.__zablindPatched) return;
+    win.webContents.__zablindPatched = true;
+    try {
+      const originalSend = win.webContents.send;
+      win.webContents.send = function (channel, ...args) {
+        if (channel === "noti-create" && args && args[0]) {
+          try {
+            const notiData = args[0];
+            debugLog(`[NOTI-INTERCEPT] Intercepted noti-create: ${JSON.stringify(notiData)}`);
+            const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+            const zablindDir = path.join(localAppData, 'Zablind');
+            if (!fs.existsSync(zablindDir)) {
+              fs.mkdirSync(zablindDir, { recursive: true });
+            }
+            const tempFile = path.join(zablindDir, "zablind_notification.json");
+            const data = {
+              title: notiData.title || "",
+              titlePrefix: notiData.titlePrefix || "",
+              body: notiData.body || "",
+              timestamp: Date.now()
+            };
+            fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), "utf8");
+          } catch (err) {
+            debugLog(`[NOTI-INTERCEPT] Error writing notification file: ${err.message}`);
+          }
+        }
+        return originalSend.apply(this, [channel, ...args]);
+      };
+    } catch (e) {
+      debugLog(`[NOTI-INTERCEPT] Error monkeypatching send: ${e.message}`);
+    }
+  };
+
+  app.on('browser-window-created', (event, win) => {
+    if (CONFIG.enableDevTools) {
       try {
-        window.webContents.openDevTools({ mode: 'detach' });
+        win.webContents.openDevTools({ mode: 'detach' });
       } catch (e) {
         debugLog(`Error opening DevTools: ${e.message}`);
       }
+    }
+    monkeypatchWindow(win);
+  });
+
+  // Also patch existing windows if any are already created
+  try {
+    const { BrowserWindow } = require('electron');
+    BrowserWindow.getAllWindows().forEach(win => {
+      monkeypatchWindow(win);
     });
-  }
+  } catch (e) {}
 
   // Ensure Call Handler is killed when app quits
   app.on('will-quit', () => {
@@ -440,7 +482,12 @@ if (process.type === 'browser') {
     const { ipcMain } = require('electron');
     ipcMain.on('zablind-outgoing-call', (event, callType) => {
       try {
-        const tempFile = path.join(require('os').tmpdir(), "zablind_outgoing_call_type.json");
+        const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+        const zablindDir = path.join(localAppData, 'Zablind');
+        if (!fs.existsSync(zablindDir)) {
+          fs.mkdirSync(zablindDir, { recursive: true });
+        }
+        const tempFile = path.join(zablindDir, "zablind_outgoing_call_type.json");
         const data = {
           callType: callType,
           timestamp: Date.now(),
@@ -457,6 +504,8 @@ if (process.type === 'browser') {
     debugLog(`[IPC] Error registering ipcMain listener: ${ipcError.message}`);
   }
 }
+
+
 
 // Export functions for manual control if needed
 module.exports = {

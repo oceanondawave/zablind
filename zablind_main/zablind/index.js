@@ -24,18 +24,57 @@ function writeHeartbeat(status, errorDetails = null) {
     const os = require('os');
     const config = require('./config.js');
     
-    const tempFile = path.join(os.tmpdir(), "zablind_heartbeat.json");
+    // Build multiple candidate paths robustly - Electron may sanitize env vars
+    const candidates = [];
+    
+    // Try LOCALAPPDATA env var
+    if (process.env.LOCALAPPDATA) {
+      candidates.push(path.join(process.env.LOCALAPPDATA, 'Zablind'));
+    }
+    // Try USERPROFILE fallback
+    if (process.env.USERPROFILE) {
+      candidates.push(path.join(process.env.USERPROFILE, 'AppData', 'Local', 'Zablind'));
+    }
+    // Try APPDATA fallback (Roaming → Local sibling)
+    if (process.env.APPDATA) {
+      candidates.push(path.join(process.env.APPDATA, '..', 'Local', 'Zablind'));
+    }
+    // os.homedir fallback
+    try {
+      candidates.push(path.join(os.homedir(), 'AppData', 'Local', 'Zablind'));
+    } catch(e) {}
+    // Last resort: temp dir
+    candidates.push(path.join(os.tmpdir(), 'Zablind'));
+    
     const data = {
       status: status,
       version: config.version || "2.0",
       pid: process.pid,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      env_LOCALAPPDATA: process.env.LOCALAPPDATA || null,
+      env_USERPROFILE: process.env.USERPROFILE || null,
+      env_APPDATA: process.env.APPDATA || null,
+      homedir: (() => { try { return os.homedir(); } catch(e) { return null; } })()
     };
     if (errorDetails) {
       data.error = errorDetails.message;
       data.stack = errorDetails.stack;
     }
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+    const payload = JSON.stringify(data, null, 2);
+    
+    for (const dir of candidates) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(path.join(dir, 'zablind_heartbeat.json'), payload, 'utf8');
+        // Write once successfully, also write a debug marker
+        fs.writeFileSync(path.join(dir, 'zablind_debug_path.txt'), dir, 'utf8');
+        break; // Stop after first success
+      } catch(writeErr) {
+        // Try next candidate
+      }
+    }
   } catch (e) {}
 }
 
@@ -54,6 +93,29 @@ window.addEventListener('error', (event) => {
 function initZablind() {
   try {
       initializeAccessibility();
+      
+      // Append Zablind version to Zalo window title using MutationObserver
+      try {
+          const config = require('./config.js');
+          const suffix = " - Zablind - Version " + config.version;
+          const titleEl = document.querySelector('title') || document.createElement('title');
+          if (!titleEl.parentNode && document.head) {
+              document.head.appendChild(titleEl);
+          }
+          const updateTitle = () => {
+              const current = document.title || "Zalo";
+              if (!current.endsWith(suffix)) {
+                  observer.disconnect();
+                  document.title = current + suffix;
+                  observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
+              }
+          };
+          const observer = new MutationObserver(updateTitle);
+          observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
+          updateTitle();
+      } catch (titleErr) {
+          console.error("Error setting window title:", titleErr);
+      }
       
       const liveRegion = createLiveRegion();
       document.body.appendChild(liveRegion);

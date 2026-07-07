@@ -75,6 +75,79 @@ function translateLegacyEmojiElements(root) {
   });
 }
 
+let prevUnreadStates = new Map();
+
+function triggerNativeNotification(title, body, prefix) {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
+    const zablindDir = path.join(localAppData, 'Zablind');
+    if (!fs.existsSync(zablindDir)) {
+      fs.mkdirSync(zablindDir, { recursive: true });
+    }
+    const tempFile = path.join(zablindDir, "zablind_notification.json");
+    const data = {
+      title: title || "",
+      titlePrefix: prefix || "",
+      body: body || "",
+      timestamp: Date.now()
+    };
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), "utf8");
+  } catch (err) {
+    console.error("[NOTI-TRIGGER] Error writing notification file:", err);
+  }
+}
+
+function checkConversationUnreads() {
+  const convItems = document.querySelectorAll('.conv-item');
+  if (convItems.length === 0) return;
+  
+  convItems.forEach(item => {
+    const titleEl = item.querySelector('.conv-item-title__name, .conv-item-title, .chat-name');
+    const title = titleEl ? titleEl.innerText.trim() : "";
+    if (!title) return;
+    
+    let unreadCount = 0;
+    const unreadEl = item.querySelector('.z-noti-badge, .conv-action__unread-v2, .--unread, .conv-unread, .conv_unread_count');
+    if (unreadEl) {
+      unreadCount = 1;
+      const iconEl = item.querySelector('[class*="z-noti-badge__content"], [class*="fa-"]');
+      if (iconEl) {
+        const match = iconEl.className.match(/fa-(\d+)/);
+        if (match) {
+          unreadCount = parseInt(match[1]) || 0;
+        } else if (iconEl.className.includes('9plus')) {
+          unreadCount = 10;
+        }
+      }
+    }
+    
+    const msgEl = item.querySelector('.z-conv-message, .conv-item-message, .conv-item-fadein, .conv-item-fadeout');
+    const lastMsg = msgEl ? msgEl.innerText.trim() : "";
+    
+    const prevState = prevUnreadStates.get(title);
+    
+    if (prevState) {
+      const countIncreased = unreadCount > prevState.unreadCount;
+      const msgChanged = lastMsg !== prevState.lastMessageText && unreadCount > 0;
+      
+      if (countIncreased || msgChanged) {
+        if (lastMsg) {
+          triggerNativeNotification(title, lastMsg, "");
+        } else {
+          triggerNativeNotification("Tin nhắn mới", `Bạn có tin nhắn mới từ ${title}`, "");
+        }
+      }
+    }
+    
+    prevUnreadStates.set(title, {
+      unreadCount: unreadCount,
+      lastMessageText: lastMsg
+    });
+  });
+}
+
 function initializeAccessibility() {
   document.body.setAttribute("role", "application");
   
@@ -109,7 +182,20 @@ function initializeAccessibility() {
       _watchQrImage(qrPage);
   }
 
+  let isUnreadCheckPending = false;
   roleObserver = new MutationObserver((mutations) => {
+      if (!isUnreadCheckPending) {
+          isUnreadCheckPending = true;
+          Promise.resolve().then(() => {
+              isUnreadCheckPending = false;
+              try {
+                  checkConversationUnreads();
+                  const { initMessageObserver } = require("./messages.js");
+                  initMessageObserver();
+              } catch (e) {}
+          });
+      }
+
       let needsFix = false;
       for (const m of mutations) {
           if (m.addedNodes.length > 0) needsFix = true;
@@ -183,6 +269,59 @@ function initializeAccessibility() {
               }, 3000);
           }
       });
+
+      // Auto-announcement and focus management for Share/Forward modal
+      const shareModal = document.querySelector('.share-msg__conv-list-container')?.closest('.zl-modal__dialog');
+      if (shareModal) {
+          if (state.focusContext !== "share_modal") {
+              state.previousActiveElement = document.activeElement;
+              state.previousFocusContext = state.focusContext;
+              state.focusContext = "share_modal";
+              
+              announce(`${loc("Chia sẻ tin nhắn", "Share message")}. ${loc("Hộp thoại đang hiển thị.", "Dialog is visible.")}`);
+              
+               // Focus the search input inside the share modal with robust fallbacks and retries
+               const tryFocusSearch = () => {
+                   const searchInput = shareModal.querySelector('[data-id="txt_SpamMsg_Search"]') || 
+                                       shareModal.querySelector('input[type="text"]') || 
+                                       shareModal.querySelector('input');
+                   if (searchInput) {
+                       searchInput.setAttribute("tabindex", "0");
+                       if (document.activeElement !== searchInput) {
+                           searchInput.focus();
+                       }
+                       return true;
+                   }
+                   return false;
+               };
+               
+               tryFocusSearch();
+               
+               // Enforce focus on the search input during the first 1.5 seconds or until the user focuses an interactive element inside the modal
+               let focusEnforceTimer = setInterval(() => {
+                   const active = document.activeElement;
+                   const currentShareModal = document.querySelector('.share-msg__conv-list-container')?.closest('.zl-modal__dialog');
+                   if (!currentShareModal) {
+                       clearInterval(focusEnforceTimer);
+                       return;
+                   }
+                   // If active element is body, the modal dialog container, the list container, or not inside the modal, force focus back to search input
+                   if (!active || active === document.body || active.classList.contains('zl-modal__dialog') || active.classList.contains('share-msg__conv-list-container') || !currentShareModal.contains(active)) {
+                       tryFocusSearch();
+                   }
+               }, 100);
+               
+               // Clear enforcement after 1.5 seconds
+               setTimeout(() => clearInterval(focusEnforceTimer), 1500);
+           }
+      } else {
+          if (state.focusContext === "share_modal") {
+              state.focusContext = state.previousFocusContext || "conversations";
+              if (state.previousActiveElement && document.body.contains(state.previousActiveElement)) {
+                  state.previousActiveElement.focus();
+              }
+          }
+      }
 
       // Auto-announcement and focus management for Find Friend modal
       const findFriendModal = document.querySelector('#FIND_FRIEND');
@@ -275,8 +414,17 @@ function initializeAccessibility() {
   
   roleObserver.observe(document.body, { 
       childList: true, 
-      subtree: true
+      subtree: true,
+      attributes: true,
+      characterData: true
   });
+
+  // Run initial pass of unread check to populate previous states
+  try {
+      checkConversationUnreads();
+  } catch (e) {
+      console.error("[INIT] Failed to run initial unread check:", e);
+  }
 }
 
 function fixInteractiveElements(root) {
@@ -548,4 +696,5 @@ module.exports = {
   announce,
   initializeAccessibility,
   injectStyles,
+  triggerNativeNotification,
 };

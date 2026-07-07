@@ -6,7 +6,7 @@ const { HIGHLIGHT_CLASS, ALLOWED_MENU_KEYS, SELECTORS } = require("./constants.j
 const { state, updateMenuState, resetMenuState } = require("./state.js");
 const { simulateHover, sleep, loc } = require("./utils.js");
 
-async function getAllowedMenuItems(timeout = 1000) {
+async function getAllowedMenuItems(timeout = 1000, isAttachment = false) {
   const start = Date.now();
   let popup = null;
 
@@ -28,6 +28,13 @@ async function getAllowedMenuItems(timeout = 1000) {
   popup.setAttribute("role", "menu");
 
   return items.filter((item) => {
+    if (isAttachment) {
+      item.setAttribute("role", "menuitem");
+      item.tabIndex = 0;
+      item.setAttribute("aria-hidden", "false");
+      return true;
+    }
+
     const key =
       item
         .querySelector("span[data-translate-inner]")
@@ -207,7 +214,7 @@ async function openAttachmentMenu(event, liveRegion) {
   attachmentBtn.click();
   await sleep(30);
   
-  const items = await getAllowedMenuItems();
+  const items = await getAllowedMenuItems(1000, true);
   updateMenuState(items, items.length > 0 ? 0 : -1);
   
   if (items.length > 0) {

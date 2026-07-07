@@ -8,7 +8,8 @@ const {
   MESSAGE_TYPE_SELECTORS,
 } = require("./constants.js");
 const { state, setFocusContext } = require("./state.js");
-const { formatDuration, announce, loc } = require("./utils.js"); 
+const { formatDuration, loc } = require("./utils.js"); 
+const { announce } = require("./accessibility.js");
 
 let navDebounceTimer = null;
 
@@ -381,14 +382,45 @@ function navigateMessages(key) {
   highlightMessageById(newId, false);
 }
 
+function isMessageFromMe(messageElement) {
+  if (!messageElement) return false;
+  const classes = ["me", "chat-item--me", "card--me", "from-me"];
+  for (const c of classes) {
+    if (messageElement.classList.contains(c)) return true;
+  }
+  if (messageElement.querySelector(".card--me, .chat-item--me, .--from-me, .-from-me, .msg-owner")) {
+    return true;
+  }
+  const className = messageElement.className || "";
+  if (typeof className === "string") {
+    const words = className.split(/\s+/);
+    for (const w of words) {
+      if (w === "me" || w.endsWith("-me") || w.endsWith("--me") || w.includes("from-me") || w.includes("owner")) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Auto-focus new messages observer
 let messageObserver = null;
+let lastObservedChatView = null;
 function initMessageObserver() {
-    if (messageObserver) messageObserver.disconnect();
-    
-    // Find the wrapper using ID without hash
     const chatView = document.getElementById(SELECTORS.chatView.substring(1));
-    if (!chatView) return;
+    if (!chatView) {
+        lastObservedChatView = null;
+        if (messageObserver) {
+            messageObserver.disconnect();
+            messageObserver = null;
+        }
+        return;
+    }
+    
+    if (chatView === lastObservedChatView) return;
+    
+    if (messageObserver) messageObserver.disconnect();
+    lastObservedChatView = chatView;
     
     messageObserver = new MutationObserver((mutations) => {
         if (state.menu.isOpen) return;
@@ -413,6 +445,23 @@ function initMessageObserver() {
         if (hasNewMessages) {
              updateMessageItems();
              const lastId = state.messages.ids[state.messages.ids.length - 1];
+             
+             // Announce if not from me
+             if (lastId) {
+                 const lastEl = state.messages.map.get(lastId);
+                 if (lastEl && !isMessageFromMe(lastEl)) {
+                     const contentObj = getMessageContent(lastEl);
+                     const contentText = typeof contentObj === "string" ? contentObj : (contentObj?.announcement || "");
+                     if (contentText) {
+                         const headerNameEl = document.querySelector('.header-title, .chat-title, .chat-box-header__title, .header-name, .chat-header__name, .chat-header__title, [class*="header-title"], [class*="chat-title"], [class*="header-name"]');
+                         const chatPartnerName = headerNameEl ? headerNameEl.innerText.trim() : "Tin nhắn mới";
+                         
+                         const { triggerNativeNotification } = require("./accessibility.js");
+                         triggerNativeNotification(chatPartnerName, contentText, "");
+                     }
+                 }
+             }
+             
              if (lastId && lastId !== state.messages.currentId) {
                  state.messages.currentId = lastId;
                  highlightMessageById(lastId, false);

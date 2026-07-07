@@ -26,6 +26,7 @@ const state = {
   hasAnnouncedLoginQR: false,
   previousActiveElement: null,
   previousFocusContext: "conversations",
+  updateInProgress: false,
 };
 
 function updateMenuState(items, index) {
@@ -43,7 +44,7 @@ function resetMenuState() {
 }
 
 function setFocusContext(context) {
-    if (["conversations", "messages", "search", "search_results", "input", "call_buttons", "add_friend_btn", "add_friend_input", "logout_modal", "sync_modal", "login_qr", "find_friend_modal", "help_modal"].includes(context)) {
+    if (["conversations", "messages", "search", "search_results", "input", "call_buttons", "add_friend_btn", "add_friend_input", "logout_modal", "sync_modal", "login_qr", "find_friend_modal", "help_modal", "share_modal", "update_modal"].includes(context)) {
         state.focusContext = context;
     }
 }
