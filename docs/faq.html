@@ -9,6 +9,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
+    <!-- WebM/Opus decoder fallback for iOS WebKit -->
+    <script src="https://cdn.jsdelivr.net/npm/ogv@1.8.9/dist/ogv.js"></script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -701,24 +703,47 @@
                     const blob = new Blob([bytes], { type: result.mimeType || 'audio/webm' });
                     const audioUrl = URL.createObjectURL(blob);
                     
-                    // Render native audio player
-                    container.innerHTML = `
-                        <audio
-                            src="${audioUrl}"
-                            controls
-                            autoplay
-                            class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
-                        ></audio>
-                    `;
-                    container.classList.remove("hidden");
-                    btn.style.display = "none";
+                    // Check if the device is running iOS (iPhone, iPad, iPod)
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                     
-                    // Force reload for Safari compatibility
-                    const player = container.querySelector('audio');
-                    if (player) {
+                    if (isIOS && typeof OGVPlayer !== 'undefined') {
+                        // Use OGVPlayer to play WebM/Opus on iOS WebKit
+                        const player = new OGVPlayer();
+                        player.src = audioUrl;
+                        player.controls = true;
+                        player.style.width = "100%";
+                        player.style.height = "32px";
+                        player.className = "focus:ring-2 focus:ring-primary rounded-md focus:outline-none";
+                        
+                        container.innerHTML = "";
+                        container.appendChild(player);
+                        container.classList.remove("hidden");
+                        btn.style.display = "none";
+                        
                         try {
-                            player.load();
-                        } catch (e) {}
+                            player.play();
+                        } catch (playErr) {
+                            console.error("OGVPlayer autoplay blocked:", playErr);
+                        }
+                    } else {
+                        // Render native audio player for desktop and Android
+                        container.innerHTML = `
+                            <audio
+                                src="${audioUrl}"
+                                controls
+                                autoplay
+                                class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                            ></audio>
+                        `;
+                        container.classList.remove("hidden");
+                        btn.style.display = "none";
+                        
+                        const player = container.querySelector('audio');
+                        if (player) {
+                            try {
+                                player.load();
+                            } catch (e) {}
+                        }
                     }
                 } catch (err) {
                     console.error("Error decoding audio:", err);
