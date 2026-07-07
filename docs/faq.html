@@ -674,14 +674,22 @@
                 });
                 
                 // Try playing immediately
-                player.play().catch((err) => {
-                    console.log("Native autoplay blocked or failed:", err.name);
-                    // If the browser blocked autoplay (NotAllowedError/AbortError), we DO NOT trigger the fallback
-                    // because the native controller is now visible, and the user can just tap the play button manually!
-                    if (err.name !== "NotAllowedError" && err.name !== "AbortError") {
-                        triggerFallback(fileId, container);
+                try {
+                    const playPromise = player.play();
+                    if (playPromise && typeof playPromise.catch === "function") {
+                        playPromise.catch((err) => {
+                            console.log("Native autoplay blocked or failed:", err.name);
+                            // If the browser blocked autoplay (NotAllowedError/AbortError), we DO NOT trigger the fallback
+                            // because the native controller is now visible, and the user can just tap the play button manually!
+                            if (err.name !== "NotAllowedError" && err.name !== "AbortError") {
+                                triggerFallback(fileId, container);
+                            }
+                        });
                     }
-                });
+                } catch (playErr) {
+                    console.error("Native play execution failed:", playErr);
+                    triggerFallback(fileId, container);
+                }
             }
         }
 
@@ -767,9 +775,17 @@
                         });
                         
                         // Attempt autoplay, catch if blocked (which is fine, user can click play manually)
-                        ogvPlayer.play().catch(playErr => {
-                            console.log("OGVPlayer autoplay blocked by Safari gesture policies. Awaiting user click.", playErr);
-                        });
+                        // Attempt autoplay, catch if blocked (which is fine, user can click play manually)
+                        try {
+                            const playPromise = ogvPlayer.play();
+                            if (playPromise && typeof playPromise.catch === "function") {
+                                playPromise.catch(playErr => {
+                                    console.log("OGVPlayer autoplay blocked by Safari gesture policies.", playErr);
+                                });
+                            }
+                        } catch (playErr) {
+                            console.error("OGVPlayer autoplay failed:", playErr);
+                        }
                     } else {
                         // Standard player fallback
                         container.innerHTML = `
