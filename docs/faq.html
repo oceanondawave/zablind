@@ -755,6 +755,9 @@
                     const audioUrl = URL.createObjectURL(recordedBlob);
                     const localPlayer = document.getElementById("local-audio-player");
                     localPlayer.src = audioUrl;
+                    try {
+                        localPlayer.load();
+                    } catch (e) {}
                     
                     // Setup download fallback link
                     const downloadBtn = document.getElementById("download-preview-btn");
