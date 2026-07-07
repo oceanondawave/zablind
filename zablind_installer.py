@@ -497,7 +497,7 @@ def main():
     screen_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
     screen_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
     width = 450
-    height = 300
+    height = 330
     x = (screen_w - width) // 2
     y = (screen_h - height) // 2
     
@@ -560,8 +560,19 @@ def main():
     )
     win32gui.SendMessage(hwnd_status, win32con.WM_SETFONT, hfont, True)
     
+    # 5. Copyright Label (using EDIT control with ES_READONLY to allow keyboard focus and reading)
+    import datetime
+    current_year = datetime.date.today().year
+    copyright_text = f"Minh Tri Nguyen (c) {current_year}"
+    h_copy = win32gui.CreateWindow(
+        "EDIT", copyright_text,
+        win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,
+        10, 260, 410, 20, hwnd, 104, 0, None
+    )
+    win32gui.SendMessage(h_copy, win32con.WM_SETFONT, hfont, True)
+    
     # Define exact Tab order including the text labels
-    tab_order = [h_title, h_desc, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status]
+    tab_order = [h_title, h_desc, hwnd_btn1, hwnd_btn2, hwnd_btn3, hwnd_status, h_copy]
     
     # Subclass all controls to route Tab / Shift+Tab keyboard navigation correctly
     for ctrl in tab_order:
