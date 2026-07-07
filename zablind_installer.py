@@ -512,7 +512,27 @@ def main():
     )
     
     hwnd_main = hwnd
-    hfont = win32gui.GetStockObject(17) # 17 is DEFAULT_GUI_FONT
+    
+    # Create beautiful modern Segoe UI system fonts
+    try:
+        lf_normal = {
+            'Height': -13, # Segoe UI regular size
+            'Width': 0, 'Escapement': 0, 'Orientation': 0,
+            'Weight': 400, 'Italic': 0, 'Underline': 0, 'StrikeOut': 0,
+            'CharSet': 1, 'OutPrecision': 0, 'ClipPrecision': 0,
+            'Quality': 5, # CLEARTYPE_QUALITY
+            'PitchAndFamily': 0, 'FaceName': 'Segoe UI'
+        }
+        hfont = win32gui.CreateFontIndirect(lf_normal)
+        
+        lf_title = lf_normal.copy()
+        lf_title['Height'] = -17
+        lf_title['Weight'] = 700
+        hfont_title = win32gui.CreateFontIndirect(lf_title)
+    except Exception as e:
+        print(f"[FONT] Create font failed, falling back: {e}")
+        hfont = win32gui.GetStockObject(17)
+        hfont_title = hfont
     
     # 1. Title Label (using EDIT control with ES_READONLY to allow keyboard focus and reading)
     h_title = win32gui.CreateWindow(
@@ -520,7 +540,7 @@ def main():
         win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,
         10, 15, 410, 25, hwnd, 101, 0, None
     )
-    win32gui.SendMessage(h_title, win32con.WM_SETFONT, hfont, True)
+    win32gui.SendMessage(h_title, win32con.WM_SETFONT, hfont_title, True)
     
     # 2. Desc Label (using EDIT control with ES_READONLY)
     h_desc = win32gui.CreateWindow(
