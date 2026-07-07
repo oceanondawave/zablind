@@ -563,7 +563,7 @@ def main():
     # 5. Copyright Label (using EDIT control with ES_READONLY to allow keyboard focus and reading)
     import datetime
     current_year = datetime.date.today().year
-    copyright_text = f"Minh Tri Nguyen (c) {current_year}"
+    copyright_text = f"Minh Tri Nguyen © {current_year}"
     h_copy = win32gui.CreateWindow(
         "EDIT", copyright_text,
         win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_TABSTOP | win32con.ES_READONLY | win32con.ES_CENTER | win32con.ES_MULTILINE,

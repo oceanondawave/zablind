@@ -94,28 +94,7 @@ function initZablind() {
   try {
       initializeAccessibility();
       
-      // Append Zablind version to Zalo window title using MutationObserver
-      try {
-          const config = require('./config.js');
-          const suffix = " - Zablind - Version " + config.version;
-          const titleEl = document.querySelector('title') || document.createElement('title');
-          if (!titleEl.parentNode && document.head) {
-              document.head.appendChild(titleEl);
-          }
-          const updateTitle = () => {
-              const current = document.title || "Zalo";
-              if (!current.endsWith(suffix)) {
-                  observer.disconnect();
-                  document.title = current + suffix;
-                  observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
-              }
-          };
-          const observer = new MutationObserver(updateTitle);
-          observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
-          updateTitle();
-      } catch (titleErr) {
-          console.error("Error setting window title:", titleErr);
-      }
+
       
       const liveRegion = createLiveRegion();
       document.body.appendChild(liveRegion);

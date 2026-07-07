@@ -643,7 +643,7 @@ function openHelpModal(liveRegion) {
         </div>
       </div>
       <div class="zablind-modal-footer">
-        <span>Zablind Accessibility Suite</span>
+        <span id="zablind-help-version-span" tabindex="0" aria-label="${loc("Zablind bộ hỗ trợ tiếp cận, phiên bản " + require('../config.js').version, "Zablind Accessibility Suite, version " + require('../config.js').version)}">Zablind Accessibility Suite - v${require('../config.js').version}</span>
         <button id="zablind-help-footer-close" class="zablind-btn-primary" tabindex="0">${loc("Đóng", "Close")}</button>
       </div>
     </div>
@@ -763,11 +763,14 @@ function handleHelpModalKeys(event, liveRegion) {
     // Dynamically query visible shortcut rows
     const shortcutRows = Array.from(document.querySelectorAll(".zablind-shortcut-item"));
     
+    const versionSpan = document.getElementById("zablind-help-version-span");
+    
     // Build items array in tab sequence order
     const items = [
       searchInput,
       ...shortcutRows,
       closeBtn,
+      versionSpan,
       footerClose
     ].filter(Boolean);
     
