@@ -541,13 +541,35 @@
                 }
                 
                 if (item.replyUrl) {
-                    // Extract file ID to build Google Drive preview embed URL
                     const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
                     const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
-                    const embedUrl = driveFileId ? `https://drive.google.com/file/d/${driveFileId}/preview` : item.replyUrl;
-                    audioHtml = `
-                        <div class="pt-2 space-y-2 border-t">
-                            <div class="flex items-center justify-between">
+                    if (driveFileId) {
+                        audioHtml = `
+                            <div class="pt-2 space-y-2 border-t">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2 text-xs font-semibold text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                            <line x1="12" y1="19" x2="12" y2="22"/>
+                                        </svg>
+                                        Phản hồi bằng giọng nói của tác giả
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <button onclick="playVoiceReply('${driveFileId}', this)" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 text-xs font-semibold transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                                        <svg class="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z"/>
+                                        </svg>
+                                        <span>Nghe phản hồi giọng nói</span>
+                                    </button>
+                                </div>
+                                <div id="audio-container-${driveFileId}" class="hidden pt-1"></div>
+                            </div>
+                        `;
+                    } else {
+                        audioHtml = `
+                            <div class="pt-2 space-y-2 border-t">
                                 <div class="flex items-center gap-2 text-xs font-semibold text-primary">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -556,30 +578,16 @@
                                     </svg>
                                     Phản hồi bằng giọng nói của tác giả
                                 </div>
-                                ${driveFileId ? `
-                                <a href="${driveFileId ? 'https://drive.google.com/file/d/' + driveFileId + '/view' : item.replyUrl}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary hover:underline flex items-center gap-1 font-semibold">
-                                    Mở trong tab mới
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                        <polyline points="15 3 21 3 21 9"/>
-                                        <line x1="10" y1="14" x2="21" y2="3"/>
-                                    </svg>
-                                </a>
-                                ` : ''}
+                                <audio
+                                    src="${item.replyUrl}"
+                                    controls
+                                    class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                                    preload="none"
+                                    aria-label="Phản hồi giọng nói của tác giả cho câu hỏi của ${escapeHtml(item.name)}"
+                                ></audio>
                             </div>
-                            <p class="sr-only">Trình phát âm thanh nhúng. Nhấn Enter hoặc Space để vào khung và tương tác với nút phát.</p>
-                            <iframe
-                                src="${embedUrl}"
-                                title="Phản hồi giọng nói của tác giả cho câu hỏi của ${escapeHtml(item.name)}"
-                                aria-label="Phản hồi giọng nói của tác giả cho câu hỏi của ${escapeHtml(item.name)}"
-                                allow="autoplay"
-                                width="100%"
-                                height="80"
-                                style="border:none;border-radius:6px;"
-                                tabindex="0"
-                            ></iframe>
-                        </div>
-                    `;
+                        `;
+                    }
                 } else if (!isIslanded(item)) {
                     audioHtml = `
                         <div class="pt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1.5 border-t">
@@ -635,6 +643,71 @@
             });
 
             announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
+        }
+
+        // Fetch and Play Voice Reply dynamically via Apps Script (CORS-free & direct stream fallback)
+        async function playVoiceReply(fileId, btn) {
+            const container = document.getElementById(`audio-container-${fileId}`);
+            if (!container) return;
+            
+            // If already loaded and playing, just show the player
+            if (container.querySelector('audio')) {
+                container.classList.remove("hidden");
+                btn.style.display = "none";
+                return;
+            }
+            
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `
+                <svg class="animate-spin h-3.5 w-3.5 text-current inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Đang tải...</span>
+            `;
+            
+            try {
+                const response = await fetch(`${API_ENDPOINT}?action=get_audio&fileId=${fileId}`);
+                if (!response.ok) throw new Error("Lỗi mạng khi kết nối server");
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || "Không thể truy cập tệp tin");
+                
+                // Decode base64 to binary blob
+                const binaryString = atob(result.base64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: result.mimeType || 'audio/webm' });
+                const audioUrl = URL.createObjectURL(blob);
+                
+                // Render native audio player
+                container.innerHTML = `
+                    <audio
+                        src="${audioUrl}"
+                        controls
+                        autoplay
+                        class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                    ></audio>
+                `;
+                container.classList.remove("hidden");
+                btn.style.display = "none";
+                
+                // Force reload for Safari compatibility
+                const player = container.querySelector('audio');
+                if (player) {
+                    try {
+                        player.load();
+                    } catch (e) {}
+                }
+            } catch (err) {
+                console.error("Error loading voice reply:", err);
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                alert("Không thể tải phản hồi: " + err.message);
+            }
         }
 
         // Verify Admin Session via Apps Script Backend

@@ -24,6 +24,27 @@ const COL_STATUS = "Zablind Moderation Status";
 const STATUS_ISLAND = "island";
 
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === "get_audio" && e.parameter.fileId) {
+    try {
+      var file = DriveApp.getFileById(e.parameter.fileId);
+      var blob = file.getBlob();
+      var bytes = blob.getBytes();
+      var base64 = Utilities.base64Encode(bytes);
+      var result = {
+        success: true,
+        mimeType: blob.getContentType(),
+        base64: base64
+      };
+      return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: err.toString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = sheet.getDataRange().getValues();
