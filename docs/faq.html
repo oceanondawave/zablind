@@ -731,6 +731,7 @@
             // Create script element to perform JSONP request
             const script = document.createElement("script");
             script.id = callbackName;
+            script.crossOrigin = "anonymous";
             script.src = `${API_ENDPOINT}?action=get_audio&fileId=${fileId}&callback=window.zablindAudioCallbacks.${callbackName}`;
             script.async = true;
             
