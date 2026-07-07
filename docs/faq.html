@@ -729,12 +729,14 @@
                     for (let i = 0; i < len; i++) {
                         bytes[i] = binaryString.charCodeAt(i);
                     }
-                    const blob = new Blob([bytes], { type: result.mimeType || 'audio/webm' });
+                    const blob = new Blob([bytes], { type: 'application/octet-stream' });
                     const audioUrl = URL.createObjectURL(blob);
                     
                     if (typeof OGVPlayer !== 'undefined') {
-                        // Create OGVPlayer instance
-                        const ogvPlayer = new OGVPlayer();
+                        // Create OGVPlayer instance with CDN base path for WebAssembly/Worker scripts resolution
+                        const ogvPlayer = new OGVPlayer({
+                            base: "https://cdn.jsdelivr.net/npm/ogv@1.8.9/dist"
+                        });
                         ogvPlayer.src = audioUrl;
                         window.ogvPlayers[fileId] = ogvPlayer;
                         
