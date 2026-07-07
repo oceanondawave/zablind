@@ -1,40 +1,25 @@
 # Điểm mới trong Zablind Phiên bản v2.1.1
 
-Bản cập nhật v2.1.1 tập trung vào cải tiến vượt trội cho tính năng chia sẻ tin nhắn, khôi phục hệ thống thông báo hệ thống và vá lỗi hiển thị bộ cài đặt.
+Bản cập nhật v2.1.1 mang đến cải tiến lớn cho tính năng chia sẻ tin nhắn giúp người dùng duyệt danh sách dễ dàng hơn, đồng thời khôi phục lại tính năng thông báo tin nhắn mới của hệ thống để hoạt động ổn định nhất.
 
 ---
 
-## 1. Tính năng Chia sẻ và Chuyển tiếp tin nhắn (Chi tiết cách sử dụng)
+## 1. Hướng dẫn sử dụng Tính năng Chia sẻ và Chuyển tiếp tin nhắn
 
-Tính năng chia sẻ tin nhắn hiện đã được tối ưu hóa khả năng truy cập toàn diện bằng bàn phím và phản hồi giọng nói (đọc trạng thái).
+Khi bạn muốn gửi một tin nhắn, hình ảnh hoặc tài liệu cho nhiều người cùng lúc, tính năng Chia sẻ hiện đã được hỗ trợ tối đa bằng giọng nói và phím tắt như sau:
 
-### Cách sử dụng chi tiết:
-1. **Mở hộp thoại Chia sẻ**: Nhấp vào nút "Chia sẻ" (hoặc chọn từ menu ngữ cảnh của tin nhắn). Hộp thoại chia sẻ của Zalo sẽ hiển thị.
-2. **Kích hoạt chế độ kiểm soát**: Zablind sẽ tự động khóa tiêu điểm bên trong hộp thoại (Context: `share_modal`) để tránh bấm nhầm phím ra bên ngoài. Trình đọc màn hình sẽ thông báo: *"Chia sẻ tin nhắn. Hộp thoại đang hiển thị."* và tiêu điểm được đặt ngay vào ô Tìm kiếm.
-3. **Di chuyển giữa các thành phần (Tab / Shift + Tab)**:
-   * **Nút Đóng**: Thoát hộp thoại.
-   * **Ô Tìm kiếm**: Nhập tên bạn bè hoặc nhóm để lọc nhanh danh sách.
-   * **Các thẻ (Tabs)**: Di chuyển giữa các danh mục bạn bè, nhóm hoặc liên hệ gần đây.
-   * **Danh sách liên hệ**: Danh sách những người bạn muốn chia sẻ tin nhắn.
-   * **Ô nhập nội dung gửi kèm**: Nhập tin nhắn văn bản đi kèm với tệp/tin nhắn được chia sẻ.
-   * **Nút Hủy**: Hủy bỏ thao tác.
-   * **Nút Chia sẻ**: Xác nhận gửi tin nhắn đến các liên hệ đã chọn.
-4. **Điều hướng danh sách liên hệ (Arrow Down / Arrow Up)**: Khi tiêu điểm đang ở danh sách liên hệ, sử dụng phím **Mũi tên xuống** hoặc **Mũi tên lên** để duyệt qua từng người. Zablind sẽ tự động đọc tên liên hệ kèm theo trạng thái hiện tại (ví dụ: *"Nguyễn Văn A. Chưa chọn"*).
-5. **Chọn/Bỏ chọn liên hệ (Space / Enter)**: Nhấn phím **Khoảng trắng (Space)** hoặc **Enter** để đánh dấu chọn hoặc bỏ chọn liên hệ đó. Zablind sẽ lập tức thông báo trạng thái cập nhật (ví dụ: *"Nguyễn Văn A. Đã chọn"* hoặc *"Nguyễn Văn A. Đã bỏ chọn"*). Bạn có thể chọn nhiều liên hệ cùng lúc.
-6. **Đóng hộp thoại nhanh (Escape)**: Nhấn phím **Esc** bất kỳ lúc nào để đóng hộp thoại chia sẻ và tự động đưa tiêu điểm trở lại cửa sổ trò chuyện chính.
+* **Mở cửa sổ chia sẻ**: Khi bạn chọn chia sẻ một tin nhắn, Zablind sẽ tự động đọc: *"Chia sẻ tin nhắn. Hộp thoại đang hiển thị."* Lúc này, bạn chỉ có thể bấm phím trong cửa sổ này, không lo bị bấm nhầm ra các khu vực khác của Zalo.
+* **Tìm kiếm bạn bè**: Tiêu điểm ban đầu sẽ nằm ngay tại ô tìm kiếm. Bạn chỉ cần nhập tên người muốn gửi để lọc danh sách nhanh hơn.
+* **Di chuyển giữa các phần**: Nhấn phím **Tab** hoặc **Shift + Tab** để di chuyển lần lượt qua các nút: nút Đóng cửa sổ, ô Tìm kiếm, các tab phân loại (Bạn bè, Nhóm), danh sách tên bạn bè, ô viết lời nhắn kèm theo, nút Hủy và nút Chia sẻ để gửi đi.
+* **Duyệt danh sách bạn bè bằng phím Mũi tên**: Khi đang ở danh sách bạn bè, bạn dùng phím **Mũi tên xuống** hoặc **Mũi tên lên** để nghe đọc tên từng người. Zablind sẽ đọc rõ trạng thái của từng người là đã được chọn hay chưa.
+* **Chọn hoặc bỏ chọn người nhận**: Nhấn phím **Khoảng trắng (Space)** hoặc phím **Enter** trên tên của người bạn muốn gửi. Zablind sẽ lập tức thông báo rõ ràng là *"Đã chọn"* hoặc *"Đã bỏ chọn"* để bạn kiểm soát chính xác.
+* **Đóng nhanh cửa sổ**: Nếu muốn thoát ra ngoài mà không chia sẻ nữa, bạn có thể nhấn phím **Escape (Esc)** ở bất kỳ vị trí nào trong cửa sổ chia sẻ.
 
 ---
 
-## 2. Hệ thống Thông báo Tin nhắn mới & Sửa lỗi Windows Toast Notification
+## 2. Tính năng Thông báo khi có tin nhắn mới
 
-Zablind cung cấp hệ thống thông báo âm thanh (TTS) và thông báo đẩy (Toast Notification) của Windows giúp bạn không bỏ lỡ tin nhắn ngay cả khi Zalo đang chạy dưới nền.
+Zablind giúp bạn luôn nhận được thông tin kịp thời khi có người gửi tin nhắn đến:
 
-* **Thông báo giọng nói và thông báo đẩy**: Khi có tin nhắn mới, Zablind sẽ đọc thông tin người gửi và nội dung tin nhắn thông qua công cụ đọc màn hình, đồng thời đẩy một thông báo native của Windows (Windows Toast Notification) ở góc dưới màn hình.
-* **Khắc phục lỗi mất thông báo hệ thống**: Trong phiên bản v2.1.0, việc Zablind tùy biến tiêu đề cửa sổ Zalo (`document.title`) đã vô tình làm mất liên kết giữa Zalo và hệ thống thông báo native của hệ điều hành Windows. Ở phiên bản v2.1.1 này, chúng tôi đã khôi phục tiêu đề cửa sổ tiêu chuẩn, giúp các thông báo native của hệ thống hoạt động chính xác và ổn định 100%.
-
----
-
-## 3. Các sửa lỗi và cải tiến khác
-
-* **Hiển thị thông tin phiên bản**: Thêm thông tin phiên bản rõ ràng trong Hộp thoại Trợ giúp Zablind (`Ctrl + H`) với tiêu đề `"Zablind Accessibility Suite - v2.1.1"`, tương thích hoàn toàn với trình đọc màn hình.
-* **Sửa lỗi hiển thị chữ lỗi trên Bộ cài đặt**: Khắc phục hiện tượng hiển thị sai ký tự tiếng Việt và lỗi hiển thị biểu tượng bản quyền (`Minh Tri Nguyen © 2026`) trên giao diện bộ cài đặt Windows (`Segoe UI` ClearType).
+* **Thông báo bằng giọng nói và cửa sổ hệ thống**: Mỗi khi có tin nhắn mới, Zablind sẽ tự động đọc to tên người gửi và nội dung tin nhắn cho bạn nghe, đồng thời hiển thị một ô thông báo nhỏ ở góc dưới màn hình máy tính của bạn.
+* **Hoạt động ổn định hơn**: Chúng tôi đã sửa lỗi khiến thông báo thỉnh thoảng không xuất hiện hoặc bị gián đoạn. Giờ đây, các thông báo tin nhắn mới native của hệ điều hành Windows sẽ luôn hiển thị đầy đủ và ổn định 100%, kể cả khi bạn đang mở cửa sổ ứng dụng khác.
