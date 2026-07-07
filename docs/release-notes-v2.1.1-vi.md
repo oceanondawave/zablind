@@ -9,7 +9,7 @@ Bản cập nhật v2.1.1 mang đến nhiều tính năng mới đột phá, nâ
 Khi bạn muốn gửi một tin nhắn, hình ảnh hoặc tài liệu cho nhiều người cùng lúc, tính năng Chia sẻ hiện đã được hỗ trợ tối đa bằng giọng nói và phím tắt như sau:
 
 * **Mở cửa sổ chia sẻ**: Khi bạn chọn chia sẻ một tin nhắn, Zablind sẽ tự động đọc: *"Chia sẻ tin nhắn. Hộp thoại đang hiển thị."* Lúc này, tiêu điểm được tự động đặt vào ô Tìm kiếm, và bạn chỉ có thể bấm phím trong cửa sổ này để tránh thao tác nhầm ra ngoài.
-* **Tìm kiếm bạn bè**: Bạn chỉ cần nhập tên người muốn gửi vào ô Tìm kiếm để lọc danh sách nhanh chóng.
+* **Tìm kiếm bạn bè**: Bạn có thể nhấn phím tắt **Ctrl + Shift + F** bất cứ lúc nào để di chuyển nhanh tiêu điểm quay lại ô Tìm kiếm, sau đó nhập tên người muốn gửi để lọc danh sách nhanh chóng.
 * **Di chuyển giữa các phần**: Nhấn phím **Tab** hoặc **Shift + Tab** để di chuyển lần lượt qua các nút: nút Đóng cửa sổ, ô Tìm kiếm, các tab phân loại (Bạn bè, Nhóm), danh sách tên bạn bè, ô viết lời nhắn kèm theo, nút Hủy và nút Chia sẻ để gửi đi.
 * **Duyệt danh sách bạn bè bằng phím Mũi tên**: Khi tiêu điểm đang ở danh sách bạn bè, sử dụng phím **Mũi tên xuống** hoặc **Mũi tên lên** để nghe đọc tên từng người. Zablind sẽ thông báo rõ trạng thái của từng người là đã được chọn hay chưa.
 * **Chọn hoặc bỏ chọn người nhận**: Nhấn phím **Khoảng trắng (Space)** hoặc phím **Enter** trên tên của người bạn muốn gửi. Zablind sẽ lập tức đọc rõ *"Đã chọn"* hoặc *"Đã bỏ chọn"* để bạn kiểm soát chính xác.
