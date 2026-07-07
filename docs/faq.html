@@ -546,6 +546,7 @@
                     const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
                     const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
                     if (driveFileId) {
+                        const directAudioUrl = `https://docs.google.com/uc?export=download&id=${driveFileId}`;
                         audioHtml = `
                             <div class="pt-2 space-y-2 border-t">
                                 <div class="flex items-center justify-between">
@@ -558,15 +559,17 @@
                                         Phản hồi bằng giọng nói của tác giả
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <button onclick="playVoiceReply('${driveFileId}', this)" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 text-xs font-semibold transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                                        <svg class="h-3 w-3 fill-current" viewBox="0 0 24 24">
-                                            <path d="M8 5v14l11-7z"/>
-                                        </svg>
-                                        <span>Nghe phản hồi giọng nói</span>
-                                    </button>
+                                <div id="audio-player-container-${driveFileId}">
+                                    <audio
+                                        src="${directAudioUrl}"
+                                        controls
+                                        preload="none"
+                                        class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                                        onerror="handleAudioError('${driveFileId}', this)"
+                                        aria-label="Phản hồi giọng nói của tác giả"
+                                    ></audio>
                                 </div>
-                                <div id="audio-container-${driveFileId}" class="hidden pt-1"></div>
+                                <div id="audio-fallback-container-${driveFileId}" class="hidden pt-1"></div>
                             </div>
                         `;
                     } else {
@@ -630,47 +633,32 @@
                                 <button onclick="deleteReply(${item.rowIndex})" 
                                     class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
-                                    </svg>
-                                    Xóa câu trả lời
-                                </button>
-                            ` : ''}
-                            ${islandButton}
-                        </div>
-                    `;
-                }
-
-                card.innerHTML = headerHtml + contentHtml + audioHtml + islandHtml + adminHtml;
-                container.appendChild(card);
-            });
-
-            announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
-        }
-
-        // Global map to hold dynamic JSONP callbacks
+                                 // Global map to hold dynamic JSONP callbacks and OGVPlayers
         window.zablindAudioCallbacks = {};
+        window.ogvPlayers = {};
 
-        // Fetch and Play Voice Reply dynamically via Apps Script (JSONP to bypass iOS 17 CORS/redirect blocks)
-        function playVoiceReply(fileId, btn) {
-            const container = document.getElementById(`audio-container-${fileId}`);
-            if (!container) return;
+        // Lazy-loading fallback triggered only when native browser audio playback fails (CORS redirect or codec mismatch)
+        function handleAudioError(fileId, player) {
+            console.log(`Native playback failed for file: ${fileId}. Loading OGVPlayer fallback...`);
             
-            // If already loaded and playing, just show the player
-            if (container.querySelector('audio')) {
-                container.classList.remove("hidden");
-                btn.style.display = "none";
-                return;
-            }
+            const playerContainer = document.getElementById(`audio-player-container-${fileId}`);
+            const fallbackContainer = document.getElementById(`audio-fallback-container-${fileId}`);
+            if (!playerContainer || !fallbackContainer) return;
             
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `
-                <svg class="animate-spin h-3.5 w-3.5 text-current inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Đang tải...</span>
+            // Hide the broken/native player
+            playerContainer.classList.add("hidden");
+            
+            // Show loading status in fallback container
+            fallbackContainer.innerHTML = `
+                <div class="flex items-center gap-2 text-xs text-muted-foreground/80 italic py-1">
+                    <svg class="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Trình duyệt của bạn cần tải thêm bộ giải mã âm thanh...</span>
+                </div>
             `;
+            fallbackContainer.classList.remove("hidden");
             
             // Generate a unique callback name
             const callbackName = "cb_" + Math.random().toString(36).substring(2, 15);
@@ -685,10 +673,9 @@
                 } catch(e) {}
                 
                 if (!result.success) {
-                    console.error("Error loading voice reply:", result.error);
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                    alert("Không thể tải phản hồi: " + (result.error || "Lỗi truy cập"));
+                    fallbackContainer.innerHTML = `
+                        <div class="text-xs text-red-400 py-1">Không thể tải âm thanh từ máy chủ.</div>
+                    `;
                     return;
                 }
                 
@@ -703,31 +690,49 @@
                     const blob = new Blob([bytes], { type: result.mimeType || 'audio/webm' });
                     const audioUrl = URL.createObjectURL(blob);
                     
-                    // Check if the device is running iOS (iPhone, iPad, iPod)
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                    
-                    if (isIOS && typeof OGVPlayer !== 'undefined') {
-                        // Use OGVPlayer to play WebM/Opus on iOS WebKit
-                        const player = new OGVPlayer();
-                        player.src = audioUrl;
-                        player.controls = true;
-                        player.style.width = "100%";
-                        player.style.height = "32px";
-                        player.className = "focus:ring-2 focus:ring-primary rounded-md focus:outline-none";
+                    if (typeof OGVPlayer !== 'undefined') {
+                        // Create OGVPlayer
+                        const ogvPlayer = new OGVPlayer();
+                        ogvPlayer.src = audioUrl;
+                        window.ogvPlayers[fileId] = ogvPlayer;
                         
-                        container.innerHTML = "";
-                        container.appendChild(player);
-                        container.classList.remove("hidden");
-                        btn.style.display = "none";
+                        // Render Custom Controls UI (ensures visibility on old WebKit instead of showing a blank canvas)
+                        fallbackContainer.innerHTML = `
+                            <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700/60 px-3 py-1.5 rounded-md w-full">
+                                <button onclick="toggleOGVPlay('${fileId}')" id="ogv-play-btn-${fileId}" class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 focus:outline-none">
+                                    <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                                <div class="text-xs font-mono text-zinc-300" id="ogv-time-${fileId}">0:00 / 0:00</div>
+                                <div class="text-[10px] text-zinc-500 italic ml-auto font-medium">Chế độ tương thích</div>
+                            </div>
+                        `;
                         
+                        // Update time display
+                        ogvPlayer.addEventListener("timeupdate", function() {
+                            const timeEl = document.getElementById(`ogv-time-${fileId}`);
+                            if (timeEl) {
+                                const cur = formatTime(ogvPlayer.currentTime);
+                                const dur = formatTime(ogvPlayer.duration || 0);
+                                timeEl.textContent = `${cur} / ${dur}`;
+                            }
+                        });
+                        
+                        ogvPlayer.addEventListener("ended", function() {
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                        });
+                        
+                        // Autoplay immediately
                         try {
-                            player.play();
+                            ogvPlayer.play();
+                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
                         } catch (playErr) {
                             console.error("OGVPlayer autoplay blocked:", playErr);
                         }
                     } else {
-                        // Render native audio player for desktop and Android
-                        container.innerHTML = `
+                        // Fallback to standard player with local blob URL (for engines where redirect failed but blobs work)
+                        fallbackContainer.innerHTML = `
                             <audio
                                 src="${audioUrl}"
                                 controls
@@ -735,21 +740,10 @@
                                 class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
                             ></audio>
                         `;
-                        container.classList.remove("hidden");
-                        btn.style.display = "none";
-                        
-                        const player = container.querySelector('audio');
-                        if (player) {
-                            try {
-                                player.load();
-                            } catch (e) {}
-                        }
                     }
                 } catch (err) {
-                    console.error("Error decoding audio:", err);
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                    alert("Lỗi giải mã âm thanh: " + err.message);
+                    console.error("Decoding error:", err);
+                    fallbackContainer.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi giải mã âm thanh.</div>`;
                 }
             };
             
@@ -767,12 +761,30 @@
                     if (scriptTag) scriptTag.remove();
                     delete window.zablindAudioCallbacks[callbackName];
                 } catch(e) {}
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-                alert("Không thể kết nối máy chủ. Vui lòng kiểm tra lại mạng.");
+                fallbackContainer.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi mạng khi tải bộ giải mã.</div>`;
             };
             
             document.body.appendChild(script);
+        }
+
+        window.toggleOGVPlay = function(fileId) {
+            const player = window.ogvPlayers[fileId];
+            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+            if (!player || !btn) return;
+            if (player.paused) {
+                player.play();
+                btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            } else {
+                player.pause();
+                btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            }
+        };
+
+        function formatTime(secs) {
+            if (isNaN(secs)) return "0:00";
+            const m = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
         }
 
         // Verify Admin Session via Apps Script Backend
