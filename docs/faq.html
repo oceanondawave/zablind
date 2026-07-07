@@ -673,8 +673,8 @@
                 const result = await response.json();
                 if (!result.success) throw new Error(result.error || "Không thể truy cập tệp tin");
                 
-                // Decode base64 to binary blob
-                const binaryString = atob(result.base64);
+                // Decode base64 to binary blob (stripping any newlines/whitespace for mobile Safari compatibility)
+                const binaryString = atob(result.base64.replace(/\s/g, ''));
                 const len = binaryString.length;
                 const bytes = new Uint8Array(len);
                 for (let i = 0; i < len; i++) {
