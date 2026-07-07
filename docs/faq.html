@@ -546,7 +546,6 @@
                     const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
                     const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
                     if (driveFileId) {
-                        const directAudioUrl = `https://docs.google.com/uc?export=download&id=${driveFileId}`;
                         audioHtml = `
                             <div class="pt-2 space-y-2 border-t">
                                 <div class="flex items-center justify-between">
@@ -559,17 +558,14 @@
                                         Phản hồi bằng giọng nói của tác giả
                                     </div>
                                 </div>
-                                <div id="audio-player-container-${driveFileId}">
-                                    <audio
-                                        src="${directAudioUrl}"
-                                        controls
-                                        preload="none"
-                                        class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
-                                        onerror="handleAudioError('${driveFileId}', this)"
-                                        aria-label="Phản hồi giọng nói của tác giả"
-                                    ></audio>
+                                <div id="audio-container-${driveFileId}" class="flex items-center gap-2 mt-1">
+                                    <button onclick="startVoiceReply('${driveFileId}', this)" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 text-xs font-semibold transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                                        <svg class="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z"/>
+                                        </svg>
+                                        <span>Nghe phản hồi giọng nói</span>
+                                    </button>
                                 </div>
-                                <div id="audio-fallback-container-${driveFileId}" class="hidden pt-1"></div>
                             </div>
                         `;
                     } else {
@@ -654,19 +650,63 @@
         window.zablindAudioCallbacks = {};
         window.ogvPlayers = {};
 
-        // Lazy-loading fallback triggered only when native browser audio playback fails (CORS redirect or codec mismatch)
-        function handleAudioError(fileId, player) {
-            console.log(`Native playback failed for file: ${fileId}. Loading OGVPlayer fallback...`);
+        // Handles initial play trigger - attempts native playback and falls back to JSONP + OGVPlayer on demand
+        function startVoiceReply(fileId, btn) {
+            const container = document.getElementById(`audio-container-${fileId}`);
+            if (!container) return;
             
-            const playerContainer = document.getElementById(`audio-player-container-${fileId}`);
-            const fallbackContainer = document.getElementById(`audio-fallback-container-${fileId}`);
-            if (!playerContainer || !fallbackContainer) return;
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `
+                <svg class="animate-spin h-3.5 w-3.5 text-current inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Đang kết nối...</span>
+            `;
             
-            // Hide the broken/native player
-            playerContainer.classList.add("hidden");
+            // 1. Setup native HTML5 audio stream probe
+            const directUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+            const nativeAudio = new Audio();
+            nativeAudio.src = directUrl;
             
-            // Show loading status in fallback container
-            fallbackContainer.innerHTML = `
+            // 3-second timeout fallback for browsers that hang/freeze instead of throwing an immediate error
+            let playTimeout = setTimeout(() => {
+                console.log("Native playback probe timed out. Triggering compatible fallback...");
+                nativeAudio.pause();
+                nativeAudio.src = "";
+                triggerFallback(fileId, container);
+            }, 3000);
+            
+            nativeAudio.play().then(() => {
+                clearTimeout(playTimeout);
+                console.log("Native playback succeeded!");
+                // Swap container layout with direct native controller (instant and clean)
+                container.innerHTML = `
+                    <audio
+                        src="${directUrl}"
+                        controls
+                        autoplay
+                        class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                    ></audio>
+                `;
+                const player = container.querySelector('audio');
+                if (player) {
+                    try {
+                        player.load();
+                        player.play();
+                    } catch(e) {}
+                }
+            }).catch((err) => {
+                clearTimeout(playTimeout);
+                console.log("Native playback failed, loading compatibility fallback:", err);
+                triggerFallback(fileId, container);
+            });
+        }
+
+        // Compatibility fallback - fetches bytes via JSONP and loads them inside WebAssembly OGVPlayer
+        function triggerFallback(fileId, container) {
+            container.innerHTML = `
                 <div class="flex items-center gap-2 text-xs text-muted-foreground/80 italic py-1">
                     <svg class="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -675,14 +715,10 @@
                     <span>Trình duyệt của bạn cần tải thêm bộ giải mã âm thanh...</span>
                 </div>
             `;
-            fallbackContainer.classList.remove("hidden");
             
-            // Generate a unique callback name
             const callbackName = "cb_" + Math.random().toString(36).substring(2, 15);
             
-            // Define the callback function globally
             window.zablindAudioCallbacks[callbackName] = function(result) {
-                // Clean up script tag and global callback
                 try {
                     const scriptTag = document.getElementById(callbackName);
                     if (scriptTag) scriptTag.remove();
@@ -690,14 +726,13 @@
                 } catch(e) {}
                 
                 if (!result.success) {
-                    fallbackContainer.innerHTML = `
+                    container.innerHTML = `
                         <div class="text-xs text-red-400 py-1">Không thể tải âm thanh từ máy chủ.</div>
                     `;
                     return;
                 }
                 
                 try {
-                    // Decode base64 to binary blob (stripping any newlines/whitespace for mobile Safari compatibility)
                     const binaryString = atob(result.base64.replace(/\s/g, ''));
                     const len = binaryString.length;
                     const bytes = new Uint8Array(len);
@@ -708,13 +743,11 @@
                     const audioUrl = URL.createObjectURL(blob);
                     
                     if (typeof OGVPlayer !== 'undefined') {
-                        // Create OGVPlayer
                         const ogvPlayer = new OGVPlayer();
                         ogvPlayer.src = audioUrl;
                         window.ogvPlayers[fileId] = ogvPlayer;
                         
-                        // Render Custom Controls UI (ensures visibility on old WebKit instead of showing a blank canvas)
-                        fallbackContainer.innerHTML = `
+                        container.innerHTML = `
                             <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700/60 px-3 py-1.5 rounded-md w-full">
                                 <button onclick="toggleOGVPlay('${fileId}')" id="ogv-play-btn-${fileId}" class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 focus:outline-none">
                                     <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -724,7 +757,6 @@
                             </div>
                         `;
                         
-                        // Update time display
                         ogvPlayer.addEventListener("timeupdate", function() {
                             const timeEl = document.getElementById(`ogv-time-${fileId}`);
                             if (timeEl) {
@@ -739,7 +771,6 @@
                             if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
                         });
                         
-                        // Autoplay immediately
                         try {
                             ogvPlayer.play();
                             const btn = document.getElementById(`ogv-play-btn-${fileId}`);
@@ -748,8 +779,7 @@
                             console.error("OGVPlayer autoplay blocked:", playErr);
                         }
                     } else {
-                        // Fallback to standard player with local blob URL (for engines where redirect failed but blobs work)
-                        fallbackContainer.innerHTML = `
+                        container.innerHTML = `
                             <audio
                                 src="${audioUrl}"
                                 controls
@@ -760,27 +790,23 @@
                     }
                 } catch (err) {
                     console.error("Decoding error:", err);
-                    fallbackContainer.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi giải mã âm thanh.</div>`;
+                    container.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi giải mã âm thanh.</div>`;
                 }
             };
             
-            // Create script element to perform JSONP request
             const script = document.createElement("script");
             script.id = callbackName;
             script.crossOrigin = "anonymous";
             script.src = `${API_ENDPOINT}?action=get_audio&fileId=${fileId}&callback=window.zablindAudioCallbacks.${callbackName}`;
             script.async = true;
-            
-            // Handle loading errors (e.g. network failure)
             script.onerror = function() {
                 try {
                     const scriptTag = document.getElementById(callbackName);
                     if (scriptTag) scriptTag.remove();
                     delete window.zablindAudioCallbacks[callbackName];
                 } catch(e) {}
-                fallbackContainer.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi mạng khi tải bộ giải mã.</div>`;
+                container.innerHTML = `<div class="text-xs text-red-400 py-1">Lỗi mạng khi tải bộ giải mã.</div>`;
             };
-            
             document.body.appendChild(script);
         }
 
