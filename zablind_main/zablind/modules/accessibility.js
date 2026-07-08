@@ -81,8 +81,8 @@ function triggerNativeNotification(title, body, prefix) {
   try {
     const fs = require('fs');
     const path = require('path');
-    const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-    const zablindDir = path.join(localAppData, 'Zablind');
+    const { getZablindDir } = require('./utils.js');
+    const zablindDir = getZablindDir();
     if (!fs.existsSync(zablindDir)) {
       fs.mkdirSync(zablindDir, { recursive: true });
     }

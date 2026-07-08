@@ -429,8 +429,8 @@ if (process.type === 'browser') {
           try {
             const notiData = args[0];
             debugLog(`[NOTI-INTERCEPT] Intercepted noti-create: ${JSON.stringify(notiData)}`);
-            const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-            const zablindDir = path.join(localAppData, 'Zablind');
+            const { getZablindDir } = require('./utils.js');
+            const zablindDir = getZablindDir();
             if (!fs.existsSync(zablindDir)) {
               fs.mkdirSync(zablindDir, { recursive: true });
             }
@@ -482,8 +482,8 @@ if (process.type === 'browser') {
     const { ipcMain } = require('electron');
     ipcMain.on('zablind-outgoing-call', (event, callType) => {
       try {
-        const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-        const zablindDir = path.join(localAppData, 'Zablind');
+        const { getZablindDir } = require('./utils.js');
+        const zablindDir = getZablindDir();
         if (!fs.existsSync(zablindDir)) {
           fs.mkdirSync(zablindDir, { recursive: true });
         }

@@ -21,6 +21,40 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = global_exception_handler
 
+def get_zablind_dir():
+    import os
+    import tempfile
+    try:
+        home = os.path.expanduser('~')
+        if home:
+            path = os.path.join(home, 'AppData', 'Local', 'Zablind')
+            try: os.makedirs(path, exist_ok=True)
+            except: pass
+            return path
+    except:
+        pass
+    local_appdata = os.environ.get('LOCALAPPDATA')
+    if local_appdata:
+        path = os.path.join(local_appdata, 'Zablind')
+        try: os.makedirs(path, exist_ok=True)
+        except: pass
+        return path
+    path = os.path.join(tempfile.gettempdir(), 'Zablind')
+    try: os.makedirs(path, exist_ok=True)
+    except: pass
+    return path
+
+def start_zalo_unelevated(zalo_path, cwd):
+    import subprocess
+    import os
+    try:
+        norm_path = os.path.normpath(zalo_path)
+        print(f"[PATCHER] Launching unelevated via explorer.exe: {norm_path}")
+        subprocess.Popen(["explorer.exe", norm_path], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), creationflags=subprocess.CREATE_NO_WINDOW, close_fds=True)
+    except Exception as e:
+        print(f"[PATCHER] Failed to launch unelevated: {e}. Falling back to direct launch...")
+        subprocess.Popen([zalo_path], cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), creationflags=subprocess.CREATE_NO_WINDOW, close_fds=True)
+
 import time
 import threading
 import json
@@ -47,6 +81,14 @@ def get_clean_env():
         parts = path_val.split(os.pathsep)
         clean_parts = [p for p in parts if '_MEI' not in p]
         env[path_key] = os.pathsep.join(clean_parts)
+        
+    # Restore standard Windows Temp directory to bypass Zalo preload overrides
+    user_profile = env.get('USERPROFILE')
+    if user_profile:
+        std_temp = os.path.join(user_profile, 'AppData', 'Local', 'Temp')
+        if os.path.isdir(std_temp):
+            env['TEMP'] = std_temp
+            env['TMP'] = std_temp
         
     return env
 
@@ -282,20 +324,11 @@ class ZaloCallHandler:
         self.pending_incoming_until: float = 0.0
         self.pending_video_incoming_announced: bool = False
         # File-based IPC for instant outgoing call detection
-        _local_appdata = os.getenv("LOCALAPPDATA") or os.path.join(os.getenv("USERPROFILE", tempfile.gettempdir()), "AppData", "Local")
-        zablind_dir = os.path.join(_local_appdata, "Zablind")
-        os.makedirs(zablind_dir, exist_ok=True)
+        zablind_dir = get_zablind_dir()
         self.zablind_dir = zablind_dir
         self.outgoing_call_type_file = os.path.join(zablind_dir, "zablind_outgoing_call_type.json")
-        # File-based IPC for incoming notifications
         self.notification_file = os.path.join(zablind_dir, "zablind_notification.json")
-        # Also watch the temp fallback path in case JS writes there
-        _temp_zablind = os.path.join(tempfile.gettempdir(), "Zablind")
-        self.notification_file_candidates = list(dict.fromkeys([
-            self.notification_file,
-            os.path.join(os.getenv("USERPROFILE", ""), "AppData", "Local", "Zablind", "zablind_notification.json"),
-            os.path.join(_temp_zablind, "zablind_notification.json"),
-        ]))
+        self.notification_file_candidates = [self.notification_file]
         
         # Initialize speech queue and worker thread
         self.speech_queue = queue.Queue()
@@ -1525,7 +1558,9 @@ try {{
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
                 startupinfo=startupinfo,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.DEVNULL,
+                env=get_clean_env(),
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
         except Exception as e:
             print(f"[NOTIFICATION] Error launching powershell toast: {e}")
@@ -5191,25 +5226,55 @@ def backup_original_asar(resources_dir):
         except Exception as e: print(f"[PATCHER] Error backing up unpacked: {e}")
 
 
+def kill_processes_by_name(target_names, exclude_pids=[]):
+    import ctypes
+    import os
+    
+    TH32CS_SNAPPROCESS = 0x00000002
+    class PROCESSENTRY32(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", ctypes.c_ulong),
+            ("cntUsage", ctypes.c_ulong),
+            ("th32ProcessID", ctypes.c_ulong),
+            ("th32DefaultHeapID", ctypes.c_void_p),
+            ("th32ModuleID", ctypes.c_ulong),
+            ("cntThreads", ctypes.c_ulong),
+            ("th32ParentProcessID", ctypes.c_ulong),
+            ("pcPriClassBase", ctypes.c_long),
+            ("dwFlags", ctypes.c_ulong),
+            ("szExeFile", ctypes.c_char * 260)
+        ]
+        
+    hSnapshot = ctypes.windll.kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    if hSnapshot == -1:
+        return False
+        
+    pe = PROCESSENTRY32()
+    pe.dwSize = ctypes.sizeof(PROCESSENTRY32)
+    
+    targets = [name.lower() for name in target_names]
+    killed_any = False
+    
+    if ctypes.windll.kernel32.Process32First(hSnapshot, ctypes.byref(pe)):
+        while True:
+            exe_name = pe.szExeFile.decode('utf-8', errors='ignore').lower()
+            if exe_name in targets:
+                pid = pe.th32ProcessID
+                if pid not in exclude_pids:
+                    hProcess = ctypes.windll.kernel32.OpenProcess(1, False, pid) # 1 = PROCESS_TERMINATE
+                    if hProcess:
+                        ctypes.windll.kernel32.TerminateProcess(hProcess, 0)
+                        ctypes.windll.kernel32.CloseHandle(hProcess)
+                        killed_any = True
+            if not ctypes.windll.kernel32.Process32Next(hSnapshot, ctypes.byref(pe)):
+                break
+    ctypes.windll.kernel32.CloseHandle(hSnapshot)
+    return killed_any
+
 def kill_zalo_processes():
     print("[PATCHER] Killing all Zalo processes...")
     zalo_names = ["zalo.exe", "zaloexecutable.exe", "zalocall.exe"]
-    killed_any = False
-    if PSUTIL_AVAILABLE:
-        for proc in psutil.process_iter(['pid', 'name']):
-            try:
-                if proc.info['name'] and proc.info['name'].lower() in zalo_names:
-                    proc.kill()
-                    killed_any = True
-            except:
-                pass
-    else:
-        for name in zalo_names:
-            try:
-                subprocess.run(f'taskkill /F /IM {name}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                killed_any = True
-            except:
-                pass
+    killed_any = kill_processes_by_name(zalo_names)
     if killed_any:
         time.sleep(1.5)
 
@@ -5302,7 +5367,9 @@ def get_local_version(assets_source):
 
 def get_latest_github_release():
     # 1. Try fetching docs/version.json via ghproxy.net proxy first to accelerate in Vietnam
-    proxy_url = "https://ghproxy.net/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json"
+    import time
+    cache_buster = f"?cb={int(time.time())}"
+    proxy_url = f"https://ghproxy.net/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json{cache_buster}"
     req_proxy = urllib.request.Request(
         proxy_url,
         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
@@ -5405,7 +5472,7 @@ def is_new_version(local_v, remote_v):
 
 
 def perform_self_update(zip_url, handler):
-    global PATCHING_IN_PROGRESS
+    global PATCHING_IN_PROGRESS, _call_handler_mutex
     PATCHING_IN_PROGRESS = True
     exe_dir = os.path.dirname(os.path.abspath(sys.executable))
     zip_path = os.path.join(tempfile.gettempdir(), "zablind_update.zip")
@@ -5414,7 +5481,9 @@ def perform_self_update(zip_url, handler):
         handler.speak("Zablind đang tải bản cập nhật mới...", language="vi", clear_pending=True)
         
         # Route through ghproxy.net proxy to accelerate download in Vietnam
-        proxy_zip_url = f"https://ghproxy.net/{zip_url}"
+        import time
+        cache_buster = f"?cb={int(time.time())}"
+        proxy_zip_url = f"https://ghproxy.net/{zip_url}{cache_buster}"
         print(f"[UPDATER] Downloading update from accelerated proxy: {proxy_zip_url}")
         
         try:
@@ -5484,7 +5553,19 @@ def perform_self_update(zip_url, handler):
             
             handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
             print("[UPDATER] Update complete! Launching new executable...")
-            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+            if '_call_handler_mutex' in globals() and _call_handler_mutex:
+                try:
+                    import ctypes
+                    ctypes.windll.kernel32.CloseHandle(_call_handler_mutex)
+                    _call_handler_mutex = None
+                except: pass
+            if os.name == 'nt':
+                args_str = " ".join([f'"{arg}"' for arg in sys.argv[1:]])
+                cmd = f'start "" "{current_exe}" {args_str}'
+                print(f"[UPDATER] Spawned via start command: {cmd}")
+                subprocess.Popen(cmd, shell=True, cwd=exe_dir, env=get_clean_env(), creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
         else:
             print("[UPDATER] No binary found in update. Performing JS/Resource-only update...")
             
@@ -5551,13 +5632,25 @@ def perform_self_update(zip_url, handler):
             handler.speak("Cập nhật hoàn tất. Đang khởi động lại dịch vụ.", language="vi")
             print("[UPDATER] Update complete! Restarting executable...")
             current_exe = os.path.abspath(sys.executable)
-            subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+            if '_call_handler_mutex' in globals() and _call_handler_mutex:
+                try:
+                    import ctypes
+                    ctypes.windll.kernel32.CloseHandle(_call_handler_mutex)
+                    _call_handler_mutex = None
+                except: pass
+            if os.name == 'nt':
+                args_str = " ".join([f'"{arg}"' for arg in sys.argv[1:]])
+                cmd = f'start "" "{current_exe}" {args_str}'
+                print(f"[UPDATER] Spawned via start command: {cmd}")
+                subprocess.Popen(cmd, shell=True, cwd=exe_dir, env=get_clean_env(), creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                subprocess.Popen([current_exe] + sys.argv[1:], cwd=exe_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
             
         try: os.remove(zip_path)
         except: pass
         
         handler.stop()
-        sys.exit(0)
+        os._exit(0)
         
     except Exception as update_err:
         PATCHING_IN_PROGRESS = False
@@ -5735,12 +5828,11 @@ def run_zalo_patch(handler=None, is_patch_once=False):
                     root_dir = os.path.dirname(latest_version_dir)
                     root_zalo = os.path.join(root_dir, "Zalo.exe")
                     zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
-                    if os.path.exists(root_zalo):
-                        print(f"[PATCHER] Restarting Zalo via root launcher: {root_zalo}")
-                        subprocess.Popen(root_zalo, cwd=root_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
-                    elif os.path.exists(zalo_exe):
-                        print(f"[PATCHER] Restarting Zalo via version-specific exe: {zalo_exe}")
-                        subprocess.Popen(zalo_exe, cwd=latest_version_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+                    target_exe = root_zalo if os.path.exists(root_zalo) else (zalo_exe if os.path.exists(zalo_exe) else None)
+                    target_cwd = root_dir if target_exe == root_zalo else latest_version_dir
+                    
+                    if target_exe:
+                        start_zalo_unelevated(target_exe, target_cwd)
                     PATCHING_IN_PROGRESS = False
                     return True
                 elif not should_patch:
@@ -5752,12 +5844,10 @@ def run_zalo_patch(handler=None, is_patch_once=False):
                         root_dir = os.path.dirname(latest_version_dir)
                         root_zalo = os.path.join(root_dir, "Zalo.exe")
                         zalo_exe = os.path.join(latest_version_dir, "Zalo.exe")
-                        if os.path.exists(root_zalo):
-                            print(f"[PATCHER] Restarting Zalo via root launcher: {root_zalo}")
-                            subprocess.Popen(root_zalo, cwd=root_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
-                        elif os.path.exists(zalo_exe):
-                            print(f"[PATCHER] Restarting Zalo via version-specific exe: {zalo_exe}")
-                            subprocess.Popen(zalo_exe, cwd=latest_version_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=get_clean_env(), close_fds=True)
+                        target_exe = root_zalo if os.path.exists(root_zalo) else (zalo_exe if os.path.exists(zalo_exe) else None)
+                        target_cwd = root_dir if target_exe == root_zalo else latest_version_dir
+                        if target_exe:
+                            start_zalo_unelevated(target_exe, target_cwd)
                         PATCHING_IN_PROGRESS = False
                     return True
                 else:
@@ -5833,7 +5923,7 @@ def start_update_request_checker(handler):
     def checker():
         import tempfile
         import time
-        zablind_dir = os.path.join(os.getenv("LOCALAPPDATA", tempfile.gettempdir()), "Zablind")
+        zablind_dir = get_zablind_dir()
         req_file = os.path.join(zablind_dir, "zablind_update_request.json")
         while True:
             try:
@@ -5882,7 +5972,7 @@ def start_watchdog_thread(handler):
     def watchdog_loop():
         zalo_was_running = False
         zalo_exe_name = "zalo.exe"
-        zablind_dir = os.path.join(os.getenv("LOCALAPPDATA", tempfile.gettempdir()), "Zablind")
+        zablind_dir = get_zablind_dir()
         heartbeat_file = os.path.join(zablind_dir, "zablind_heartbeat.json")
         crash_log_file = "C:/Projects/zablind/zablind_crash.log"
         
@@ -5922,9 +6012,7 @@ def start_watchdog_thread(handler):
                     
                     # Build candidate paths to match the JS fallback chain
                     zablind_dir_candidates = [
-                        heartbeat_file,  # Primary: %LOCALAPPDATA%\Zablind\zablind_heartbeat.json
-                        os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local', 'Zablind', 'zablind_heartbeat.json'),
-                        os.path.join(tempfile.gettempdir(), 'Zablind', 'zablind_heartbeat.json'),
+                        heartbeat_file,
                     ]
                     # Also check if APPDATA is set and compute the local sibling
                     appdata = os.environ.get('APPDATA', '')
@@ -6066,15 +6154,45 @@ def main():
         except Exception as patch_err:
             print(f"[PATCH-ONCE] Fatal error during patch: {patch_err}")
             sys.exit(1)
-            
+    # Session privilege self-correction
+    # If our parent process name is another ZablindCallHandler, we were likely spawned by an old updater.
+    # We must restart ourselves via the Windows Shell 'start' command to gain full interactive desktop privileges.
+    if os.name == 'nt' and "--restart" not in sys.argv:
+        try:
+            if PSUTIL_AVAILABLE:
+                parent_pid = os.getppid()
+                if parent_pid > 0:
+                    parent_proc = psutil.Process(parent_pid)
+                    p_name = parent_proc.name().lower()
+                    if "zablindcallhandler" in p_name:
+                        print(f"[ROOT] Spawned by updater ({p_name}). Restarting via Windows Shell for interactive rights...")
+                        current_exe = os.path.abspath(sys.executable)
+                        exe_dir = os.path.dirname(current_exe)
+                        args_str = " ".join([f'"{arg}"' for arg in sys.argv[1:]]) + " --restart"
+                        cmd = f'start "" "{current_exe}" {args_str}'
+                        subprocess.Popen(cmd, shell=True, cwd=exe_dir, env=get_clean_env(), creationflags=subprocess.CREATE_NO_WINDOW)
+                        sys.exit(0)
+        except Exception as check_err:
+            print(f"[ROOT] Session correction check failed: {check_err}")
+
     # Named mutex for single-instance check (skip for patch-once utility)
     import ctypes
+
     mutex_name = "Local\\ZablindCallHandlerMutex"
     global _call_handler_mutex
     try:
-        _call_handler_mutex = ctypes.windll.kernel32.CreateMutexW(None, True, mutex_name)
-        last_error = ctypes.windll.kernel32.GetLastError()
-        if last_error == 183: # ERROR_ALREADY_EXISTS
+        acquired = False
+        for _ in range(25): # Retry for 5 seconds (25 * 0.2s)
+            _call_handler_mutex = ctypes.windll.kernel32.CreateMutexW(None, True, mutex_name)
+            last_error = ctypes.windll.kernel32.GetLastError()
+            if last_error != 183: # ERROR_ALREADY_EXISTS
+                acquired = True
+                break
+            # Close the handle if it already exists to prevent handle leaks during retries
+            ctypes.windll.kernel32.CloseHandle(_call_handler_mutex)
+            time.sleep(0.2)
+            
+        if not acquired:
             print("Another instance of Zablind Call Handler is already running. Exiting.")
             sys.exit(0)
     except Exception as mutex_err:
@@ -6193,6 +6311,38 @@ def main():
         zalo_exe_name = "zalo.exe"
         while True:
             time.sleep(1)
+            try:
+                quit_file = os.path.join(get_zablind_dir(), "zablind_quit.json")
+                if os.path.exists(quit_file):
+                    print("[ROOT] Quit file detected! Checking validity...")
+                    is_valid = False
+                    try:
+                        with open(quit_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            ts = data.get("timestamp", 0) / 1000.0
+                            if abs(time.time() - ts) < 10.0:
+                                is_valid = True
+                    except Exception as parse_err:
+                        print(f"[ROOT] Error parsing quit file: {parse_err}")
+                    
+                    # Always clean up the file contents to prevent re-triggering
+                    try:
+                        with open(quit_file, "w", encoding="utf-8") as f:
+                            f.write("{}")
+                    except: pass
+                    try: os.remove(quit_file)
+                    except: pass
+                    
+                    if is_valid:
+                        print("[ROOT] Quit request is valid. Terminating Zalo...")
+                        kill_zalo_processes()
+                        handler.stop()
+                        sys.exit(0)
+                    else:
+                        print("[ROOT] Stale or invalid quit request ignored.")
+            except Exception as quit_err:
+                print(f"[ROOT] Error checking quit file: {quit_err}")
+                
             zalo_exists = False
             try:
                 if PSUTIL_AVAILABLE:
@@ -6204,7 +6354,7 @@ def main():
                         except:
                             pass
                 else:
-                    output = subprocess.check_output('tasklist /FI "IMAGENAME eq zalo.exe" /FO CSV /NH', shell=True).decode('utf-8', errors='ignore')
+                    output = subprocess.check_output('tasklist /FI "IMAGENAME eq zalo.exe" /FO CSV /NH', shell=True, creationflags=subprocess.CREATE_NO_WINDOW).decode('utf-8', errors='ignore')
                     zalo_exists = "zalo.exe" in output.lower()
             except Exception as e:
                 print(f"[WATCHDOG] Error checking zalo status: {e}")
@@ -6214,7 +6364,7 @@ def main():
                         if PSUTIL_AVAILABLE:
                             zalo_exists = psutil.pid_exists(parent_pid)
                         else:
-                            output = subprocess.check_output(f'tasklist /FI "PID eq {parent_pid}" /FO CSV /NH', shell=True).decode('utf-8', errors='ignore')
+                            output = subprocess.check_output(f'tasklist /FI "PID eq {parent_pid}" /FO CSV /NH', shell=True, creationflags=subprocess.CREATE_NO_WINDOW).decode('utf-8', errors='ignore')
                             zalo_exists = str(parent_pid) in output
                     except:
                         zalo_exists = False

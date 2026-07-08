@@ -40,8 +40,8 @@ function isCheckboxChecked(el) {
 }
 
 function getSettingsPath() {
-    const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-    return path.join(localAppData, 'Zablind', 'zablind_settings.json');
+    const { getZablindDir } = require("./utils.js");
+    return path.join(getZablindDir(), 'zablind_settings.json');
 }
 
 function loadZablindSettings() {
@@ -71,8 +71,8 @@ function saveZablindSettings(settings) {
 }
 
 function getLatestReleaseInfoCached() {
-    const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-    const infoPath = path.join(localAppData, 'Zablind', 'zablind_latest_release.json');
+    const { getZablindDir } = require("./utils.js");
+    const infoPath = path.join(getZablindDir(), 'zablind_latest_release.json');
     try {
         if (fs.existsSync(infoPath)) {
             return JSON.parse(fs.readFileSync(infoPath, 'utf8'));
@@ -528,7 +528,8 @@ function createKeyboardHandler(liveRegion) {
                     const no = liveModal.querySelector('[data-id="btn_Logout_No"]');
                     const yes = liveModal.querySelector('[data-id="btn_Logout_Logout"]');
                     const restart = liveModal.querySelector('[data-id="btn_Logout_Restart"]');
-                    const items = [cb, no, yes, restart].filter(Boolean);
+                    const quit = liveModal.querySelector('[data-id="btn_Logout_Quit"]');
+                    const items = [cb, no, yes, restart, quit].filter(Boolean);
                     
                     if (k === 'Tab') {
                         const isShiftTab = event.shiftKey;
@@ -568,7 +569,7 @@ function createKeyboardHandler(liveRegion) {
                         }, 100);
                     }
                     // Removed updateToggle handler
-                    else if (k === ' ' && (document.activeElement === no || document.activeElement === yes || document.activeElement === restart)) {
+                    else if (k === ' ' && (document.activeElement === no || document.activeElement === yes || document.activeElement === restart || document.activeElement === quit)) {
                         const target = document.activeElement;
                         setTimeout(() => {
                             if (target === no) {
@@ -803,6 +804,7 @@ function createKeyboardHandler(liveRegion) {
       handled = true;
       openUpdateModal(liveRegion);
     }
+
 
     // (logout_modal handled at top of function)
     
@@ -1383,32 +1385,67 @@ async function signOut(liveRegion) {
     // Inject the custom "Khởi động lại Zalo" button next to the "Đăng xuất" button
     try {
         const btnContainer = modal.querySelector('.zl-modal__footer__button-action .flx');
-        if (btnContainer && !modal.querySelector('[data-id="btn_Logout_Restart"]')) {
+        if (btnContainer) {
             // Apply responsive wrapping and elegant spacing to the flex container
             btnContainer.style.flexWrap = "wrap";
             btnContainer.style.justifyContent = "flex-end";
             btnContainer.style.gap = "8px";
             btnContainer.style.rowGap = "12px";
             
-            const restartBtn = document.createElement("div");
-            restartBtn.setAttribute("data-id", "btn_Logout_Restart");
-            restartBtn.setAttribute("class", "z--btn--v2 btn-neutral large zl-modal__footer__button --rounded zl-modal__footer__button");
-            restartBtn.setAttribute("tabindex", "0");
-            restartBtn.style.margin = "0"; // Let flex gap handle spacing cleanly
-            restartBtn.style.minWidth = "max-content";
-            restartBtn.style.flex = "1 1 auto"; // Grow to fill space cleanly if wrapped
-            
-            const label = document.createElement("div");
-            label.setAttribute("class", "truncate");
-            label.innerText = loc("Khởi động lại Zalo", "Restart Zalo");
-            restartBtn.appendChild(label);
-            
-            restartBtn.addEventListener("click", () => {
-                setFocusContext("conversations");
-                restartZalo();
-            });
-            
-            btnContainer.appendChild(restartBtn);
+            // 1. Inject Restart button
+            if (!modal.querySelector('[data-id="btn_Logout_Restart"]')) {
+                const restartBtn = document.createElement("button");
+                restartBtn.setAttribute("type", "button");
+                restartBtn.setAttribute("data-id", "btn_Logout_Restart");
+                restartBtn.setAttribute("class", "z--btn--v2 btn-neutral large zl-modal__footer__button --rounded zl-modal__footer__button");
+                restartBtn.setAttribute("tabindex", "0");
+                restartBtn.style.margin = "0";
+                restartBtn.style.minWidth = "max-content";
+                restartBtn.style.flex = "1 1 auto";
+                restartBtn.style.border = "none";
+                restartBtn.style.cursor = "pointer";
+                
+                const label = document.createElement("div");
+                label.setAttribute("class", "truncate");
+                label.innerText = loc("Khởi động lại Zalo", "Restart Zalo");
+                restartBtn.appendChild(label);
+                
+                restartBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setFocusContext("conversations");
+                    restartZalo();
+                });
+                
+                btnContainer.appendChild(restartBtn);
+            }
+
+            // 2. Inject Quit button
+            if (!modal.querySelector('[data-id="btn_Logout_Quit"]')) {
+                const quitBtn = document.createElement("button");
+                quitBtn.setAttribute("type", "button");
+                quitBtn.setAttribute("data-id", "btn_Logout_Quit");
+                quitBtn.setAttribute("class", "z--btn--v2 btn-danger large zl-modal__footer__button --rounded zl-modal__footer__button");
+                quitBtn.setAttribute("tabindex", "0");
+                quitBtn.style.margin = "0";
+                quitBtn.style.minWidth = "max-content";
+                quitBtn.style.flex = "1 1 auto";
+                quitBtn.style.border = "none";
+                quitBtn.style.cursor = "pointer";
+                
+                const quitLabel = document.createElement("div");
+                quitLabel.setAttribute("class", "truncate");
+                quitLabel.innerText = loc("Thoát hoàn toàn Zalo", "Quit Zalo Completely");
+                quitBtn.appendChild(quitLabel);
+                
+                quitBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    quitZaloCompletely(liveRegion);
+                });
+                
+                btnContainer.appendChild(quitBtn);
+            }
         }
     } catch (e) {}
 
@@ -1574,8 +1611,8 @@ function writeDebugLog(msg) {
     try {
         const fs = require('fs');
         const path = require('path');
-        const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-        const zablindDir = path.join(localAppData, 'Zablind');
+        const { getZablindDir } = require("./utils.js");
+        const zablindDir = getZablindDir();
         if (!fs.existsSync(zablindDir)) {
             fs.mkdirSync(zablindDir, { recursive: true });
         }
@@ -2164,6 +2201,8 @@ function openUpdateModal(liveRegion) {
     const manualBtn = overlay.querySelector("#zablind-update-manual-btn");
     manualBtn.addEventListener("click", () => triggerManualUpdate(liveRegion));
     
+
+    
     // Bind close buttons
     const closeBtn = overlay.querySelector("#zablind-update-close-btn");
     closeBtn.addEventListener("click", () => closeUpdateModal(liveRegion));
@@ -2241,6 +2280,38 @@ function closeUpdateModal(liveRegion) {
     announce(loc("Đã đóng cửa sổ cập nhật.", "Update dialog closed."), liveRegion);
 }
 
+function quitZaloCompletely(liveRegion) {
+    const { announce } = require("./accessibility.js");
+    announce(loc("Đang đóng Zalo hoàn toàn, vui lòng đợi...", "Quitting Zalo completely, please wait..."), liveRegion);
+    
+    try {
+        const modal = document.querySelector('.zl-modal__dialog');
+        if (modal) {
+            const interactives = modal.querySelectorAll('button, div[tabindex="0"], input, .z-checkbox');
+            interactives.forEach(el => {
+                el.setAttribute("disabled", "true");
+                el.style.pointerEvents = "none";
+                el.style.opacity = "0.5";
+                el.setAttribute("tabindex", "-1");
+            });
+        }
+    } catch (e) {
+        console.error("Error disabling buttons:", e);
+    }
+
+    try {
+        const { getZablindDir } = require("./utils.js");
+        const zablindDir = getZablindDir();
+        if (!fs.existsSync(zablindDir)) {
+            fs.mkdirSync(zablindDir, { recursive: true });
+        }
+        const quitFile = path.join(zablindDir, "zablind_quit.json");
+        fs.writeFileSync(quitFile, JSON.stringify({ quit: true, timestamp: Date.now() }), "utf8");
+    } catch (e) {
+        console.error("Error writing quit file:", e);
+    }
+}
+
 function triggerManualUpdate(liveRegion) {
     state.updateInProgress = true;
     
@@ -2285,8 +2356,8 @@ function triggerManualUpdate(liveRegion) {
     
     // Write request file to notify background Python process
     try {
-        const localAppData = process.env.LOCALAPPDATA || (process.platform === 'win32' ? path.join(process.env.USERPROFILE, 'AppData/Local') : require('os').tmpdir());
-        const zablindDir = path.join(localAppData, 'Zablind');
+        const { getZablindDir } = require("./utils.js");
+        const zablindDir = getZablindDir();
         if (!fs.existsSync(zablindDir)) {
             fs.mkdirSync(zablindDir, { recursive: true });
         }

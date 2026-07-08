@@ -96,6 +96,21 @@ function isTyping() {
   );
 }
 
+function getZablindDir() {
+  const path = require('path');
+  const os = require('os');
+  try {
+    const home = os.homedir();
+    if (home) {
+      return path.join(home, 'AppData', 'Local', 'Zablind');
+    }
+  } catch (e) {}
+  const localAppData = process.env.LOCALAPPDATA || 
+                       (process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'AppData/Local') : null) || 
+                       os.tmpdir();
+  return path.join(localAppData, 'Zablind');
+}
+
 module.exports = {
   simulateHover,
   extractCaptionWithShortenedLink,
@@ -104,6 +119,7 @@ module.exports = {
   isTyping,
   detectLanguage,
   loc,
+  getZablindDir,
 };
 
 

@@ -46,7 +46,7 @@ def main():
     print("\n--- 1. Building ZablindCallHandler.exe ---")
     call_dir = os.path.join(root_dir, "zablind_call")
     pyinstaller_args = [
-        "pyinstaller", "--onefile",
+        "pyinstaller", "--onefile", "--noconsole",
         "--name=ZablindCallHandler",
         "--icon=../docs/favicon.ico",
         "--hidden-import=psutil",
