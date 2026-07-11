@@ -702,7 +702,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Trình duyệt của bạn cần tải thêm bộ giải mã âm thanh...</span>
+                    <span>Đang tải âm thanh...</span>
                 </div>
             `;
             
@@ -733,79 +733,27 @@
                     const blob = new Blob([bytes], { type: result.mimeType || 'application/octet-stream' });
                     const audioUrl = URL.createObjectURL(blob);
                     
-                    // Check if native audio element can play this mimeType
-                    const tempAudio = document.createElement('audio');
-                    const canPlayNative = result.mimeType && tempAudio.canPlayType(result.mimeType) !== '';
+                    // Render native audio element first for testing native capability
+                    container.innerHTML = `
+                        <audio
+                            src="${audioUrl}"
+                            controls
+                            autoplay
+                            class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                        ></audio>
+                    `;
                     
-                    if (!canPlayNative && typeof OGVPlayer !== 'undefined' && (result.mimeType.indexOf('webm') !== -1 || result.mimeType.indexOf('ogg') !== -1)) {
-                        // Create OGVPlayer instance pointing to CDN files
-                        const ogvPlayer = new OGVPlayer({
-                            base: "https://cdn.jsdelivr.net/npm/ogv@1.8.9/dist",
-                            worker: false,
-                            options: {
-                                worker: false
+                    const player = container.querySelector('audio');
+                    if (player) {
+                        player.addEventListener("error", function() {
+                            console.log("Native blob playback failed. Loading OGVPlayer compatibility fallback...");
+                            // Only load OGVPlayer if it is a WebM or Ogg file and OGVPlayer is loaded
+                            if (typeof OGVPlayer !== 'undefined' && result.mimeType && (result.mimeType.indexOf('webm') !== -1 || result.mimeType.indexOf('ogg') !== -1)) {
+                                loadOGVPlayer(fileId, audioUrl, container);
+                            } else {
+                                container.innerHTML = `<div class="text-xs text-red-400 py-1">Trình duyệt không hỗ trợ định dạng âm thanh này.</div>`;
                             }
                         });
-                        ogvPlayer.src = audioUrl;
-                        window.ogvPlayers[fileId] = ogvPlayer;
-                        
-                        // Render Custom Controls UI
-                        container.innerHTML = `
-                            <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700/60 px-3 py-1.5 rounded-md w-full">
-                                <button onclick="toggleOGVPlay('${fileId}')" id="ogv-play-btn-${fileId}" class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 focus:outline-none">
-                                    <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                </button>
-                                <div class="text-xs font-mono text-zinc-300" id="ogv-time-${fileId}">0:00 / 0:00</div>
-                                <div class="text-[10px] text-zinc-500 italic ml-auto font-medium">Chế độ tương thích</div>
-                            </div>
-                        `;
-                        
-                        // Subscribe to player events to change play/pause UI state dynamically and accurately
-                        ogvPlayer.addEventListener("play", function() {
-                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
-                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-                        });
-                        
-                        ogvPlayer.addEventListener("pause", function() {
-                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
-                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-                        });
-                        
-                        ogvPlayer.addEventListener("timeupdate", function() {
-                            const timeEl = document.getElementById(`ogv-time-${fileId}`);
-                            if (timeEl) {
-                                const cur = formatTime(ogvPlayer.currentTime);
-                                const dur = formatTime(ogvPlayer.duration || 0);
-                                timeEl.textContent = `${cur} / ${dur}`;
-                            }
-                        });
-                        
-                        ogvPlayer.addEventListener("ended", function() {
-                            const btn = document.getElementById(`ogv-play-btn-${fileId}`);
-                            if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-                        });
-                        
-                        // Attempt autoplay, catch if blocked (which is fine, user can click play manually)
-                        try {
-                            const playPromise = ogvPlayer.play();
-                            if (playPromise && typeof playPromise.catch === "function") {
-                                playPromise.catch(playErr => {
-                                    console.log("OGVPlayer autoplay blocked by Safari gesture policies.", playErr);
-                                });
-                            }
-                        } catch (playErr) {
-                            console.error("OGVPlayer autoplay failed:", playErr);
-                        }
-                    } else {
-                        // Standard player fallback
-                        container.innerHTML = `
-                            <audio
-                                src="${audioUrl}"
-                                controls
-                                autoplay
-                                class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
-                            ></audio>
-                        `;
                     }
                 } catch (err) {
                     console.error("Decoding error:", err);
@@ -829,10 +777,86 @@
             document.body.appendChild(script);
         }
 
+        // Helper to load OGVPlayer compatibility fallback
+        function loadOGVPlayer(fileId, audioUrl, container) {
+            const ogvPlayer = new OGVPlayer({
+                base: "https://cdn.jsdelivr.net/npm/ogv@1.8.9/dist",
+                worker: false,
+                options: {
+                    worker: false
+                }
+            });
+            ogvPlayer.src = audioUrl;
+            window.ogvPlayers[fileId] = ogvPlayer;
+            
+            // Render Custom Controls UI
+            container.innerHTML = `
+                <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700/60 px-3 py-1.5 rounded-md w-full">
+                    <button onclick="toggleOGVPlay('${fileId}')" id="ogv-play-btn-${fileId}" class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 focus:outline-none">
+                        <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                    <div class="text-xs font-mono text-zinc-300" id="ogv-time-${fileId}">0:00 / 0:00</div>
+                    <div class="text-[10px] text-zinc-500 italic ml-auto font-medium">Chế độ tương thích</div>
+                </div>
+            `;
+            
+            // Subscribe to player events to change play/pause UI state dynamically and accurately
+            ogvPlayer.addEventListener("play", function() {
+                const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            });
+            
+            ogvPlayer.addEventListener("pause", function() {
+                const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            });
+            
+            ogvPlayer.addEventListener("timeupdate", function() {
+                const timeEl = document.getElementById(`ogv-time-${fileId}`);
+                if (timeEl) {
+                    const cur = formatTime(ogvPlayer.currentTime);
+                    const dur = formatTime(ogvPlayer.duration || 0);
+                    timeEl.textContent = `${cur} / ${dur}`;
+                }
+            });
+            
+            ogvPlayer.addEventListener("ended", function() {
+                const btn = document.getElementById(`ogv-play-btn-${fileId}`);
+                if (btn) btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            });
+            
+            // Attempt autoplay, catch if blocked (which is fine, user can click play manually)
+            try {
+                const playPromise = ogvPlayer.play();
+                if (playPromise && typeof playPromise.catch === "function") {
+                    playPromise.catch(playErr => {
+                        console.log("OGVPlayer autoplay blocked by Safari gesture policies.", playErr);
+                    });
+                }
+            } catch (playErr) {
+                console.error("OGVPlayer autoplay failed:", playErr);
+            }
+        }
+
         window.toggleOGVPlay = function(fileId) {
             const player = window.ogvPlayers[fileId];
             const btn = document.getElementById(`ogv-play-btn-${fileId}`);
             if (!player || !btn) return;
+            
+            // Resume suspended AudioContext for iOS Safari gesture unlock
+            try {
+                const ctx = (player.audioFeeder && player.audioFeeder.context) || player.audioContext || player._audioContext;
+                if (ctx && typeof ctx.resume === 'function' && ctx.state === 'suspended') {
+                    ctx.resume().then(() => {
+                        console.log("Successfully resumed suspended OGVPlayer AudioContext.");
+                    }).catch(err => {
+                        console.warn("Failed to resume OGVPlayer AudioContext:", err);
+                    });
+                }
+            } catch (e) {
+                console.warn("Failed to retrieve AudioContext:", e);
+            }
+            
             if (player.paused) {
                 player.play();
                 btn.innerHTML = `<svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
