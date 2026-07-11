@@ -356,6 +356,7 @@
         let visibleCount = 10;
         let sharedQuestionRowIndex = null;
         let hasLoadedAll = false;
+        let isLoadingData = false;
         let idToken = null;
         let adminEmail = null;
         let selectedRowIndex = null;
@@ -450,11 +451,12 @@
             // If cache is expired or empty, clear items from the UI and show standard loader
             if (isCacheExpired) {
                 submissionsList = [];
-                renderFeed(); // Clear any old items to avoid displaying stale data alongside loader
+                isLoadingData = true; // Mark as loading
                 if (loader) {
                     if (loaderText) loaderText.textContent = "Đang tải danh sách câu hỏi...";
                     loader.classList.remove("hidden");
                 }
+                renderFeed(); // Clear any old items to avoid displaying stale data alongside loader
             }
             
             // 2. Fetch fresh data from API in background (SWR: Revalidate)
@@ -479,6 +481,7 @@
                     
                     // If cache was expired and new data is retrieved, show reload indicator and "Loading..." text
                     if (isCacheExpired && cachedString) {
+                        isLoadingData = true;
                         if (loader) {
                             if (loaderText) loaderText.textContent = "Loading...";
                             loader.classList.remove("hidden");
@@ -497,6 +500,8 @@
                         data: freshSubmissions
                     };
                     localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
+                    isLoadingData = false;
+                    if (loader) loader.classList.add("hidden");
                     renderFeed();
                 } else {
                     console.log("Data is up-to-date (no change).");
@@ -516,7 +521,12 @@
                     renderFeed();
                 }
             } finally {
+                isLoadingData = false;
                 if (loader) loader.classList.add("hidden");
+                // If feed is empty, run renderFeed to show the empty card message since loading has concluded
+                if (submissionsList.length === 0) {
+                    renderFeed();
+                }
             }
         }
 
@@ -524,6 +534,7 @@
         async function ensureFullDataLoaded() {
             if (hasLoadedAll) return;
             
+            isLoadingData = true;
             const loader = document.getElementById("loading-indicator");
             const loaderText = loader ? loader.querySelector("p") : null;
             if (loader) {
@@ -549,6 +560,7 @@
             } catch (err) {
                 console.error("Failed to load full database:", err);
             } finally {
+                isLoadingData = false;
                 if (loader) loader.classList.add("hidden");
             }
         }
@@ -687,9 +699,8 @@
             });
 
             if (filtered.length === 0) {
-                // If the loader is currently visible, don't show the "no questions found" message yet
-                const isLoaderVisible = loader && !loader.classList.contains("hidden");
-                if (isLoaderVisible) {
+                // If loading is active, don't show the "no questions found" message yet
+                if (isLoadingData) {
                     return;
                 }
                 
@@ -719,6 +730,7 @@
                     if (!hasLoadedAll) {
                         loadMoreBtn.textContent = "Đang tải dữ liệu...";
                         loadMoreBtn.disabled = true;
+                        isLoadingData = true;
                         
                         try {
                             const response = await fetch(API_ENDPOINT);
@@ -739,6 +751,8 @@
                             console.error("Failed to load remaining questions:", err);
                             alert("Không thể tải thêm câu hỏi, vui lòng thử lại.");
                             return;
+                        } finally {
+                            isLoadingData = false;
                         }
                     }
                     
