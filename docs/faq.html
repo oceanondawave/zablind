@@ -421,6 +421,8 @@
             const loaderText = loader ? loader.querySelector("p") : null;
             const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes cache expiry
             
+            const isViewingShared = (sharedQuestionRowIndex !== null);
+            
             // 1. Try to load from localStorage cache first (SWR: Stale)
             const cachedString = localStorage.getItem("zablind_faq_cache");
             let isCacheExpired = true;
@@ -433,7 +435,15 @@
                     const cachedTime = Array.isArray(cacheObj) ? 0 : (cacheObj.timestamp || 0);
                     
                     const age = Date.now() - cachedTime;
-                    if (age < CACHE_EXPIRY_MS) {
+                    
+                    // If viewing a shared question, we can only use cache if it actually contains the shared item
+                    let hasSharedItemInCache = true;
+                    if (isViewingShared) {
+                        const sharedItem = cachedData.find(item => item.rowIndex === sharedQuestionRowIndex);
+                        if (!sharedItem) hasSharedItemInCache = false;
+                    }
+                    
+                    if (age < CACHE_EXPIRY_MS && hasSharedItemInCache) {
                         isCacheExpired = false;
                         submissionsList = cachedData;
                         hasLoadedAll = Array.isArray(cacheObj) ? false : (cacheObj.hasLoadedAll || false);
@@ -461,57 +471,73 @@
             
             // 2. Fetch fresh data from API in background (SWR: Revalidate)
             try {
-                // If we don't have all data, fetch with limit=10 to load quickly
-                // If we do have all data, fetch with limit=10 to revalidate the top 10 quickly
-                const url = API_ENDPOINT + "?limit=10";
+                // If we are viewing a shared question, we must fetch the full list to ensure we get that question.
+                // Otherwise, fetch with limit=10 to load quickly.
+                const useLimit = !isViewingShared;
+                const url = useLimit ? (API_ENDPOINT + "?limit=10") : API_ENDPOINT;
+                
                 const response = await fetch(url);
                 if (!response.ok) throw new Error("Fetch failed");
                 const data = await response.json();
                 const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
                 
-                // Compare fresh 10 items with the top of our current list
-                const cachedTop10 = submissionsList.slice(0, freshSubmissions.length);
-                const freshString = JSON.stringify(freshSubmissions);
-                const currentTopString = JSON.stringify(cachedTop10);
-                
-                const hasNewData = freshString !== currentTopString;
-                
-                if (hasNewData) {
-                    console.log("Data changed! Updating feed and cache.");
+                if (useLimit) {
+                    // Compare fresh 10 items with the top of our current list
+                    const cachedTop10 = submissionsList.slice(0, freshSubmissions.length);
+                    const freshString = JSON.stringify(freshSubmissions);
+                    const currentTopString = JSON.stringify(cachedTop10);
                     
-                    // If cache was expired and new data is retrieved, show reload indicator and "Loading..." text
-                    if (isCacheExpired && cachedString) {
-                        isLoadingData = true;
-                        if (loader) {
-                            if (loaderText) loaderText.textContent = "Loading...";
-                            loader.classList.remove("hidden");
+                    const hasNewData = freshString !== currentTopString;
+                    
+                    if (hasNewData) {
+                        console.log("Data changed! Updating feed and cache.");
+                        
+                        // If cache was expired and new data is retrieved, show reload indicator and "Loading..." text
+                        if (isCacheExpired && cachedString) {
+                            isLoadingData = true;
+                            if (loader) {
+                                if (loaderText) loaderText.textContent = "Loading...";
+                                loader.classList.remove("hidden");
+                            }
+                            // Short pause so the user visually notices the loading/reloading state
+                            await new Promise(resolve => setTimeout(resolve, 600));
                         }
-                        // Short pause so the user visually notices the loading/reloading state
-                        await new Promise(resolve => setTimeout(resolve, 600));
+                        
+                        submissionsList = freshSubmissions;
+                        hasLoadedAll = false; // We only have the fresh 10 items now
+                        
+                        // Save to cache with timestamp
+                        const cacheObj = {
+                            timestamp: Date.now(),
+                            hasLoadedAll: false,
+                            data: freshSubmissions
+                        };
+                        localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
+                        isLoadingData = false;
+                        if (loader) loader.classList.add("hidden");
+                        renderFeed();
+                    } else {
+                        console.log("Data is up-to-date (no change).");
+                        // Refresh cache timestamp to extend valid period
+                        const cacheObj = {
+                            timestamp: Date.now(),
+                            hasLoadedAll: hasLoadedAll,
+                            data: submissionsList
+                        };
+                        localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
                     }
-                    
+                } else {
+                    // We fetched the full list because we are viewing a shared question
                     submissionsList = freshSubmissions;
-                    hasLoadedAll = false; // We only have the fresh 10 items now
+                    hasLoadedAll = true;
                     
-                    // Save to cache with timestamp
                     const cacheObj = {
                         timestamp: Date.now(),
-                        hasLoadedAll: false,
+                        hasLoadedAll: true,
                         data: freshSubmissions
                     };
                     localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
-                    isLoadingData = false;
-                    if (loader) loader.classList.add("hidden");
                     renderFeed();
-                } else {
-                    console.log("Data is up-to-date (no change).");
-                    // Refresh cache timestamp to extend valid period
-                    const cacheObj = {
-                        timestamp: Date.now(),
-                        hasLoadedAll: hasLoadedAll,
-                        data: submissionsList
-                    };
-                    localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
                 }
             } catch (err) {
                 console.error("Error loading submissions in background:", err);
