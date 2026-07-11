@@ -1197,10 +1197,20 @@
             recordingDuration = 0;
             
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: { ideal: 1 },
+                        sampleRate: { ideal: 16000 },
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
                 
                 // Determine a supported MIME type dynamically to support iOS/macOS Safari and various browsers
-                let options = { audioBitsPerSecond: 24000 };
+                let options = {
+                    audioBitsPerSecond: 24000,
+                    bitsPerSecond: 24000
+                };
                 let mimeType = '';
                 
                 if (typeof MediaRecorder.isTypeSupported === 'function') {
