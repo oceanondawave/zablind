@@ -431,16 +431,15 @@
                     const cachedData = Array.isArray(cacheObj) ? cacheObj : (cacheObj.data || []);
                     const cachedTime = Array.isArray(cacheObj) ? 0 : (cacheObj.timestamp || 0);
                     
-                    submissionsList = cachedData;
-                    hasLoadedAll = Array.isArray(cacheObj) ? false : (cacheObj.hasLoadedAll || false);
-                    console.log("Loaded from cache (hasLoadedAll = " + hasLoadedAll + "):", submissionsList);
-                    
-                    // Render stale data immediately
-                    renderFeed();
-                    
                     const age = Date.now() - cachedTime;
                     if (age < CACHE_EXPIRY_MS) {
                         isCacheExpired = false;
+                        submissionsList = cachedData;
+                        hasLoadedAll = Array.isArray(cacheObj) ? false : (cacheObj.hasLoadedAll || false);
+                        console.log("Loaded from valid cache (hasLoadedAll = " + hasLoadedAll + "):", submissionsList);
+                        
+                        // Render valid cached data immediately
+                        renderFeed();
                         if (loader) loader.classList.add("hidden"); // Hide loader immediately since cache is valid
                     }
                 } catch (e) {
@@ -448,8 +447,10 @@
                 }
             }
             
-            // If cache is expired or empty, show standard loader
-            if (isCacheExpired || !submissionsList || submissionsList.length === 0) {
+            // If cache is expired or empty, clear items from the UI and show standard loader
+            if (isCacheExpired) {
+                submissionsList = [];
+                renderFeed(); // Clear any old items to avoid displaying stale data alongside loader
                 if (loader) {
                     if (loaderText) loaderText.textContent = "Đang tải danh sách câu hỏi...";
                     loader.classList.remove("hidden");
