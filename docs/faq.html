@@ -160,7 +160,7 @@
                     <!-- Time Filter select (assistive) -->
                     <div class="w-full sm:w-48">
                         <label for="time-filter" class="sr-only">Lọc theo thời gian</label>
-                        <select id="time-filter" onchange="renderFeed()"
+                        <select id="time-filter" onchange="visibleCount = 10; renderFeed()"
                             class="w-full rounded-md border border-input bg-card pl-3 pr-10 py-[9px] text-sm ring-offset-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_12px_center] bg-[size:18px] bg-no-repeat">
                             <option value="all">Tất cả thời gian</option>
                             <option value="today">Hôm nay</option>
@@ -344,6 +344,8 @@
         // Global states
         let submissionsList = [];
         let activeFilter = 'all';
+        let visibleCount = 10;
+        let sharedQuestionRowIndex = null;
         let idToken = null;
         let adminEmail = null;
         let selectedRowIndex = null;
@@ -356,6 +358,13 @@
         let recordedBlob = null;
 
         window.onload = function () {
+            // Extract shared question parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const qParam = urlParams.get('q');
+            if (qParam) {
+                sharedQuestionRowIndex = parseInt(qParam);
+            }
+
             fetchSubmissions();
 
             // Check if there is an existing session token saved
@@ -366,6 +375,7 @@
 
             // Setup Search event listener
             document.getElementById("search-input").addEventListener("input", function (e) {
+                visibleCount = 10; // Reset visible count on search change
                 renderFeed();
             });
 
@@ -392,23 +402,42 @@
         // Fetch submissions from Google Apps Script Web App with Stale-While-Revalidate caching
         async function fetchSubmissions() {
             const loader = document.getElementById("loading-indicator");
+            const loaderText = loader ? loader.querySelector("p") : null;
+            const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes cache expiry
             
             // 1. Try to load from localStorage cache first (SWR: Stale)
-            const cachedData = localStorage.getItem("zablind_faq_cache");
-            if (cachedData) {
+            const cachedString = localStorage.getItem("zablind_faq_cache");
+            let isCacheExpired = true;
+            
+            if (cachedString) {
                 try {
-                    submissionsList = JSON.parse(cachedData);
+                    const cacheObj = JSON.parse(cachedString);
+                    // Handle transition from old cache format which was just raw array
+                    const cachedData = Array.isArray(cacheObj) ? cacheObj : (cacheObj.data || []);
+                    const cachedTime = Array.isArray(cacheObj) ? 0 : (cacheObj.timestamp || 0);
+                    
+                    submissionsList = cachedData;
                     console.log("Loaded from cache:", submissionsList);
-                    loader.classList.add("hidden"); // Hide loader immediately since we have cache
+                    
+                    // Render stale data immediately
                     renderFeed();
+                    
+                    const age = Date.now() - cachedTime;
+                    if (age < CACHE_EXPIRY_MS) {
+                        isCacheExpired = false;
+                        if (loader) loader.classList.add("hidden"); // Hide loader immediately since cache is valid
+                    }
                 } catch (e) {
                     console.error("Failed to parse cache", e);
                 }
             }
             
-            // If no cache, make sure loader is visible
-            if (!submissionsList || submissionsList.length === 0) {
-                loader.classList.remove("hidden");
+            // If cache is expired or empty, show standard loader
+            if (isCacheExpired || !submissionsList || submissionsList.length === 0) {
+                if (loader) {
+                    if (loaderText) loaderText.textContent = "Đang tải danh sách câu hỏi...";
+                    loader.classList.remove("hidden");
+                }
             }
             
             // 2. Fetch fresh data from API in background (SWR: Revalidate)
@@ -420,15 +449,40 @@
                 
                 // Compare fresh data with cached data
                 const freshString = JSON.stringify(freshSubmissions);
-                const cachedString = JSON.stringify(submissionsList);
+                const currentString = JSON.stringify(submissionsList);
                 
-                if (freshString !== cachedString) {
+                const hasNewData = freshString !== currentString;
+                
+                if (hasNewData) {
                     console.log("Data changed! Updating feed and cache.");
+                    
+                    // If cache was expired and new data is retrieved, show reload indicator and "Loading..." text
+                    if (isCacheExpired && cachedString) {
+                        if (loader) {
+                            if (loaderText) loaderText.textContent = "Loading...";
+                            loader.classList.remove("hidden");
+                        }
+                        // Short pause so the user visually notices the loading/reloading state
+                        await new Promise(resolve => setTimeout(resolve, 600));
+                    }
+                    
                     submissionsList = freshSubmissions;
-                    localStorage.setItem("zablind_faq_cache", freshString);
+                    
+                    // Save to cache with timestamp
+                    const cacheObj = {
+                        timestamp: Date.now(),
+                        data: freshSubmissions
+                    };
+                    localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
                     renderFeed();
                 } else {
                     console.log("Data is up-to-date (no change).");
+                    // Refresh cache timestamp to extend valid period
+                    const cacheObj = {
+                        timestamp: Date.now(),
+                        data: freshSubmissions
+                    };
+                    localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
                 }
             } catch (err) {
                 console.error("Error loading submissions in background:", err);
@@ -438,13 +492,14 @@
                     renderFeed();
                 }
             } finally {
-                loader.classList.add("hidden");
+                if (loader) loader.classList.add("hidden");
             }
         }
 
         // Set list filter status and render
         function setFilter(filter) {
             activeFilter = filter;
+            visibleCount = 10; // Reset visible count on filter change
             
             // Highlight active button
             const buttons = ['all', 'answered', 'unanswered', 'island'];
@@ -515,6 +570,37 @@
             const searchText = document.getElementById("search-input").value.toLowerCase().trim();
             const timeFilter = document.getElementById("time-filter").value;
 
+            // If user searches or filters, clear the shared question view automatically
+            if (sharedQuestionRowIndex !== null && (searchText || activeFilter !== 'all' || timeFilter !== 'all')) {
+                sharedQuestionRowIndex = null;
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+
+            // If we are currently displaying a shared question link
+            if (sharedQuestionRowIndex !== null) {
+                const sharedItem = submissionsList.find(item => item.rowIndex === sharedQuestionRowIndex);
+                if (sharedItem) {
+                    // Render Shared banner info
+                    const banner = document.createElement("div");
+                    banner.className = "faq-card rounded-lg border bg-primary/10 border-primary/20 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm";
+                    banner.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-primary animate-ping"></span>
+                            <span class="text-foreground">Bạn đang xem một câu hỏi được chia sẻ.</span>
+                        </div>
+                        <button onclick="clearSharedQuestion()" class="text-primary hover:underline font-semibold text-xs focus:outline-none">
+                            Xem tất cả câu hỏi
+                        </button>
+                    `;
+                    container.appendChild(banner);
+
+                    renderCard(sharedItem, container);
+                    announce(`Đang hiển thị câu hỏi chia sẻ từ ${sharedItem.name}.`);
+                    return;
+                }
+            }
+
             const filtered = submissionsList.filter(item => {
                 // Apply filter state
                 const islanded = isIslanded(item);
@@ -564,67 +650,81 @@
                 return;
             }
 
-            filtered.forEach(item => {
-                const card = document.createElement("div");
-                card.className = "faq-card rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 transition-all hover:shadow-md";
-                card.setAttribute("role", "article");
+            // Slice list if not searching to implement pagination (Load More)
+            const isSearching = searchText !== "";
+            const displayList = isSearching ? filtered : filtered.slice(0, visibleCount);
 
-                // Headers & Info
-                let headerHtml = `
-                    <div class="flex items-center justify-between flex-wrap gap-2">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-foreground text-sm">${escapeHtml(item.name)}</span>
-                            <span class="text-xs text-muted-foreground">${escapeHtml(item.date)}</span>
-                        </div>
+            displayList.forEach(item => {
+                renderCard(item, container);
+            });
+
+            // Append Load More button if not searching and more items are available
+            if (!isSearching && filtered.length > visibleCount) {
+                const loadMoreBtn = document.createElement("button");
+                loadMoreBtn.id = "btn-load-more";
+                loadMoreBtn.className = "w-full py-3 bg-muted/30 hover:bg-muted/50 text-foreground font-semibold rounded-md text-sm border border-border transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-4 faq-card";
+                loadMoreBtn.textContent = "Xem thêm câu hỏi";
+                loadMoreBtn.onclick = function() {
+                    visibleCount += 10;
+                    renderFeed();
+                };
+                container.appendChild(loadMoreBtn);
+            }
+
+            announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
+        }
+
+        // Render card layout
+        function renderCard(item, container) {
+            const card = document.createElement("div");
+            card.className = "faq-card rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 transition-all hover:shadow-md";
+            card.setAttribute("role", "article");
+
+            // Headers & Info
+            let headerHtml = `
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-foreground text-sm">${escapeHtml(item.name)}</span>
+                        <span class="text-xs text-muted-foreground">${escapeHtml(item.date)}</span>
+                    </div>
+                    <button onclick="shareQuestion(${item.rowIndex}, this)" 
+                        class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-primary rounded px-1.5 py-1"
+                        title="Sao chép liên kết chia sẻ câu hỏi này"
+                        aria-label="Chia sẻ câu hỏi của ${escapeHtml(item.name)}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                            <polyline points="16 6 12 2 8 6"/>
+                            <line x1="12" y1="2" x2="12" y2="15"/>
+                        </svg>
+                        <span>Chia sẻ</span>
+                    </button>
+                </div>
+            `;
+
+            // Submissions content
+            let contentHtml = `
+                <p class="text-sm text-muted-foreground leading-relaxed">${escapeHtml(item.question)}</p>
+            `;
+
+            // Audio Reply section
+            let audioHtml = "";
+            let islandHtml = "";
+            if (isIslanded(item)) {
+                islandHtml = `
+                    <div class="pt-2 text-xs text-red-300/90 italic flex items-center gap-1.5 border-t">
+                        <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span>
+                        Đã tiễn ra đảo. Câu hỏi này sẽ không được phản hồi thêm.
                     </div>
                 `;
-
-                // Submissions content
-                let contentHtml = `
-                    <p class="text-sm text-muted-foreground leading-relaxed">${escapeHtml(item.question)}</p>
-                `;
-
-                // Audio Reply section
-                let audioHtml = "";
-                let islandHtml = "";
-                if (isIslanded(item)) {
-                    islandHtml = `
-                        <div class="pt-2 text-xs text-red-300/90 italic flex items-center gap-1.5 border-t">
-                            <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span>
-                            Đã tiễn ra đảo. Câu hỏi này sẽ không được phản hồi thêm.
-                        </div>
-                    `;
-                }
-                
-                if (item.replyUrl) {
-                    const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
-                    const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
-                    if (driveFileId) {
-                        audioHtml = `
-                            <div class="pt-2 space-y-2 border-t">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2 text-xs font-semibold text-primary">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                            <line x1="12" y1="19" x2="12" y2="22"/>
-                                        </svg>
-                                        Phản hồi bằng giọng nói của tác giả
-                                    </div>
-                                </div>
-                                <div id="audio-container-${driveFileId}" class="flex items-center gap-2 mt-1">
-                                    <button onclick="startVoiceReply('${driveFileId}', this)" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 text-xs font-semibold transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                                        <svg class="h-3 w-3 fill-current" viewBox="0 0 24 24">
-                                            <path d="M8 5v14l11-7z"/>
-                                        </svg>
-                                        <span>Nghe phản hồi giọng nói</span>
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        audioHtml = `
-                            <div class="pt-2 space-y-2 border-t">
+            }
+            
+            if (item.replyUrl) {
+                const fileIdMatch = item.replyUrl.match(/id=([^&]+)/) || item.replyUrl.match(/\/d\/([^/?]+)/);
+                const driveFileId = fileIdMatch ? fileIdMatch[1] : null;
+                if (driveFileId) {
+                    audioHtml = `
+                        <div class="pt-2 space-y-2 border-t">
+                            <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2 text-xs font-semibold text-primary">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -633,72 +733,118 @@
                                     </svg>
                                     Phản hồi bằng giọng nói của tác giả
                                 </div>
-                                <audio
-                                    src="${item.replyUrl}"
-                                    controls
-                                    class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
-                                    preload="none"
-                                    aria-label="Phản hồi giọng nói của tác giả cho câu hỏi của ${escapeHtml(item.name)}"
-                                ></audio>
                             </div>
-                        `;
-                    }
-                } else if (!isIslanded(item)) {
-                    audioHtml = `
-                        <div class="pt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1.5 border-t">
-                            <span class="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
-                            Đang chờ phản hồi bằng giọng nói từ tác giả...
+                            <div id="audio-container-${driveFileId}" class="flex items-center gap-2 mt-1">
+                                <button onclick="startVoiceReply('${driveFileId}', this)" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 text-xs font-semibold transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                                    <svg class="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                    <span>Nghe phản hồi giọng nói</span>
+                                </button>
+                            </div>
                         </div>
                     `;
-                }
-
-                // Admin Controls
-                let adminHtml = "";
-                if (idToken) {
-                    const islandButton = isIslanded(item) ? `
-                            <button onclick="restoreQuestion(${item.rowIndex})"
-                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-green-500/10 text-green-300 border border-green-500/20 hover:bg-green-500/20 transition-colors font-semibold">
-                                Đưa về danh sách
-                            </button>
-                        ` : `
-                            <button onclick="sendToIsland(${item.rowIndex})"
-                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors font-semibold">
-                                Tiễn ra đảo
-                            </button>
-                        `;
-                    adminHtml = `
-                        <div class="pt-3 border-t flex items-center gap-2 flex-wrap text-xs">
-                            ${!isIslanded(item) ? `
-                            <button onclick="openRecorderModal(${item.rowIndex})"
-                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                } else {
+                    audioHtml = `
+                        <div class="pt-2 space-y-2 border-t">
+                            <div class="flex items-center gap-2 text-xs font-semibold text-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
                                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                                     <line x1="12" y1="19" x2="12" y2="22"/>
                                 </svg>
-                                ${item.replyUrl ? 'Ghi âm đè/Sửa' : 'Trả lời bằng giọng nói'}
-                            </button>
-                            ` : ''}
-                            ${item.replyUrl ? `
-                                <button onclick="deleteReply(${item.rowIndex})" 
-                                    class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
-                                    </svg>
-                                    Xóa câu trả lời
-                                </button>
-                            ` : ''}
-                            ${islandButton}
+                                Phản hồi bằng giọng nói của tác giả
+                            </div>
+                            <audio
+                                src="${item.replyUrl}"
+                                controls
+                                class="w-full h-8 focus:ring-2 focus:ring-primary rounded-md focus:outline-none"
+                                preload="none"
+                                aria-label="Phản hồi giọng nói của tác giả cho câu hỏi của ${escapeHtml(item.name)}"
+                            ></audio>
                         </div>
                     `;
                 }
+            } else if (!isIslanded(item)) {
+                audioHtml = `
+                    <div class="pt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1.5 border-t">
+                        <span class="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                        Đang chờ phản hồi bằng giọng nói từ tác giả...
+                    </div>
+                `;
+            }
 
-                card.innerHTML = headerHtml + contentHtml + audioHtml + islandHtml + adminHtml;
-                container.appendChild(card);
-            });
+            // Admin Controls
+            let adminHtml = "";
+            if (idToken) {
+                const islandButton = isIslanded(item) ? `
+                        <button onclick="restoreQuestion(${item.rowIndex})"
+                            class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-green-500/10 text-green-300 border border-green-500/20 hover:bg-green-500/20 transition-colors font-semibold">
+                            Đưa về danh sách
+                        </button>
+                    ` : `
+                        <button onclick="sendToIsland(${item.rowIndex})"
+                            class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors font-semibold">
+                            Tiễn ra đảo
+                        </button>
+                    `;
+                adminHtml = `
+                    <div class="pt-3 border-t flex items-center gap-2 flex-wrap text-xs">
+                        ${!isIslanded(item) ? `
+                        <button onclick="openRecorderModal(${item.rowIndex})"
+                            class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="22"/>
+                            </svg>
+                            ${item.replyUrl ? 'Ghi âm đè/Sửa' : 'Trả lời bằng giọng nói'}
+                        </button>
+                        ` : ''}
+                        ${item.replyUrl ? `
+                            <button onclick="deleteReply(${item.rowIndex})" 
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
+                                </svg>
+                                Xóa câu trả lời
+                            </button>
+                        ` : ''}
+                        ${islandButton}
+                    </div>
+                `;
+            }
 
-            announce(`Tìm thấy ${filtered.length} câu hỏi phù hợp.`);
+            card.innerHTML = headerHtml + contentHtml + audioHtml + islandHtml + adminHtml;
+            container.appendChild(card);
         }
+
+        // Copy share link helper
+        window.shareQuestion = function(rowIndex, btn) {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?q=${rowIndex}`;
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                const textSpan = btn.querySelector('span');
+                const originalText = textSpan.textContent;
+                textSpan.textContent = "Đã sao chép!";
+                btn.classList.add('text-primary');
+                setTimeout(() => {
+                    textSpan.textContent = originalText;
+                    btn.classList.remove('text-primary');
+                }, 2000);
+                announce("Đã sao chép liên kết chia sẻ câu hỏi này vào bộ nhớ tạm.");
+            }).catch(err => {
+                console.error("Failed to copy link:", err);
+                alert("Không thể sao chép liên kết: " + err.message);
+            });
+        };
+
+        // Clear shared filter and restore normal view
+        window.clearSharedQuestion = function() {
+            sharedQuestionRowIndex = null;
+            const newUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            renderFeed();
+        };
 
         // Global map to hold dynamic JSONP callbacks and OGVPlayers
         window.zablindAudioCallbacks = {};
@@ -1293,7 +1439,11 @@
         }
 
         function updateFaqCache() {
-            localStorage.setItem("zablind_faq_cache", JSON.stringify(submissionsList));
+            const cacheObj = {
+                timestamp: Date.now(),
+                data: submissionsList
+            };
+            localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
         }
 
         // Sanitization helpers
