@@ -687,6 +687,12 @@
             });
 
             if (filtered.length === 0) {
+                // If the loader is currently visible, don't show the "no questions found" message yet
+                const isLoaderVisible = loader && !loader.classList.contains("hidden");
+                if (isLoaderVisible) {
+                    return;
+                }
+                
                 const emptyCard = document.createElement("div");
                 emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
                 emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
