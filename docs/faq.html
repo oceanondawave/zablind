@@ -89,6 +89,15 @@
                 font-feature-settings: "rlig" 1, "calt" 1;
             }
         }
+        body.shared-view header,
+        body.shared-view section[role="note"],
+        body.shared-view div[id="config-warning"],
+        body.shared-view section[aria-label="Tìm kiếm và bộ lọc"] {
+            display: none !important;
+        }
+        body.shared-view main {
+            padding-top: 4rem;
+        }
     </style>
 
     <!-- Google Identity Services (GIS) for Google Sign-in -->
@@ -363,6 +372,7 @@
             const qParam = urlParams.get('q');
             if (qParam) {
                 sharedQuestionRowIndex = parseInt(qParam);
+                document.body.classList.add("shared-view");
             }
 
             fetchSubmissions();
@@ -573,6 +583,7 @@
             // If user searches or filters, clear the shared question view automatically
             if (sharedQuestionRowIndex !== null && (searchText || activeFilter !== 'all' || timeFilter !== 'all')) {
                 sharedQuestionRowIndex = null;
+                document.body.classList.remove("shared-view");
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
             }
@@ -827,6 +838,7 @@
         // Clear shared filter and restore normal view
         window.clearSharedQuestion = function() {
             sharedQuestionRowIndex = null;
+            document.body.classList.remove("shared-view");
             const newUrl = window.location.origin + window.location.pathname;
             window.history.replaceState({}, document.title, newUrl);
             renderFeed();
