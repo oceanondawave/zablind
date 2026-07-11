@@ -355,6 +355,7 @@
         let activeFilter = 'all';
         let visibleCount = 10;
         let sharedQuestionRowIndex = null;
+        let hasLoadedAll = false;
         let idToken = null;
         let adminEmail = null;
         let selectedRowIndex = null;
@@ -384,8 +385,12 @@
             }
 
             // Setup Search event listener
-            document.getElementById("search-input").addEventListener("input", function (e) {
+            document.getElementById("search-input").addEventListener("input", async function (e) {
                 visibleCount = 10; // Reset visible count on search change
+                const searchText = e.target.value.toLowerCase().trim();
+                if (searchText && !hasLoadedAll) {
+                    await ensureFullDataLoaded();
+                }
                 renderFeed();
             });
 
@@ -427,7 +432,8 @@
                     const cachedTime = Array.isArray(cacheObj) ? 0 : (cacheObj.timestamp || 0);
                     
                     submissionsList = cachedData;
-                    console.log("Loaded from cache:", submissionsList);
+                    hasLoadedAll = Array.isArray(cacheObj) ? false : (cacheObj.hasLoadedAll || false);
+                    console.log("Loaded from cache (hasLoadedAll = " + hasLoadedAll + "):", submissionsList);
                     
                     // Render stale data immediately
                     renderFeed();
@@ -452,16 +458,20 @@
             
             // 2. Fetch fresh data from API in background (SWR: Revalidate)
             try {
-                const response = await fetch(API_ENDPOINT);
+                // If we don't have all data, fetch with limit=10 to load quickly
+                // If we do have all data, fetch with limit=10 to revalidate the top 10 quickly
+                const url = API_ENDPOINT + "?limit=10";
+                const response = await fetch(url);
                 if (!response.ok) throw new Error("Fetch failed");
                 const data = await response.json();
                 const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
                 
-                // Compare fresh data with cached data
+                // Compare fresh 10 items with the top of our current list
+                const cachedTop10 = submissionsList.slice(0, freshSubmissions.length);
                 const freshString = JSON.stringify(freshSubmissions);
-                const currentString = JSON.stringify(submissionsList);
+                const currentTopString = JSON.stringify(cachedTop10);
                 
-                const hasNewData = freshString !== currentString;
+                const hasNewData = freshString !== currentTopString;
                 
                 if (hasNewData) {
                     console.log("Data changed! Updating feed and cache.");
@@ -477,10 +487,12 @@
                     }
                     
                     submissionsList = freshSubmissions;
+                    hasLoadedAll = false; // We only have the fresh 10 items now
                     
                     // Save to cache with timestamp
                     const cacheObj = {
                         timestamp: Date.now(),
+                        hasLoadedAll: false,
                         data: freshSubmissions
                     };
                     localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
@@ -490,7 +502,8 @@
                     // Refresh cache timestamp to extend valid period
                     const cacheObj = {
                         timestamp: Date.now(),
-                        data: freshSubmissions
+                        hasLoadedAll: hasLoadedAll,
+                        data: submissionsList
                     };
                     localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
                 }
@@ -501,6 +514,39 @@
                     announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
                     renderFeed();
                 }
+            } finally {
+                if (loader) loader.classList.add("hidden");
+            }
+        }
+
+        // Helper to load full data from server when user searches or requests more
+        async function ensureFullDataLoaded() {
+            if (hasLoadedAll) return;
+            
+            const loader = document.getElementById("loading-indicator");
+            const loaderText = loader ? loader.querySelector("p") : null;
+            if (loader) {
+                if (loaderText) loaderText.textContent = "Đang tải toàn bộ dữ liệu để tìm kiếm...";
+                loader.classList.remove("hidden");
+            }
+            
+            try {
+                const response = await fetch(API_ENDPOINT);
+                if (!response.ok) throw new Error("Fetch failed");
+                const data = await response.json();
+                const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
+                
+                submissionsList = freshSubmissions;
+                hasLoadedAll = true;
+                
+                const cacheObj = {
+                    timestamp: Date.now(),
+                    hasLoadedAll: true,
+                    data: freshSubmissions
+                };
+                localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
+            } catch (err) {
+                console.error("Failed to load full database:", err);
             } finally {
                 if (loader) loader.classList.add("hidden");
             }
@@ -656,13 +702,40 @@
             });
 
             // Append Load More button if not searching and more items are available
-            if (!isSearching && filtered.length > visibleCount) {
+            const showLoadMoreBtn = !isSearching && (!hasLoadedAll || filtered.length > visibleCount);
+            if (showLoadMoreBtn) {
                 const loadMoreBtn = document.createElement("button");
                 loadMoreBtn.id = "btn-load-more";
                 loadMoreBtn.className = "w-full py-3 bg-muted/30 hover:bg-muted/50 text-foreground font-semibold rounded-md text-sm border border-border transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 mt-4 faq-card";
                 loadMoreBtn.textContent = "Xem thêm câu hỏi";
-                loadMoreBtn.onclick = function() {
-                    visibleCount += 10;
+                loadMoreBtn.onclick = async function() {
+                    if (!hasLoadedAll) {
+                        loadMoreBtn.textContent = "Đang tải dữ liệu...";
+                        loadMoreBtn.disabled = true;
+                        
+                        try {
+                            const response = await fetch(API_ENDPOINT);
+                            if (!response.ok) throw new Error("Fetch failed");
+                            const data = await response.json();
+                            const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
+                            
+                            submissionsList = freshSubmissions;
+                            hasLoadedAll = true;
+                            
+                            const cacheObj = {
+                                timestamp: Date.now(),
+                                hasLoadedAll: true,
+                                data: freshSubmissions
+                            };
+                            localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));
+                        } catch (err) {
+                            console.error("Failed to load remaining questions:", err);
+                            alert("Không thể tải thêm câu hỏi, vui lòng thử lại.");
+                            return;
+                        }
+                    }
+                    
+                    visibleCount = submissionsList.length;
                     renderFeed();
                 };
                 container.appendChild(loadMoreBtn);
@@ -1449,6 +1522,7 @@
         function updateFaqCache() {
             const cacheObj = {
                 timestamp: Date.now(),
+                hasLoadedAll: hasLoadedAll,
                 data: submissionsList
             };
             localStorage.setItem("zablind_faq_cache", JSON.stringify(cacheObj));

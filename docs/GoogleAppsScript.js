@@ -180,6 +180,14 @@ function doGet(e) {
     // Reverse list to show newest questions first
     submissions.reverse();
     
+    // Support limit parameter
+    if (e && e.parameter && e.parameter.limit) {
+      var limit = parseInt(e.parameter.limit);
+      if (!isNaN(limit) && limit > 0) {
+        submissions = submissions.slice(0, limit);
+      }
+    }
+    
     return ContentService.createTextOutput(JSON.stringify(submissions))
       .setMimeType(ContentService.MimeType.JSON);
       
