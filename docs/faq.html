@@ -581,20 +581,6 @@
             if (sharedQuestionRowIndex !== null) {
                 const sharedItem = submissionsList.find(item => item.rowIndex === sharedQuestionRowIndex);
                 if (sharedItem) {
-                    // Render Shared banner info
-                    const banner = document.createElement("div");
-                    banner.className = "faq-card rounded-lg border bg-primary/10 border-primary/20 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm";
-                    banner.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-primary animate-ping"></span>
-                            <span class="text-foreground">Bạn đang xem một câu hỏi được chia sẻ.</span>
-                        </div>
-                        <button onclick="clearSharedQuestion()" class="text-primary hover:underline font-semibold text-xs focus:outline-none">
-                            Xem tất cả câu hỏi
-                        </button>
-                    `;
-                    container.appendChild(banner);
-
                     renderCard(sharedItem, container);
                     announce(`Đang hiển thị câu hỏi chia sẻ từ ${sharedItem.name}.`);
                     return;
