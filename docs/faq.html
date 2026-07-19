@@ -375,7 +375,7 @@
             } else {
                 isLoadingMoreSubmissions = true;
                 renderFeed();
-                announce("Dang tai them cau hoi...");
+                announce("Đang tải thêm câu hỏi...");
             }
 
             const cachedData = reset && !hasFaqFilters() ? localStorage.getItem("zablind_faq_cache") : null;
@@ -413,10 +413,10 @@
                 console.error("Error loading submissions:", err);
                 if (!submissionsList || submissionsList.length === 0) {
                     submissionsList = [];
-                    announce("Khong the ket noi may chu de lay du lieu cau hoi.");
+                    announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
                     renderFeed();
                 } else {
-                    announce("Khong the tai them cau hoi. Vui long thu lai.");
+                    announce("Không thể tải thêm câu hỏi. Vui lòng thử lại.");
                 }
             } finally {
                 if (requestId === lastFetchRequestId) {
@@ -446,15 +446,15 @@
             });
 
             fetchSubmissions({ reset: true });
-            announce(`Da chuyen sang bo loc ${getFilterLabel(filter)}`);
+            announce(`Đã chuyển sang bộ lọc ${getFilterLabel(filter)}`);
         }
 
         function getFilterLabel(filter) {
             const labels = {
-                all: 'Tat ca',
-                answered: 'Da tra loi',
-                unanswered: 'Chua tra loi',
-                island: 'Da tien ra dao'
+                all: 'Tất cả',
+                answered: 'Đã trả lời',
+                unanswered: 'Chưa trả lời',
+                island: 'Đã tiễn ra đảo'
             };
             return labels[filter] || filter;
         }
@@ -505,7 +505,7 @@
                 if (isLoadingSubmissions) return;
                 const emptyCard = document.createElement("div");
                 emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
-                emptyCard.innerHTML = `<p>Khong tim thay cau hoi nao phu hop.</p>`;
+                emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
                 container.appendChild(emptyCard);
                 return;
             }
@@ -651,15 +651,15 @@
                 loadMoreBtn.disabled = isLoadingMoreSubmissions;
                 loadMoreBtn.className = "w-full py-3 rounded-lg border border-border bg-card text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors mt-2 disabled:opacity-60 disabled:cursor-wait";
                 loadMoreBtn.setAttribute("aria-busy", isLoadingMoreSubmissions ? "true" : "false");
-                loadMoreBtn.setAttribute("aria-label", isLoadingMoreSubmissions ? "Dang tai them cau hoi" : `Tai them ${PAGE_SIZE} cau hoi`);
+                loadMoreBtn.setAttribute("aria-label", isLoadingMoreSubmissions ? "Đang tải thêm" : "Tải thêm");
                 loadMoreBtn.innerHTML = isLoadingMoreSubmissions
-                    ? `<span class="inline-flex items-center justify-center gap-2"><span class="animate-spin h-4 w-4 rounded-full border-2 border-primary border-t-transparent"></span>Dang tai them...</span>`
-                    : `Tai them ${PAGE_SIZE} cau hoi`;
+                    ? `<span class="inline-flex items-center justify-center gap-2"><span class="animate-spin h-4 w-4 rounded-full border-2 border-primary border-t-transparent"></span>Đang tải thêm...</span>`
+                    : "Tải thêm";
                 loadMoreBtn.addEventListener("click", () => fetchSubmissions({ reset: false }));
                 container.appendChild(loadMoreBtn);
             }
 
-            announce(`Hien thi ${paginated.length}${hasMoreSubmissions ? "+" : ""} cau hoi phu hop.`);
+            announce(`Hiển thị ${paginated.length}${hasMoreSubmissions ? "+" : ""} câu hỏi phù hợp.`);
         }
 
         // Global map to hold dynamic JSONP callbacks and OGVPlayers
