@@ -296,6 +296,7 @@
         let hasMoreSubmissions = false;
         let isLoadingSubmissions = false;
         let isLoadingMoreSubmissions = false;
+        let isAdminActionInProgress = false;
         let lastFetchRequestId = 0;
         let selectedRowIndex = null;
         
@@ -658,6 +659,7 @@
             }
 
             announce(`Hiển thị ${paginated.length}${hasMoreSubmissions ? "+" : ""} câu hỏi phù hợp.`);
+            if (isAdminActionInProgress) setFaqControlsDisabled(true);
         }
 
         // Global map to hold dynamic JSONP callbacks and OGVPlayers
@@ -1057,7 +1059,7 @@
 
             document.getElementById("record-status").textContent = "Đang mã hóa và tải bản ghi âm lên Google Drive...";
             document.getElementById("btn-upload-reply").disabled = true;
-            announce("Bắt đầu lưu câu trả lời...");
+            showAdminBusy("Đang lưu câu trả lời...");
 
             const reader = new FileReader();
             reader.readAsDataURL(recordedBlob);
@@ -1086,7 +1088,7 @@
                         updateFaqCache();
                         
                         closeRecorderModal();
-                        renderFeed();
+                        renderFeedPreservingScroll();
                     } else {
                         throw new Error(result.error || "Upload error");
                     }
@@ -1095,6 +1097,8 @@
                     document.getElementById("record-status").textContent = "Tải lên thất bại: " + err.message;
                     document.getElementById("btn-upload-reply").disabled = false;
                     announce("Có lỗi xảy ra: " + err.message);
+                } finally {
+                    hideAdminBusy();
                 }
             };
         }
@@ -1103,7 +1107,7 @@
         async function deleteReply(rowIndex) {
             if (!idToken || !confirm("Bạn có chắc chắn muốn xóa câu trả lời bằng giọng nói này?")) return;
             
-            announce("Đang xóa câu trả lời...");
+            showAdminBusy("Đang xóa câu trả lời...");
             try {
                 const response = await fetch(API_ENDPOINT, {
                     method: "POST",
@@ -1120,7 +1124,7 @@
                     const sub = submissionsList.find(x => x.rowIndex === rowIndex);
                     if (sub) sub.replyUrl = "";
                     updateFaqCache();
-                    renderFeed();
+                    renderFeedPreservingScroll();
                 } else {
                     throw new Error(result.error || "Delete error");
                 }
@@ -1128,13 +1132,15 @@
                 console.error("Failed to delete audio:", err);
                 alert("Xóa thất bại: " + err.message);
                 announce("Lỗi: " + err.message);
+            } finally {
+                hideAdminBusy();
             }
         }
 
         async function sendToIsland(rowIndex) {
             if (!idToken || !confirm("Bạn có chắc chắn muốn tiễn câu hỏi này ra đảo và không phản hồi nữa?")) return;
 
-            announce("Đang tiễn câu hỏi ra đảo...");
+            showAdminBusy("Đang tiễn câu hỏi ra đảo...");
             try {
                 const response = await fetch(API_ENDPOINT, {
                     method: "POST",
@@ -1150,7 +1156,7 @@
                     const sub = submissionsList.find(x => x.rowIndex === rowIndex);
                     if (sub) sub.status = "island";
                     updateFaqCache();
-                    renderFeed();
+                    renderFeedPreservingScroll();
                     announce("Đã tiễn câu hỏi ra đảo.");
                 } else {
                     throw new Error(result.error || "Island action error");
@@ -1159,13 +1165,15 @@
                 console.error("Failed to send question to island:", err);
                 alert("Không thể tiễn ra đảo: " + err.message);
                 announce("Lỗi: " + err.message);
+            } finally {
+                hideAdminBusy();
             }
         }
 
         async function restoreQuestion(rowIndex) {
             if (!idToken || !confirm("Đưa câu hỏi này về lại danh sách bình thường?")) return;
 
-            announce("Đang đưa câu hỏi về lại danh sách...");
+            showAdminBusy("Đang đưa câu hỏi về lại danh sách...");
             try {
                 const response = await fetch(API_ENDPOINT, {
                     method: "POST",
@@ -1181,7 +1189,7 @@
                     const sub = submissionsList.find(x => x.rowIndex === rowIndex);
                     if (sub) sub.status = "";
                     updateFaqCache();
-                    renderFeed();
+                    renderFeedPreservingScroll();
                     announce("Đã đưa câu hỏi về lại danh sách.");
                 } else {
                     throw new Error(result.error || "Restore action error");
@@ -1190,6 +1198,8 @@
                 console.error("Failed to restore question:", err);
                 alert("Khôi phục thất bại: " + err.message);
                 announce("Lỗi: " + err.message);
+            } finally {
+                hideAdminBusy();
             }
         }
 
@@ -1197,6 +1207,64 @@
             if (!hasFaqFilters()) {
                 localStorage.setItem("zablind_faq_cache", JSON.stringify(submissionsList.slice(0, PAGE_SIZE)));
             }
+        }
+
+        function setFaqControlsDisabled(disabled) {
+            document.querySelectorAll(
+                "#search-input, #time-filter, #faq-feed button, #filter-all, #filter-answered, #filter-unanswered, #filter-island, #recorder-modal button, #recorder-modal input, #recorder-modal select, #recorder-modal textarea"
+            ).forEach(control => {
+                control.disabled = disabled;
+                control.setAttribute("aria-disabled", disabled ? "true" : "false");
+            });
+        }
+
+        function setLoadingIndicatorText(message) {
+            const loader = document.getElementById("loading-indicator");
+            const text = loader?.querySelector("p");
+            if (text) text.textContent = message;
+            return loader;
+        }
+
+        function setAdminBusyBadge(message, visible) {
+            let badge = document.getElementById("admin-action-busy");
+            if (!badge) {
+                badge = document.createElement("div");
+                badge.id = "admin-action-busy";
+                badge.className = "fixed bottom-4 left-1/2 z-[60] hidden -translate-x-1/2 rounded-md border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-lg";
+                badge.setAttribute("role", "status");
+                badge.setAttribute("aria-live", "polite");
+                document.body.appendChild(badge);
+            }
+            badge.innerHTML = `<span class="inline-flex items-center gap-2"><span class="animate-spin h-4 w-4 rounded-full border-2 border-primary border-t-transparent"></span>${escapeHtml(message)}</span>`;
+            badge.classList.toggle("hidden", !visible);
+        }
+
+        function showAdminBusy(message) {
+            isAdminActionInProgress = true;
+            setLoadingIndicatorText(message);
+            setAdminBusyBadge(message, true);
+            document.body.setAttribute("aria-busy", "true");
+            setFaqControlsDisabled(true);
+            announce(message);
+        }
+
+        function hideAdminBusy() {
+            isAdminActionInProgress = false;
+            setLoadingIndicatorText("Đang tải danh sách câu hỏi...");
+            setAdminBusyBadge("", false);
+            document.getElementById("loading-indicator")?.classList.add("hidden");
+            document.body.removeAttribute("aria-busy");
+            setFaqControlsDisabled(false);
+        }
+
+        function renderFeedPreservingScroll() {
+            const previousScrollX = window.scrollX;
+            const previousScrollY = window.scrollY;
+            renderFeed();
+            requestAnimationFrame(() => {
+                window.scrollTo({ top: previousScrollY, left: previousScrollX, behavior: "auto" });
+                if (isAdminActionInProgress) setFaqControlsDisabled(true);
+            });
         }
 
         // Sanitization helpers
