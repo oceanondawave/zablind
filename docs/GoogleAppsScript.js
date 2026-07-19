@@ -57,23 +57,35 @@ function doGet(e) {
   }
 
   try {
+    var params = (e && e.parameter) || {};
+    var limit = Math.max(1, Math.min(parseInt(params.limit, 10) || 10, 50));
+    var offset = Math.max(0, parseInt(params.offset, 10) || 0);
+    var filter = (params.filter || "all").toString().toLowerCase();
+    var search = (params.search || "").toString().toLowerCase().trim();
+    var timeFilter = (params.timeFilter || "all").toString().toLowerCase();
+
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var data = sheet.getDataRange().getValues();
-    var headers = data[0];
-    
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2 || lastCol < 1) {
+      return makeJsonResponse({ submissions: [], hasMore: false, nextOffset: offset });
+    }
+
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
     function normalizeHeader(str) {
       if (!str) return "";
       return str.toString().toLowerCase()
         .replace(/\s+/g, "")
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     }
-    
+
     var nameIdx = -1;
     var questionIdx = -1;
     var dateIdx = -1;
     var replyIdx = -1;
     var statusIdx = -1;
-    
+
     for (var idx = 0; idx < headers.length; idx++) {
       var h = normalizeHeader(headers[idx]);
       if (h.indexOf("tencua") !== -1 || h.indexOf("hovaten") !== -1 || h.indexOf("name") !== -1) {
@@ -88,7 +100,7 @@ function doGet(e) {
         statusIdx = idx;
       }
     }
-    
+
     if (nameIdx === -1) nameIdx = 3;
     if (questionIdx === -1) questionIdx = 4;
     if (dateIdx === -1) dateIdx = 2;
@@ -96,52 +108,67 @@ function doGet(e) {
       replyIdx = headers.length;
       sheet.getRange(1, replyIdx + 1).setValue(COL_REPLY);
       headers.push(COL_REPLY);
+      lastCol = Math.max(lastCol, replyIdx + 1);
     }
     if (statusIdx === -1) {
       statusIdx = headers.length;
       sheet.getRange(1, statusIdx + 1).setValue(COL_STATUS);
+      headers.push(COL_STATUS);
+      lastCol = Math.max(lastCol, statusIdx + 1);
       SpreadsheetApp.flush();
     }
-    
+
     var activeFileIds = new Set();
     if (DRIVE_FOLDER_ID) {
       try {
         var folder = getAudioFolder(DRIVE_FOLDER_ID);
         var files = folder.getFiles();
         while (files.hasNext()) {
-          var file = files.next();
-          if (!file.isTrashed()) {
-            activeFileIds.add(file.getId());
+          var driveFile = files.next();
+          if (!driveFile.isTrashed()) {
+            activeFileIds.add(driveFile.getId());
           }
         }
       } catch (driveErr) {
         console.error("Failed to read Drive folder: " + driveErr);
       }
     }
-    
-    var submissions = [];
+
     var sheetUpdated = false;
-    
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (!row[questionIdx]) continue;
-      
-      var dateVal = row[dateIdx];
-      var dateStr = "";
-      
+
+    function formatDate(dateVal) {
       if (dateVal instanceof Date) {
         var day = ("0" + dateVal.getDate()).slice(-2);
         var month = ("0" + (dateVal.getMonth() + 1)).slice(-2);
         var year = dateVal.getFullYear();
         var hours = ("0" + dateVal.getHours()).slice(-2);
         var mins = ("0" + dateVal.getMinutes()).slice(-2);
-        dateStr = day + "/" + month + "/" + year + " " + hours + ":" + mins;
-      } else if (dateVal) {
-        dateStr = dateVal.toString();
-      } else {
-        dateStr = "";
+        return day + "/" + month + "/" + year + " " + hours + ":" + mins;
       }
-      
+      return dateVal ? dateVal.toString() : "";
+    }
+
+    function parseSubmissionDate(dateStr) {
+      if (!dateStr) return null;
+      var parts = dateStr.split(" ");
+      var dateParts = parts[0].split("/");
+      if (dateParts.length !== 3) return null;
+      var day = parseInt(dateParts[0], 10);
+      var month = parseInt(dateParts[1], 10) - 1;
+      var year = parseInt(dateParts[2], 10);
+      var hours = 0;
+      var minutes = 0;
+      if (parts[1]) {
+        var timeParts = parts[1].split(":");
+        hours = parseInt(timeParts[0], 10) || 0;
+        minutes = parseInt(timeParts[1], 10) || 0;
+      }
+      return new Date(year, month, day, hours, minutes);
+    }
+
+    function makeSubmission(row, rowIndex) {
+      if (!row[questionIdx]) return null;
+
       var rawReplyUrl = row[replyIdx] ? row[replyIdx].toString().trim() : "";
       var replyUrl = "";
       if (rawReplyUrl) {
@@ -149,33 +176,100 @@ function doGet(e) {
         if (fileId && activeFileIds.has(fileId)) {
           replyUrl = "https://drive.usercontent.google.com/download?id=" + fileId + "&export=download";
         } else {
-          sheet.getRange(i + 1, replyIdx + 1).setValue("");
+          sheet.getRange(rowIndex, replyIdx + 1).setValue("");
           sheetUpdated = true;
-          replyUrl = "";
         }
       }
-      
-      submissions.push({
-        rowIndex: i + 1,
-        date: dateStr,
-        name: row[nameIdx] ? row[nameIdx].toString().trim() : "Người dùng ẩn danh",
+
+      return {
+        rowIndex: rowIndex,
+        date: formatDate(row[dateIdx]),
+        name: row[nameIdx] ? row[nameIdx].toString().trim() : "Nguoi dung an danh",
         question: row[questionIdx] ? row[questionIdx].toString().trim() : "",
         replyUrl: replyUrl,
         status: row[statusIdx] ? row[statusIdx].toString().trim() : ""
-      });
+      };
     }
-    
+
+    function matchesTimeFilter(item) {
+      if (timeFilter === "all") return true;
+      var itemDate = parseSubmissionDate(item.date);
+      if (!itemDate) return true;
+      var now = new Date();
+      if (timeFilter === "today") {
+        return itemDate.getDate() === now.getDate() &&
+          itemDate.getMonth() === now.getMonth() &&
+          itemDate.getFullYear() === now.getFullYear();
+      }
+      var diffTime = Math.abs(now - itemDate);
+      var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (timeFilter === "week") return diffDays <= 7;
+      if (timeFilter === "month") return diffDays <= 30;
+      return true;
+    }
+
+    function rowMatches(item) {
+      var islanded = item.status.toLowerCase() === STATUS_ISLAND;
+      if (filter === "island") {
+        if (!islanded) return false;
+      } else {
+        if (islanded) return false;
+        if (filter === "answered" && !item.replyUrl) return false;
+        if (filter === "unanswered" && item.replyUrl) return false;
+      }
+
+      if (!matchesTimeFilter(item)) return false;
+      if (search) {
+        return item.name.toLowerCase().indexOf(search) !== -1 ||
+          item.question.toLowerCase().indexOf(search) !== -1;
+      }
+      return true;
+    }
+
+    var submissions = [];
+    var skipped = 0;
+    var hasMore = false;
+    var rowPointer = lastRow;
+    var batchSize = Math.max(limit + offset + 1, 20);
+
+    scanRows:
+    while (rowPointer >= 2) {
+      var batchStart = Math.max(2, rowPointer - batchSize + 1);
+      var batchLength = rowPointer - batchStart + 1;
+      var rows = sheet.getRange(batchStart, 1, batchLength, lastCol).getValues();
+
+      for (var r = rows.length - 1; r >= 0; r--) {
+        var item = makeSubmission(rows[r], batchStart + r);
+        if (!item || !rowMatches(item)) continue;
+
+        if (skipped < offset) {
+          skipped++;
+          continue;
+        }
+
+        if (submissions.length < limit) {
+          submissions.push(item);
+        } else {
+          hasMore = true;
+          break scanRows;
+        }
+      }
+
+      rowPointer = batchStart - 1;
+    }
+
     if (sheetUpdated) {
       SpreadsheetApp.flush();
     }
-    
-    submissions.reverse();
-    return ContentService.createTextOutput(JSON.stringify(submissions))
-      .setMimeType(ContentService.MimeType.JSON);
-      
+
+    return makeJsonResponse({
+      submissions: submissions,
+      hasMore: hasMore,
+      nextOffset: offset + submissions.length
+    });
+
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ error: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return makeJsonResponse({ error: err.toString() });
   }
 }
 

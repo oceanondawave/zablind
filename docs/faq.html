@@ -160,7 +160,7 @@
                     <!-- Time Filter select (assistive) -->
                     <div class="w-full sm:w-48">
                         <label for="time-filter" class="sr-only">Lọc theo thời gian</label>
-                        <select id="time-filter" onchange="currentPage = 1; renderFeed()"
+                        <select id="time-filter" onchange="fetchSubmissions({ reset: true })"
                             class="w-full rounded-md border border-input bg-card pl-3 pr-10 py-[9px] text-sm ring-offset-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_12px_center] bg-[size:18px] bg-no-repeat">
                             <option value="all">Tất cả thời gian</option>
                             <option value="today">Hôm nay</option>
@@ -292,8 +292,11 @@
         let activeFilter = 'all';
         let idToken = null;
         let adminEmail = null;
-        let currentPage = 1;
         const PAGE_SIZE = 10;
+        let hasMoreSubmissions = false;
+        let isLoadingSubmissions = false;
+        let isLoadingMoreSubmissions = false;
+        let lastFetchRequestId = 0;
         let selectedRowIndex = null;
         
         // Media Recorder variables
@@ -314,8 +317,7 @@
 
             // Setup Search event listener
             document.getElementById("search-input").addEventListener("input", function (e) {
-                currentPage = 1;
-                renderFeed();
+                fetchSubmissions({ reset: true });
             });
 
             // Initialize Google Identity Services (GIS) Sign-in
@@ -338,63 +340,97 @@
             }, 100);
         }
 
-        // Fetch submissions from Google Apps Script Web App with Stale-While-Revalidate caching
-        async function fetchSubmissions() {
+        function getFaqQueryParams(offset) {
+            const params = new URLSearchParams({
+                limit: String(PAGE_SIZE),
+                offset: String(offset),
+                filter: activeFilter,
+                timeFilter: document.getElementById("time-filter")?.value || "all",
+                search: document.getElementById("search-input")?.value.trim() || ""
+            });
+            return params.toString();
+        }
+
+        function hasFaqFilters() {
+            const searchText = document.getElementById("search-input")?.value.trim() || "";
+            const timeFilter = document.getElementById("time-filter")?.value || "all";
+            return Boolean(searchText) || activeFilter !== "all" || timeFilter !== "all";
+        }
+
+        // Fetch one server-side page from Google Apps Script.
+        async function fetchSubmissions(options = {}) {
             const loader = document.getElementById("loading-indicator");
-            
-            // 1. Try to load from localStorage cache first (SWR: Stale)
-            const cachedData = localStorage.getItem("zablind_faq_cache");
-            if (cachedData) {
+            const reset = options.reset !== false;
+            if (isLoadingSubmissions || isLoadingMoreSubmissions) return;
+
+            const requestId = ++lastFetchRequestId;
+            const offset = reset ? 0 : submissionsList.length;
+
+            if (reset) {
+                isLoadingSubmissions = true;
+                hasMoreSubmissions = false;
+                submissionsList = [];
+                loader.classList.remove("hidden");
+                renderFeed();
+            } else {
+                isLoadingMoreSubmissions = true;
+                renderFeed();
+                announce("Dang tai them cau hoi...");
+            }
+
+            const cachedData = reset && !hasFaqFilters() ? localStorage.getItem("zablind_faq_cache") : null;
+            if (cachedData && offset === 0) {
                 try {
                     submissionsList = JSON.parse(cachedData);
                     console.log("Loaded from cache:", submissionsList);
-                    loader.classList.add("hidden"); // Hide loader immediately since we have cache
                     renderFeed();
                 } catch (e) {
                     console.error("Failed to parse cache", e);
                 }
             }
-            
-            // If no cache, make sure loader is visible
-            if (!submissionsList || submissionsList.length === 0) {
-                loader.classList.remove("hidden");
-            }
-            
-            // 2. Fetch fresh data from API in background (SWR: Revalidate)
+
             try {
-                const response = await fetch(API_ENDPOINT);
+                const response = await fetch(`${API_ENDPOINT}?${getFaqQueryParams(offset)}`);
                 if (!response.ok) throw new Error("Fetch failed");
                 const data = await response.json();
                 const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
-                
-                // Compare fresh data with cached data
-                const freshString = JSON.stringify(freshSubmissions);
-                const cachedString = JSON.stringify(submissionsList);
-                
-                if (freshString !== cachedString) {
-                    console.log("Data changed! Updating feed and cache.");
+                const freshHasMore = Array.isArray(data) ? freshSubmissions.length === PAGE_SIZE : Boolean(data.hasMore);
+
+                if (requestId !== lastFetchRequestId) return;
+
+                if (reset) {
                     submissionsList = freshSubmissions;
-                    localStorage.setItem("zablind_faq_cache", freshString);
-                    renderFeed();
+                    if (!hasFaqFilters()) {
+                        localStorage.setItem("zablind_faq_cache", JSON.stringify(freshSubmissions));
+                    }
                 } else {
-                    console.log("Data is up-to-date (no change).");
+                    const seen = new Set(submissionsList.map(item => item.rowIndex));
+                    submissionsList = submissionsList.concat(freshSubmissions.filter(item => !seen.has(item.rowIndex)));
                 }
+                hasMoreSubmissions = freshHasMore;
+                renderFeed();
             } catch (err) {
-                console.error("Error loading submissions in background:", err);
+                console.error("Error loading submissions:", err);
                 if (!submissionsList || submissionsList.length === 0) {
                     submissionsList = [];
-                    announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
+                    announce("Khong the ket noi may chu de lay du lieu cau hoi.");
                     renderFeed();
+                } else {
+                    announce("Khong the tai them cau hoi. Vui long thu lai.");
                 }
             } finally {
-                loader.classList.add("hidden");
+                if (requestId === lastFetchRequestId) {
+                    isLoadingSubmissions = false;
+                    isLoadingMoreSubmissions = false;
+                    loader.classList.add("hidden");
+                    renderFeed();
+                }
             }
         }
 
         // Set list filter status and render
         function setFilter(filter) {
             activeFilter = filter;
-            currentPage = 1;
             
             // Highlight active button
             const buttons = ['all', 'answered', 'unanswered', 'island'];
@@ -409,16 +445,16 @@
                 }
             });
 
-            renderFeed();
-            announce(`Đã chuyển sang bộ lọc ${getFilterLabel(filter)}`);
+            fetchSubmissions({ reset: true });
+            announce(`Da chuyen sang bo loc ${getFilterLabel(filter)}`);
         }
 
         function getFilterLabel(filter) {
             const labels = {
-                all: 'Tất cả',
-                answered: 'Đã trả lời',
-                unanswered: 'Chưa trả lời',
-                island: 'Đã tiễn ra đảo'
+                all: 'Tat ca',
+                answered: 'Da tra loi',
+                unanswered: 'Chua tra loi',
+                island: 'Da tien ra dao'
             };
             return labels[filter] || filter;
         }
@@ -452,76 +488,29 @@
             }
         }
 
-        // Render submissions feed matching filters and search text
+        // Render submissions feed returned by the server-side filters.
         function renderFeed() {
             const container = document.getElementById("faq-feed");
-            // Keep the loading indicator element
             const loader = document.getElementById("loading-indicator");
             
-            // Clean previous cards
             const cards = container.querySelectorAll(".faq-card");
             cards.forEach(card => card.remove());
 
-            const searchText = document.getElementById("search-input").value.toLowerCase().trim();
-            const timeFilter = document.getElementById("time-filter").value;
+            const existingLoadMore = document.getElementById("load-more-btn");
+            if (existingLoadMore) existingLoadMore.remove();
 
-            const filtered = submissionsList.filter(item => {
-                // Apply filter state
-                const islanded = isIslanded(item);
-                if (activeFilter === 'island') {
-                    if (!islanded) return false;
-                } else {
-                    if (islanded) return false;
-                    if (activeFilter === 'answered' && !item.replyUrl) return false;
-                    if (activeFilter === 'unanswered' && item.replyUrl) return false;
-                }
-
-                // Apply time filter
-                if (timeFilter !== 'all') {
-                    const itemDate = parseDate(item.date);
-                    if (itemDate) {
-                        const now = new Date();
-                        const diffTime = Math.abs(now - itemDate);
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
-                        if (timeFilter === 'today') {
-                            const isSameDay = itemDate.getDate() === now.getDate() && 
-                                              itemDate.getMonth() === now.getMonth() && 
-                                              itemDate.getFullYear() === now.getFullYear();
-                            if (!isSameDay) return false;
-                        } else if (timeFilter === 'week' && diffDays > 7) {
-                            return false;
-                        } else if (timeFilter === 'month' && diffDays > 30) {
-                            return false;
-                        }
-                    }
-                }
-
-                // Apply search text
-                if (searchText) {
-                    const matchName = item.name.toLowerCase().includes(searchText);
-                    const matchQuestion = item.question.toLowerCase().includes(searchText);
-                    return matchName || matchQuestion;
-                }
-                return true;
-            });
+            const filtered = submissionsList;
 
             if (filtered.length === 0) {
+                if (isLoadingSubmissions) return;
                 const emptyCard = document.createElement("div");
                 emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
-                emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
+                emptyCard.innerHTML = `<p>Khong tim thay cau hoi nao phu hop.</p>`;
                 container.appendChild(emptyCard);
                 return;
             }
 
-            // Paginate: only show first currentPage * PAGE_SIZE items
-            const totalToShow = currentPage * PAGE_SIZE;
-            const paginated = filtered.slice(0, totalToShow);
-
-            // Remove existing Load More button if any
-            const existingLoadMore = document.getElementById("load-more-btn");
-            if (existingLoadMore) existingLoadMore.remove();
-
+            const paginated = filtered;
             paginated.forEach(item => {
                 const card = document.createElement("div");
                 card.className = "faq-card rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 transition-all hover:shadow-md";
@@ -655,23 +644,22 @@
                 container.appendChild(card);
             });
 
-            // Show Load More button if there are more items
-            if (filtered.length > totalToShow) {
-                const remaining = filtered.length - totalToShow;
+            // Show Load More button if the server says another page exists.
+            if (hasMoreSubmissions || isLoadingMoreSubmissions) {
                 const loadMoreBtn = document.createElement("button");
                 loadMoreBtn.id = "load-more-btn";
-                loadMoreBtn.className = "w-full py-3 rounded-lg border border-border bg-card text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors mt-2";
-                loadMoreBtn.setAttribute("aria-label", `Tải thêm ${Math.min(remaining, PAGE_SIZE)} câu hỏi`);
-                loadMoreBtn.textContent = `Tải thêm ${Math.min(remaining, PAGE_SIZE)} câu hỏi (còn ${remaining})...`;
-                loadMoreBtn.addEventListener("click", () => {
-                    currentPage++;
-                    renderFeed();
-                    announce(`Đã tải thêm ${Math.min(remaining, PAGE_SIZE)} câu hỏi.`);
-                });
+                loadMoreBtn.disabled = isLoadingMoreSubmissions;
+                loadMoreBtn.className = "w-full py-3 rounded-lg border border-border bg-card text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors mt-2 disabled:opacity-60 disabled:cursor-wait";
+                loadMoreBtn.setAttribute("aria-busy", isLoadingMoreSubmissions ? "true" : "false");
+                loadMoreBtn.setAttribute("aria-label", isLoadingMoreSubmissions ? "Dang tai them cau hoi" : `Tai them ${PAGE_SIZE} cau hoi`);
+                loadMoreBtn.innerHTML = isLoadingMoreSubmissions
+                    ? `<span class="inline-flex items-center justify-center gap-2"><span class="animate-spin h-4 w-4 rounded-full border-2 border-primary border-t-transparent"></span>Dang tai them...</span>`
+                    : `Tai them ${PAGE_SIZE} cau hoi`;
+                loadMoreBtn.addEventListener("click", () => fetchSubmissions({ reset: false }));
                 container.appendChild(loadMoreBtn);
             }
 
-            announce(`Hiển thị ${paginated.length} / ${filtered.length} câu hỏi phù hợp.`);
+            announce(`Hien thi ${paginated.length}${hasMoreSubmissions ? "+" : ""} cau hoi phu hop.`);
         }
 
         // Global map to hold dynamic JSONP callbacks and OGVPlayers
@@ -1208,7 +1196,9 @@
         }
 
         function updateFaqCache() {
-            localStorage.setItem("zablind_faq_cache", JSON.stringify(submissionsList));
+            if (!hasFaqFilters()) {
+                localStorage.setItem("zablind_faq_cache", JSON.stringify(submissionsList.slice(0, PAGE_SIZE)));
+            }
         }
 
         // Sanitization helpers
