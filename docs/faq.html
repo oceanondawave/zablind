@@ -293,6 +293,8 @@
         let idToken = null;
         let adminEmail = null;
         const PAGE_SIZE = 10;
+        const FAQ_CACHE_KEY = "zablind_faq_cache";
+        const FAQ_CACHE_TTL_MS = 5 * 60 * 1000;
         let hasMoreSubmissions = false;
         let isLoadingSubmissions = false;
         let isLoadingMoreSubmissions = false;
@@ -358,6 +360,33 @@
             return Boolean(searchText) || activeFilter !== "all" || timeFilter !== "all";
         }
 
+        function readFaqCache() {
+            if (hasFaqFilters()) return null;
+            try {
+                const raw = localStorage.getItem(FAQ_CACHE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                const cache = Array.isArray(parsed)
+                    ? { submissions: parsed, hasMore: parsed.length >= PAGE_SIZE, cachedAt: 0 }
+                    : parsed;
+                if (!Array.isArray(cache.submissions)) return null;
+                if (!cache.cachedAt || Date.now() - cache.cachedAt > FAQ_CACHE_TTL_MS) return null;
+                return cache;
+            } catch (err) {
+                console.error("Failed to read FAQ cache:", err);
+                return null;
+            }
+        }
+
+        function writeFaqCache() {
+            if (hasFaqFilters()) return;
+            localStorage.setItem(FAQ_CACHE_KEY, JSON.stringify({
+                submissions: submissionsList,
+                hasMore: hasMoreSubmissions,
+                cachedAt: Date.now()
+            }));
+        }
+
         // Fetch one server-side page from Google Apps Script.
         async function fetchSubmissions(options = {}) {
             const loader = document.getElementById("loading-indicator");
@@ -366,6 +395,9 @@
 
             const requestId = ++lastFetchRequestId;
             const offset = reset ? 0 : submissionsList.length;
+            const cachedPage = reset ? readFaqCache() : null;
+            const cachedSubmissions = cachedPage?.submissions || [];
+            let cachedTail = [];
             const previousScrollY = reset ? null : window.scrollY;
             const renderSubmissions = () => {
                 renderFeed();
@@ -378,9 +410,9 @@
 
             if (reset) {
                 isLoadingSubmissions = true;
-                hasMoreSubmissions = false;
-                submissionsList = [];
-                loader.classList.remove("hidden");
+                hasMoreSubmissions = Boolean(cachedPage?.hasMore);
+                submissionsList = cachedSubmissions;
+                loader.classList.toggle("hidden", cachedSubmissions.length > 0);
                 renderSubmissions();
             } else {
                 isLoadingMoreSubmissions = true;
@@ -398,15 +430,15 @@
                 if (requestId !== lastFetchRequestId) return;
 
                 if (reset) {
-                    submissionsList = freshSubmissions;
-                    if (!hasFaqFilters()) {
-                        localStorage.setItem("zablind_faq_cache", JSON.stringify(freshSubmissions));
-                    }
+                    const seen = new Set(freshSubmissions.map(item => item.rowIndex));
+                    cachedTail = cachedSubmissions.filter(item => !seen.has(item.rowIndex));
+                    submissionsList = freshSubmissions.concat(cachedTail);
                 } else {
                     const seen = new Set(submissionsList.map(item => item.rowIndex));
                     submissionsList = submissionsList.concat(freshSubmissions.filter(item => !seen.has(item.rowIndex)));
                 }
-                hasMoreSubmissions = freshHasMore;
+                hasMoreSubmissions = freshHasMore || (reset && cachedTail?.length > 0 && Boolean(cachedPage?.hasMore));
+                writeFaqCache();
                 renderSubmissions();
             } catch (err) {
                 console.error("Error loading submissions:", err);
@@ -601,22 +633,24 @@
                 // Admin Controls
                 let adminHtml = "";
                 if (idToken) {
+                    const adminDisabledAttr = isAdminActionInProgress ? 'disabled aria-disabled="true"' : '';
+                    const adminDisabledClass = isAdminActionInProgress ? ' opacity-60 cursor-wait pointer-events-none' : '';
                     const islandButton = isIslanded(item) ? `
-                            <button onclick="restoreQuestion(${item.rowIndex})"
-                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-green-500/10 text-green-300 border border-green-500/20 hover:bg-green-500/20 transition-colors font-semibold">
+                            <button onclick="restoreQuestion(${item.rowIndex})" ${adminDisabledAttr}
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-green-500/10 text-green-300 border border-green-500/20 hover:bg-green-500/20 transition-colors font-semibold${adminDisabledClass}">
                                 Đưa về danh sách
                             </button>
                         ` : `
-                            <button onclick="sendToIsland(${item.rowIndex})"
-                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors font-semibold">
+                            <button onclick="sendToIsland(${item.rowIndex})" ${adminDisabledAttr}
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors font-semibold${adminDisabledClass}">
                                 Tiễn ra đảo
                             </button>
                         `;
                     adminHtml = `
                         <div class="pt-3 border-t flex items-center gap-2 flex-wrap text-xs">
                             ${!isIslanded(item) ? `
-                            <button onclick="openRecorderModal(${item.rowIndex})"
-                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold">
+                            <button onclick="openRecorderModal(${item.rowIndex})" ${adminDisabledAttr}
+                                class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors font-semibold${adminDisabledClass}">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
                                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -626,8 +660,8 @@
                             </button>
                             ` : ''}
                             ${item.replyUrl ? `
-                                <button onclick="deleteReply(${item.rowIndex})" 
-                                    class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold">
+                                <button onclick="deleteReply(${item.rowIndex})" ${adminDisabledAttr}
+                                    class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors font-semibold${adminDisabledClass}">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
                                     </svg>
@@ -916,6 +950,7 @@
 
         // Recorder dialog functions
         function openRecorderModal(rowIndex) {
+            if (isAdminActionInProgress) return;
             const item = submissionsList.find(x => x.rowIndex === rowIndex);
             if (!item) return;
             selectedRowIndex = rowIndex;
@@ -1055,6 +1090,7 @@
 
         // Convert audio blob to base64 and upload to Apps Script
         function uploadAudio() {
+            if (isAdminActionInProgress) return;
             if (!recordedBlob || !selectedRowIndex || !idToken) return;
 
             document.getElementById("record-status").textContent = "Đang mã hóa và tải bản ghi âm lên Google Drive...";
@@ -1105,6 +1141,7 @@
 
         // Delete reply cell from Sheet and Drive
         async function deleteReply(rowIndex) {
+            if (isAdminActionInProgress) return;
             if (!idToken || !confirm("Bạn có chắc chắn muốn xóa câu trả lời bằng giọng nói này?")) return;
             
             showAdminBusy("Đang xóa câu trả lời...");
@@ -1138,6 +1175,7 @@
         }
 
         async function sendToIsland(rowIndex) {
+            if (isAdminActionInProgress) return;
             if (!idToken || !confirm("Bạn có chắc chắn muốn tiễn câu hỏi này ra đảo và không phản hồi nữa?")) return;
 
             showAdminBusy("Đang tiễn câu hỏi ra đảo...");
@@ -1171,6 +1209,7 @@
         }
 
         async function restoreQuestion(rowIndex) {
+            if (isAdminActionInProgress) return;
             if (!idToken || !confirm("Đưa câu hỏi này về lại danh sách bình thường?")) return;
 
             showAdminBusy("Đang đưa câu hỏi về lại danh sách...");
@@ -1204,9 +1243,7 @@
         }
 
         function updateFaqCache() {
-            if (!hasFaqFilters()) {
-                localStorage.setItem("zablind_faq_cache", JSON.stringify(submissionsList.slice(0, PAGE_SIZE)));
-            }
+            writeFaqCache();
         }
 
         function setFaqControlsDisabled(disabled) {
