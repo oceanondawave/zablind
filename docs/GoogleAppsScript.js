@@ -1,21 +1,23 @@
 /**
- * Zablind FAQ Google Apps Script Backend
+ * Zablind FAQ Google Apps Script Backend (v2.1.2 - Clean Production)
  * 
  * Instructions:
- * 1. Open your Tally Google Sheet.
- * 2. Click "Extensions" > "Apps Script".
- * 3. Delete any code in the editor and paste this code.
- * 4. Go to Project Settings (gear icon) and add these two Script Properties:
- *    - ADMIN_EMAIL: your-google-email@gmail.com
- *    - DRIVE_FOLDER_ID: the folder ID of your Google Drive folder where audio replies will be saved.
- * 5. Click "Deploy" > "New Deployment".
+ * 1. Paste this code into your Google Apps Script editor.
+ * 2. Configure your constants (DRIVE_FOLDER_ID and ADMIN_EMAIL) at the top of this script.
+ * 3. Click "Deploy" > "New Deployment".
  *    - Select type: "Web app"
  *    - Execute as: "Me"
  *    - Who has access: "Anyone"
- * 6. Copy the Web App URL and paste it into the API_ENDPOINT in your faq.html.
+ * 4. Copy the Web App URL and paste it into the API_ENDPOINT in your faq.html.
  */
 
-// Define expected column headers in Tally sheet
+// ==========================================
+// ⚙️ CẤU HÌNH HỆ THỐNG (ĐIỀN TRỰC TIẾP TẠI ĐÂY)
+// ==========================================
+const DRIVE_FOLDER_ID = "1tuk9q3C_Aa6-mqUxhu-0G8kyacjkPPz8"; // ID Thư mục Zablind Voice Replies của bạn
+const ADMIN_EMAIL = "your-google-email@gmail.com";          // Email đăng nhập trả lời câu hỏi của bạn
+// ==========================================
+
 const COL_NAME = "Họ và tên";
 const COL_QUESTION = "Nội dung góp ý / Câu hỏi";
 const COL_DATE = "Submitted At";
@@ -35,15 +37,12 @@ function doGet(e) {
         mimeType: blob.getContentType(),
         base64: base64
       };
-      
-      // JSONP support
       if (e.parameter.callback) {
         var callback = e.parameter.callback;
         var output = callback + "(" + JSON.stringify(result) + ");";
         return ContentService.createTextOutput(output)
           .setMimeType(ContentService.MimeType.JAVASCRIPT);
       }
-      
       return ContentService.createTextOutput(JSON.stringify(result))
         .setMimeType(ContentService.MimeType.JSON);
     } catch (err) {
@@ -62,7 +61,6 @@ function doGet(e) {
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
     
-    // Dynamically locate column indices (0-based) using robust normalized headers
     function normalizeHeader(str) {
       if (!str) return "";
       return str.toString().toLowerCase()
@@ -91,7 +89,6 @@ function doGet(e) {
       }
     }
     
-    // Fallbacks if not found
     if (nameIdx === -1) nameIdx = 3;
     if (questionIdx === -1) questionIdx = 4;
     if (dateIdx === -1) dateIdx = 2;
@@ -106,12 +103,10 @@ function doGet(e) {
       SpreadsheetApp.flush();
     }
     
-    // Load active file IDs from Drive folder for 2-way sync
     var activeFileIds = new Set();
-    var folderId = PropertiesService.getScriptProperties().getProperty("DRIVE_FOLDER_ID");
-    if (folderId) {
+    if (DRIVE_FOLDER_ID) {
       try {
-        var folder = DriveApp.getFolderById(folderId);
+        var folder = getAudioFolder(DRIVE_FOLDER_ID);
         var files = folder.getFiles();
         while (files.hasNext()) {
           var file = files.next();
@@ -129,7 +124,7 @@ function doGet(e) {
     
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
-      if (!row[questionIdx]) continue; // Skip empty rows
+      if (!row[questionIdx]) continue;
       
       var dateVal = row[dateIdx];
       var dateStr = "";
@@ -147,16 +142,13 @@ function doGet(e) {
         dateStr = "";
       }
       
-      // Perform 2-way sync with Google Drive
       var rawReplyUrl = row[replyIdx] ? row[replyIdx].toString().trim() : "";
       var replyUrl = "";
       if (rawReplyUrl) {
         var fileId = extractFileId(rawReplyUrl);
         if (fileId && activeFileIds.has(fileId)) {
-          // Normalize URL to drive.usercontent streaming format
           replyUrl = "https://drive.usercontent.google.com/download?id=" + fileId + "&export=download";
         } else {
-          // File was deleted on Google Drive! Sync-delete it from Google Sheets
           sheet.getRange(i + 1, replyIdx + 1).setValue("");
           sheetUpdated = true;
           replyUrl = "";
@@ -164,7 +156,7 @@ function doGet(e) {
       }
       
       submissions.push({
-        rowIndex: i + 1, // 1-based row index for updating/deleting later
+        rowIndex: i + 1,
         date: dateStr,
         name: row[nameIdx] ? row[nameIdx].toString().trim() : "Người dùng ẩn danh",
         question: row[questionIdx] ? row[questionIdx].toString().trim() : "",
@@ -177,9 +169,7 @@ function doGet(e) {
       SpreadsheetApp.flush();
     }
     
-    // Reverse list to show newest questions first
     submissions.reverse();
-    
     return ContentService.createTextOutput(JSON.stringify(submissions))
       .setMimeType(ContentService.MimeType.JSON);
       
@@ -190,7 +180,6 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  // CORS preflight support
   if (e === undefined) {
     return ContentService.createTextOutput("No post data").setMimeType(ContentService.MimeType.TEXT);
   }
@@ -201,15 +190,12 @@ function doPost(e) {
     var action = payload.action;
     var rowIndex = parseInt(payload.rowIndex);
     
-    // 1. Verify Google Sign-in Token
     var email = verifyGoogleToken(idToken);
     if (!email) {
       return makeJsonResponse({ success: false, error: "Unauthorized: Invalid Google login session." });
     }
     
-    // 2. Validate Admin Identity
-    var adminEmail = PropertiesService.getScriptProperties().getProperty("ADMIN_EMAIL");
-    if (!adminEmail || email.toLowerCase().trim() !== adminEmail.toLowerCase().trim()) {
+    if (!ADMIN_EMAIL || email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase().trim()) {
       return makeJsonResponse({ success: false, error: "Forbidden: You are not authorized to answer FAQs." });
     }
 
@@ -244,14 +230,12 @@ function doPost(e) {
       return makeJsonResponse({ success: true, status: "" });
     }
 
-    var folderId = PropertiesService.getScriptProperties().getProperty("DRIVE_FOLDER_ID");
-    if (!folderId) {
-      return makeJsonResponse({ success: false, error: "Drive Folder ID is not configured in settings." });
+    if (!DRIVE_FOLDER_ID) {
+      return makeJsonResponse({ success: false, error: "Drive Folder ID is not configured." });
     }
-    var folder = DriveApp.getFolderById(folderId);
+    var folder = getAudioFolder(DRIVE_FOLDER_ID);
     
     if (action === "save_reply") {
-      // Delete existing file if any before replacing it
       var currentReplyUrl = sheet.getRange(rowIndex, replyIdx + 1).getValue();
       if (currentReplyUrl) {
         deleteFileFromDrive(currentReplyUrl);
@@ -269,21 +253,15 @@ function doPost(e) {
       }
       var fileName = "reply_row_" + rowIndex + "_" + new Date().getTime() + "." + ext;
       
-      // Decode Base64 and write file to Drive
       var audioBytes = Utilities.base64Decode(audioBase64);
       var blob = Utilities.newBlob(audioBytes, mimeType, fileName);
       var file = folder.createFile(blob);
       
-      // Make file public to allow browser HTML5 playback
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      
-      // Construct a direct streaming link for HTML5 <audio src="..."> element
       var directLink = "https://drive.usercontent.google.com/download?id=" + file.getId() + "&export=download";
       
-      // Update cell in Sheet
       sheet.getRange(rowIndex, replyIdx + 1).setValue(directLink);
       SpreadsheetApp.flush();
-      
       return makeJsonResponse({ success: true, url: directLink });
     }
 
@@ -292,8 +270,6 @@ function doPost(e) {
       if (currentReplyUrl) {
         deleteFileFromDrive(currentReplyUrl);
       }
-
-      // Clear cell in Sheet (Drive deletion was already handled above)
       sheet.getRange(rowIndex, replyIdx + 1).setValue("");
       SpreadsheetApp.flush();
       return makeJsonResponse({ success: true });
@@ -337,7 +313,7 @@ function deleteFileFromDrive(url) {
   if (fileId) {
     try {
       var file = DriveApp.getFileById(fileId);
-      file.setTrashed(true); // Move to trash rather than permanent delete for safety
+      file.setTrashed(true);
     } catch (e) {
       console.warn("Could not delete file " + fileId + ": " + e);
     }
@@ -347,4 +323,16 @@ function deleteFileFromDrive(url) {
 function makeJsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getAudioFolder(parentFolderId) {
+  var parentFolder = DriveApp.getFolderById(parentFolderId);
+  var subFolders = parentFolder.getFoldersByName("audio");
+  if (subFolders.hasNext()) {
+    return subFolders.next();
+  } else {
+    var newSubFolder = parentFolder.createFolder("audio");
+    newSubFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return newSubFolder;
+  }
 }
