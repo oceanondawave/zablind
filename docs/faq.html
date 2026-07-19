@@ -365,28 +365,26 @@
 
             const requestId = ++lastFetchRequestId;
             const offset = reset ? 0 : submissionsList.length;
+            const previousScrollY = reset ? null : window.scrollY;
+            const renderSubmissions = () => {
+                renderFeed();
+                if (previousScrollY !== null) {
+                    requestAnimationFrame(() => {
+                        window.scrollTo({ top: previousScrollY, left: window.scrollX, behavior: "auto" });
+                    });
+                }
+            };
 
             if (reset) {
                 isLoadingSubmissions = true;
                 hasMoreSubmissions = false;
                 submissionsList = [];
                 loader.classList.remove("hidden");
-                renderFeed();
+                renderSubmissions();
             } else {
                 isLoadingMoreSubmissions = true;
-                renderFeed();
+                renderSubmissions();
                 announce("Đang tải thêm câu hỏi...");
-            }
-
-            const cachedData = reset && !hasFaqFilters() ? localStorage.getItem("zablind_faq_cache") : null;
-            if (cachedData && offset === 0) {
-                try {
-                    submissionsList = JSON.parse(cachedData);
-                    console.log("Loaded from cache:", submissionsList);
-                    renderFeed();
-                } catch (e) {
-                    console.error("Failed to parse cache", e);
-                }
             }
 
             try {
@@ -408,13 +406,13 @@
                     submissionsList = submissionsList.concat(freshSubmissions.filter(item => !seen.has(item.rowIndex)));
                 }
                 hasMoreSubmissions = freshHasMore;
-                renderFeed();
+                renderSubmissions();
             } catch (err) {
                 console.error("Error loading submissions:", err);
                 if (!submissionsList || submissionsList.length === 0) {
                     submissionsList = [];
                     announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
-                    renderFeed();
+                    renderSubmissions();
                 } else {
                     announce("Không thể tải thêm câu hỏi. Vui lòng thử lại.");
                 }
@@ -423,7 +421,7 @@
                     isLoadingSubmissions = false;
                     isLoadingMoreSubmissions = false;
                     loader.classList.add("hidden");
-                    renderFeed();
+                    renderSubmissions();
                 }
             }
         }
