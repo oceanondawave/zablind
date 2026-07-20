@@ -638,7 +638,10 @@
             }
 
             if (filtered.length === 0) {
-                if (isLoadingSubmissions) return;
+                if (isLoadingSubmissions) {
+                    loader.classList.remove("hidden"); // ensure spinner visible on any tab
+                    return;
+                }
                 const emptyCard = document.createElement("div");
                 emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
                 emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
