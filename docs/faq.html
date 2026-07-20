@@ -343,18 +343,20 @@
         }
 
         // Global states
-        let submissionsList = [];
         let activeFilter = 'all';
         let idToken = null;
         let adminEmail = null;
         let sharedQuestionRowIndex = null;
-        let visibleCount = 10;
-        const PAGE_SIZE = 10;
-        const FAQ_CACHE_KEY = "zablind_faq_cache_v2";
+        // Per-tab data stores
+        let allSubmissions = [];      // ALL tab - server-side paginated
+        let allHasMore = false;
+        let allOffset = 0;
+        let islandSubmissions = [];   // ISLAND tab - all at once
+        let sharedSubmissions = [];   // shared ?q=N single item
+        const FAQ_CACHE_KEY_ALL    = "zablind_faq_v3_all";
+        const FAQ_CACHE_KEY_ISLAND = "zablind_faq_v3_island";
         const FAQ_CACHE_TTL_MS = 5 * 60 * 1000;
-        let hasMoreSubmissions = false;
         let isLoadingSubmissions = false;
-        let isLoadingMoreSubmissions = false;
         let isAdminActionInProgress = false;
         let lastFetchRequestId = 0;
         let selectedRowIndex = null;
@@ -373,9 +375,10 @@
             if (qParam) {
                 sharedQuestionRowIndex = parseInt(qParam);
                 document.body.classList.add("shared-view");
+                fetchSharedQuestion();
+            } else {
+                fetchAllTab(true);
             }
-
-            fetchSubmissions();
 
             // Check if there is an existing session token saved
             const savedToken = localStorage.getItem("zablind_admin_token");
@@ -383,19 +386,16 @@
                 verifyAdminSession(savedToken);
             }
 
-            // Setup Search event listener
-            document.getElementById("search-input").addEventListener("input", function (e) {
+            // Setup Search event listener — client-side filter on loaded data
+            document.getElementById("search-input").addEventListener("input", function () {
                 if (sharedQuestionRowIndex !== null) {
                     sharedQuestionRowIndex = null;
+                    sharedSubmissions = [];
                     document.body.classList.remove("shared-view");
                     const newUrl = window.location.origin + window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
-                    visibleCount = 10;
-                    fetchSubmissions();
-                } else {
-                    visibleCount = 10;
-                    renderFeed();
                 }
+                renderFeed();
             });
 
             // Initialize Google Identity Services (GIS) Sign-in
@@ -418,95 +418,148 @@
             }, 100);
         }
 
-        function getFaqQueryParams() {
-            const params = new URLSearchParams();
-            if (sharedQuestionRowIndex !== null) {
-                params.set("q", String(sharedQuestionRowIndex));
-            } else {
-                params.set("filter", "all_inclusive");
-            }
-            return params.toString();
-        }
-
-        function hasFaqFilters() {
-            const searchText = document.getElementById("search-input")?.value.trim() || "";
-            const timeFilter = document.getElementById("time-filter")?.value || "all";
-            return Boolean(searchText) || activeFilter !== "all" || timeFilter !== "all";
-        }
-
-        function readFaqCache() {
+        function readFaqCache(tab) {
             if (sharedQuestionRowIndex !== null) return null;
             try {
-                const raw = localStorage.getItem(FAQ_CACHE_KEY);
+                const key = tab === 'island' ? FAQ_CACHE_KEY_ISLAND : FAQ_CACHE_KEY_ALL;
+                const raw = localStorage.getItem(key);
                 if (!raw) return null;
-                const parsed = JSON.parse(raw);
-                const cache = Array.isArray(parsed)
-                    ? { submissions: parsed, hasMore: false, cachedAt: 0 }
-                    : parsed;
+                const cache = JSON.parse(raw);
                 if (!Array.isArray(cache.submissions)) return null;
                 if (!cache.cachedAt || Date.now() - cache.cachedAt > FAQ_CACHE_TTL_MS) return null;
                 return cache;
-            } catch (err) {
-                console.error("Failed to read FAQ cache:", err);
-                return null;
-            }
+            } catch (err) { return null; }
         }
 
-        function writeFaqCache() {
+        function writeFaqCache(tab) {
             if (sharedQuestionRowIndex !== null) return;
-            localStorage.setItem(FAQ_CACHE_KEY, JSON.stringify({
-                submissions: submissionsList,
-                hasMore: false,
+            const key = tab === 'island' ? FAQ_CACHE_KEY_ISLAND : FAQ_CACHE_KEY_ALL;
+            const submissions = tab === 'island' ? islandSubmissions : allSubmissions;
+            localStorage.setItem(key, JSON.stringify({
+                submissions,
+                hasMore: tab === 'island' ? false : allHasMore,
                 cachedAt: Date.now()
             }));
         }
 
-        // Fetch full database of questions from Google Apps Script.
-        async function fetchSubmissions() {
+        // Fetch single shared question by row index
+        async function fetchSharedQuestion() {
+            const loader = document.getElementById("loading-indicator");
+            isLoadingSubmissions = true;
+            loader.classList.remove("hidden");
+            renderFeed();
+            const requestId = ++lastFetchRequestId;
+            try {
+                const response = await fetch(`${API_ENDPOINT}?q=${sharedQuestionRowIndex}`);
+                if (!response.ok) throw new Error("Fetch failed");
+                const data = await response.json();
+                const items = Array.isArray(data) ? data : (data.submissions || []);
+                if (requestId !== lastFetchRequestId) return;
+                sharedSubmissions = items;
+                renderFeed();
+            } catch (err) {
+                console.error("Error loading shared question:", err);
+                sharedSubmissions = [];
+                renderFeed();
+            } finally {
+                if (requestId === lastFetchRequestId) {
+                    isLoadingSubmissions = false;
+                    loader.classList.add("hidden");
+                    renderFeed();
+                }
+            }
+        }
+
+        // Fetch ALL tab — server-side paginated, 10 per page
+        async function fetchAllTab(reset = true) {
             const loader = document.getElementById("loading-indicator");
             if (isLoadingSubmissions) return;
-
             const requestId = ++lastFetchRequestId;
-            const cachedPage = readFaqCache();
-            const cachedSubmissions = cachedPage?.submissions || [];
 
-            // If we have cache, load it immediately to avoid showing spinner
-            if (cachedSubmissions.length > 0) {
-                submissionsList = cachedSubmissions;
+            if (reset) {
+                const cached = readFaqCache('all');
+                if (cached?.submissions?.length > 0) {
+                    allSubmissions = cached.submissions;
+                    allHasMore = Boolean(cached.hasMore);
+                    allOffset = allSubmissions.length;
+                    loader.classList.add("hidden");
+                    renderFeed();
+                } else if (allSubmissions.length === 0) {
+                    isLoadingSubmissions = true;
+                    loader.classList.remove("hidden");
+                    renderFeed();
+                }
+            } else {
+                isLoadingSubmissions = true;
+                renderFeed(); // shows loading state on button
+            }
+
+            try {
+                const offset = reset ? 0 : allOffset;
+                const params = new URLSearchParams({ filter: 'all', limit: 10, offset });
+                const response = await fetch(`${API_ENDPOINT}?${params}`);
+                if (!response.ok) throw new Error("Fetch failed");
+                const data = await response.json();
+                const fresh = Array.isArray(data) ? data : (data.submissions || []);
+                const hasMore = Array.isArray(data) ? fresh.length >= 10 : Boolean(data.hasMore);
+                if (requestId !== lastFetchRequestId) return;
+                if (reset) {
+                    allSubmissions = fresh;
+                } else {
+                    const seen = new Set(allSubmissions.map(x => x.rowIndex));
+                    allSubmissions = allSubmissions.concat(fresh.filter(x => !seen.has(x.rowIndex)));
+                }
+                allHasMore = hasMore;
+                allOffset = allSubmissions.length;
+                writeFaqCache('all');
+                renderFeed();
+            } catch (err) {
+                console.error("Error fetching ALL tab:", err);
+                if (allSubmissions.length === 0) { announce("Không thể kết nối máy chủ."); renderFeed(); }
+            } finally {
+                if (requestId === lastFetchRequestId) {
+                    isLoadingSubmissions = false;
+                    loader.classList.add("hidden");
+                    renderFeed();
+                }
+            }
+        }
+
+        // Fetch ISLAND tab — all island items at once
+        async function fetchIslandTab() {
+            const loader = document.getElementById("loading-indicator");
+            if (isLoadingSubmissions) return;
+            const requestId = ++lastFetchRequestId;
+
+            const cached = readFaqCache('island');
+            if (cached?.submissions?.length > 0) {
+                islandSubmissions = cached.submissions;
                 loader.classList.add("hidden");
                 renderFeed();
-            } else if (submissionsList.length === 0) {
-                // If we have nothing in memory and no cache, show spinner
+            } else if (islandSubmissions.length === 0) {
                 isLoadingSubmissions = true;
                 loader.classList.remove("hidden");
                 renderFeed();
             }
 
             try {
-                const response = await fetch(`${API_ENDPOINT}?${getFaqQueryParams()}`);
+                const params = new URLSearchParams({ filter: 'island', limit: 100000 });
+                const response = await fetch(`${API_ENDPOINT}?${params}`);
                 if (!response.ok) throw new Error("Fetch failed");
                 const data = await response.json();
-                const freshSubmissions = Array.isArray(data) ? data : (data.submissions || []);
-
+                const fresh = Array.isArray(data) ? data : (data.submissions || []);
                 if (requestId !== lastFetchRequestId) return;
-
-                submissionsList = freshSubmissions;
-                writeFaqCache();
+                islandSubmissions = fresh;
+                writeFaqCache('island');
                 renderFeed();
             } catch (err) {
-                console.error("Error loading submissions:", err);
-                if (submissionsList.length === 0) {
-                    submissionsList = [];
-                    announce("Không thể kết nối máy chủ để lấy dữ liệu câu hỏi.");
-                    renderFeed();
-                } else {
-                    announce("Không thể làm mới danh sách câu hỏi. Vui lòng thử lại.");
-                }
+                console.error("Error fetching ISLAND tab:", err);
+                if (islandSubmissions.length === 0) { announce("Không thể kết nối máy chủ."); renderFeed(); }
             } finally {
                 if (requestId === lastFetchRequestId) {
                     isLoadingSubmissions = false;
                     loader.classList.add("hidden");
-                    renderFeed(); // Final clean render with isLoadingSubmissions=false
+                    renderFeed();
                 }
             }
         }
@@ -514,10 +567,18 @@
         // Set list filter status and render
         function setFilter(filter) {
             activeFilter = filter;
+
+            // Clear shared view if active
+            if (sharedQuestionRowIndex !== null) {
+                sharedQuestionRowIndex = null;
+                sharedSubmissions = [];
+                document.body.classList.remove("shared-view");
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
             
             // Highlight active button
-            const buttons = ['all', 'island'];
-            buttons.forEach(btn => {
+            ['all', 'island'].forEach(btn => {
                 const element = document.getElementById(`filter-${btn}`);
                 if (btn === filter) {
                     element.className = "rounded-md px-3 py-1.5 text-sm font-medium transition-all bg-primary text-primary-foreground shadow-sm";
@@ -528,15 +589,12 @@
                 }
             });
 
-            visibleCount = 10;
-            if (sharedQuestionRowIndex !== null) {
-                sharedQuestionRowIndex = null;
-                document.body.classList.remove("shared-view");
-                const newUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
-                fetchSubmissions();
+            if (filter === 'island') {
+                if (islandSubmissions.length > 0) renderFeed(); // instant from memory
+                else fetchIslandTab();
             } else {
-                renderFeed();
+                if (allSubmissions.length > 0) renderFeed(); // instant from memory
+                else fetchAllTab(true);
             }
             announce(`Đã chuyển sang bộ lọc ${getFilterLabel(filter)}`);
         }
@@ -578,7 +636,7 @@
             }
         }
 
-        // Render submissions feed returned by the server-side filters.
+        // Render submissions feed
         function renderFeed() {
             const container = document.getElementById("faq-feed");
             const loader = document.getElementById("loading-indicator");
@@ -589,57 +647,44 @@
             const existingLoadMore = document.getElementById("load-more-btn");
             if (existingLoadMore) existingLoadMore.remove();
 
-            // If we're in shared view, only render the one matching question
-            let filtered = (sharedQuestionRowIndex !== null)
-                ? submissionsList.filter(item => item.rowIndex === sharedQuestionRowIndex)
-                : submissionsList;
+            // Pick correct data source
+            let displayList = sharedQuestionRowIndex !== null
+                ? sharedSubmissions
+                : activeFilter === 'island' ? islandSubmissions : allSubmissions;
 
-            // Apply active filter, search, and timeFilter client-side as well
-            if (sharedQuestionRowIndex === null) {
-                filtered = filtered.filter(item => {
-                    const islanded = isIslanded(item);
-                    if (activeFilter === 'island') {
-                        if (!islanded) return false;
-                    } else {
-                        if (islanded) return false;
-                    }
+            // Apply client-side search + time filter on loaded data
+            let filtered = displayList.filter(item => {
 
-                    // Client-side search
-                    const searchText = document.getElementById("search-input")?.value.toLowerCase().trim() || "";
-                    if (searchText) {
-                        const nameText = (item.name || "").toLowerCase();
-                        const questionText = (item.question || "").toLowerCase();
-                        if (!nameText.includes(searchText) && !questionText.includes(searchText)) return false;
-                    }
+                // Client-side search
+                const searchText = document.getElementById("search-input")?.value.toLowerCase().trim() || "";
+                if (searchText) {
+                    const nameText = (item.name || "").toLowerCase();
+                    const questionText = (item.question || "").toLowerCase();
+                    if (!nameText.includes(searchText) && !questionText.includes(searchText)) return false;
+                }
 
-                    // Client-side time filter
-                    const timeFilter = document.getElementById("time-filter")?.value || "all";
-                    if (timeFilter !== 'all') {
-                        const itemDate = parseDate(item.date);
-                        if (itemDate) {
-                            const now = new Date();
-                            const diffTime = Math.abs(now - itemDate);
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            
-                            if (timeFilter === 'today') {
-                                const isSameDay = itemDate.getDate() === now.getDate() && 
-                                                  itemDate.getMonth() === now.getMonth() && 
-                                                  itemDate.getFullYear() === now.getFullYear();
-                                if (!isSameDay) return false;
-                            } else if (timeFilter === 'week' && diffDays > 7) {
-                                return false;
-                            } else if (timeFilter === 'month' && diffDays > 30) {
-                                return false;
-                            }
-                        }
+                // Client-side time filter
+                const timeFilter = document.getElementById("time-filter")?.value || "all";
+                if (timeFilter !== 'all') {
+                    const itemDate = parseDate(item.date);
+                    if (itemDate) {
+                        const now = new Date();
+                        const diffDays = Math.ceil(Math.abs(now - itemDate) / 86400000);
+                        if (timeFilter === 'today') {
+                            const isSameDay = itemDate.getDate() === now.getDate() &&
+                                             itemDate.getMonth() === now.getMonth() &&
+                                             itemDate.getFullYear() === now.getFullYear();
+                            if (!isSameDay) return false;
+                        } else if (timeFilter === 'week' && diffDays > 7) return false;
+                        else if (timeFilter === 'month' && diffDays > 30) return false;
                     }
-                    return true;
-                });
-            }
+                }
+                return true;
+            });
 
             if (filtered.length === 0) {
                 if (isLoadingSubmissions) {
-                    loader.classList.remove("hidden"); // ensure spinner visible on any tab
+                    loader.classList.remove("hidden");
                     return;
                 }
                 const emptyCard = document.createElement("div");
@@ -649,10 +694,8 @@
                 return;
             }
 
-            // Only paginate on 'all' tab — other tabs show everything at once
-            const usesPagination = (activeFilter === 'all' && sharedQuestionRowIndex === null);
-            const paginated = usesPagination ? filtered.slice(0, visibleCount) : filtered;
-            paginated.forEach(item => {
+            // Render all items in the filtered list
+            filtered.forEach(item => {
                 const card = document.createElement("div");
                 card.className = "faq-card rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 transition-all hover:shadow-md";
                 card.setAttribute("role", "article");
@@ -798,23 +841,26 @@
                 container.appendChild(card);
             });
 
-            // Show Load More only on 'all' tab when there are more items
-            if (usesPagination && visibleCount < filtered.length) {
+            // Load More button: ALL tab only, server fetches next page
+            if (activeFilter === 'all' && sharedQuestionRowIndex === null && allHasMore) {
                 const loadMoreBtn = document.createElement("button");
                 loadMoreBtn.id = "load-more-btn";
-                loadMoreBtn.className = "w-full py-3 rounded-lg border border-border bg-card text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors mt-2";
-                loadMoreBtn.setAttribute("aria-label", "Tải thêm");
-                loadMoreBtn.innerHTML = "Tải thêm";
+                loadMoreBtn.disabled = isLoadingSubmissions;
+                loadMoreBtn.className = "w-full py-3 rounded-lg border border-border bg-card text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors mt-2 disabled:opacity-60 disabled:cursor-wait";
+                loadMoreBtn.setAttribute("aria-label", isLoadingSubmissions ? "Đang tải thêm" : "Tải thêm");
+                loadMoreBtn.innerHTML = isLoadingSubmissions
+                    ? `<span class="inline-flex items-center gap-2"><span class="animate-spin h-4 w-4 rounded-full border-2 border-primary border-t-transparent"></span>Đang tải...</span>`
+                    : "Tải thêm";
                 loadMoreBtn.addEventListener("click", () => {
                     const scrollY = window.scrollY;
-                    visibleCount += 10;
-                    renderFeed();
-                    requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+                    fetchAllTab(false).then(() => {
+                        requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+                    });
                 });
                 container.appendChild(loadMoreBtn);
             }
 
-            announce(`Hiển thị ${paginated.length}${usesPagination && visibleCount < filtered.length ? "+" : ""} câu hỏi phù hợp.`);
+            announce(`Hiển thị ${filtered.length} câu hỏi phù hợp.`);
             if (isAdminActionInProgress) setFaqControlsDisabled(true);
         }
 
@@ -840,16 +886,12 @@
         // Clear shared filter and restore normal view
         window.clearSharedQuestion = function() {
             sharedQuestionRowIndex = null;
+            sharedSubmissions = [];
             document.body.classList.remove("shared-view");
             const newUrl = window.location.origin + window.location.pathname;
             window.history.replaceState({}, document.title, newUrl);
-            // If we already have the full list cached, just re-render instantly
-            if (submissionsList.length > 1) {
-                visibleCount = 10;
-                renderFeed();
-            } else {
-                fetchSubmissions();
-            }
+            if (allSubmissions.length > 0) renderFeed(); // instant
+            else fetchAllTab(true);
         };
 
         // Global map to hold dynamic JSONP callbacks and OGVPlayers
@@ -1150,7 +1192,7 @@
         // Recorder dialog functions
         function openRecorderModal(rowIndex) {
             if (isAdminActionInProgress) return;
-            const item = submissionsList.find(x => x.rowIndex === rowIndex);
+            const item = findSubmission(rowIndex);
             if (!item) return;
             selectedRowIndex = rowIndex;
             document.getElementById("modal-sender").textContent = item.name;
@@ -1323,7 +1365,7 @@
                         announce("Lưu câu trả lời thành công!");
                         
                         // Update UI list state locally without making a full reload
-                        const sub = submissionsList.find(x => x.rowIndex === selectedRowIndex);
+                        const sub = findSubmission(selectedRowIndex);
                         if (sub) sub.replyUrl = result.url;
                         updateFaqCache();
                         
@@ -1362,7 +1404,7 @@
                 const result = await response.json();
                 if (result.success) {
                     announce("Xóa câu trả lời thành công!");
-                    const sub = submissionsList.find(x => x.rowIndex === rowIndex);
+                    const sub = findSubmission(rowIndex);
                     if (sub) sub.replyUrl = "";
                     updateFaqCache();
                     renderFeedPreservingScroll();
@@ -1395,8 +1437,16 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    const sub = submissionsList.find(x => x.rowIndex === rowIndex);
-                    if (sub) sub.status = "island";
+                    const sub = findSubmission(rowIndex);
+                    if (sub) {
+                        sub.status = "island";
+                        // Instantly remove from ALL list
+                        allSubmissions = allSubmissions.filter(x => x.rowIndex !== rowIndex);
+                        // Add to island list if it is loaded
+                        if (islandSubmissions.length > 0 && !islandSubmissions.some(x => x.rowIndex === rowIndex)) {
+                            islandSubmissions.push(sub);
+                        }
+                    }
                     updateFaqCache();
                     renderFeedPreservingScroll();
                     announce("Đã tiễn câu hỏi ra đảo.");
@@ -1429,11 +1479,19 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    const sub = submissionsList.find(x => x.rowIndex === rowIndex);
-                    if (sub) sub.status = "";
+                    const sub = findSubmission(rowIndex);
+                    if (sub) {
+                        sub.status = "";
+                        // Instantly remove from ISLAND list
+                        islandSubmissions = islandSubmissions.filter(x => x.rowIndex !== rowIndex);
+                        // Add back to ALL list at the top if loaded
+                        if (allSubmissions.length > 0 && !allSubmissions.some(x => x.rowIndex === rowIndex)) {
+                            allSubmissions.unshift(sub);
+                        }
+                    }
                     updateFaqCache();
                     renderFeedPreservingScroll();
-                    announce("Đã đưa câu hỏi về lại danh sách.");
+                    announce("Đã khôi phục câu hỏi thành công.");
                 } else {
                     throw new Error(result.error || "Restore action error");
                 }
@@ -1446,8 +1504,15 @@
             }
         }
 
+        function findSubmission(rowIndex) {
+            return allSubmissions.find(x => x.rowIndex === rowIndex) ||
+                   islandSubmissions.find(x => x.rowIndex === rowIndex) ||
+                   sharedSubmissions.find(x => x.rowIndex === rowIndex);
+        }
+
         function updateFaqCache() {
-            writeFaqCache();
+            writeFaqCache('all');
+            writeFaqCache('island');
         }
 
         function setFaqControlsDisabled(disabled) {
