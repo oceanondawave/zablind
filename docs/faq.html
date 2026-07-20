@@ -641,6 +641,12 @@
             const container = document.getElementById("faq-feed");
             const loader = document.getElementById("loading-indicator");
             
+            // Prevent scroll jumping by locking container height during rendering
+            const currentHeight = container.offsetHeight;
+            if (currentHeight > 0) {
+                container.style.minHeight = `${currentHeight}px`;
+            }
+            
             const cards = container.querySelectorAll(".faq-card");
             cards.forEach(card => card.remove());
 
@@ -862,6 +868,11 @@
 
             announce(`Hiển thị ${filtered.length} câu hỏi phù hợp.`);
             if (isAdminActionInProgress) setFaqControlsDisabled(true);
+
+            // Release height lock after rendering complete
+            requestAnimationFrame(() => {
+                container.style.minHeight = "";
+            });
         }
 
         // Copy share link helper
