@@ -806,8 +806,10 @@
                 loadMoreBtn.setAttribute("aria-label", "Tải thêm");
                 loadMoreBtn.innerHTML = "Tải thêm";
                 loadMoreBtn.addEventListener("click", () => {
+                    const scrollY = window.scrollY;
                     visibleCount += 10;
                     renderFeed();
+                    requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
                 });
                 container.appendChild(loadMoreBtn);
             }
