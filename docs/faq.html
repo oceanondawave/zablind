@@ -195,14 +195,6 @@
                     class="rounded-md px-3 py-1.5 text-sm font-medium transition-all bg-primary text-primary-foreground shadow-sm">
                     Tất cả
                 </button>
-                <button onclick="setFilter('answered')" id="filter-answered" role="tab" aria-selected="false"
-                    class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
-                    Đã trả lời
-                </button>
-                <button onclick="setFilter('unanswered')" id="filter-unanswered" role="tab" aria-selected="false"
-                    class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
-                    Chưa trả lời
-                </button>
                 <button onclick="setFilter('island')" id="filter-island" role="tab" aria-selected="false"
                     class="rounded-md px-3 py-1.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted/40">
                     Đã tiễn ra đảo
@@ -524,7 +516,7 @@
             activeFilter = filter;
             
             // Highlight active button
-            const buttons = ['all', 'answered', 'unanswered', 'island'];
+            const buttons = ['all', 'island'];
             buttons.forEach(btn => {
                 const element = document.getElementById(`filter-${btn}`);
                 if (btn === filter) {
@@ -552,8 +544,6 @@
         function getFilterLabel(filter) {
             const labels = {
                 all: 'Tất cả',
-                answered: 'Đã trả lời',
-                unanswered: 'Chưa trả lời',
                 island: 'Đã tiễn ra đảo'
             };
             return labels[filter] || filter;
@@ -612,8 +602,6 @@
                         if (!islanded) return false;
                     } else {
                         if (islanded) return false;
-                        if (activeFilter === 'answered' && !item.replyUrl) return false;
-                        if (activeFilter === 'unanswered' && item.replyUrl) return false;
                     }
 
                     // Client-side search
@@ -650,17 +638,7 @@
             }
 
             if (filtered.length === 0) {
-                if (isLoadingSubmissions) {
-                    // Show inline spinner inside feed while data loads
-                    const spinnerEl = document.createElement("div");
-                    spinnerEl.className = "faq-card flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground text-sm";
-                    spinnerEl.innerHTML = `
-                        <span class="animate-spin h-6 w-6 rounded-full border-2 border-primary border-t-transparent"></span>
-                        <span>Đang tải dữ liệu...</span>
-                    `;
-                    container.appendChild(spinnerEl);
-                    return;
-                }
+                if (isLoadingSubmissions) return;
                 const emptyCard = document.createElement("div");
                 emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
                 emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
@@ -1469,7 +1447,7 @@
 
         function setFaqControlsDisabled(disabled) {
             document.querySelectorAll(
-                "#search-input, #time-filter, #faq-feed button, #filter-all, #filter-answered, #filter-unanswered, #filter-island, #recorder-modal button, #recorder-modal input, #recorder-modal select, #recorder-modal textarea"
+                "#search-input, #time-filter, #faq-feed button, #filter-all, #filter-island, #recorder-modal button, #recorder-modal input, #recorder-modal select, #recorder-modal textarea"
             ).forEach(control => {
                 control.disabled = disabled;
                 control.setAttribute("aria-disabled", disabled ? "true" : "false");
