@@ -657,7 +657,9 @@
                 return;
             }
 
-            const paginated = filtered.slice(0, visibleCount);
+            // Only paginate on 'all' tab — other tabs show everything at once
+            const usesPagination = (activeFilter === 'all' && sharedQuestionRowIndex === null);
+            const paginated = usesPagination ? filtered.slice(0, visibleCount) : filtered;
             paginated.forEach(item => {
                 const card = document.createElement("div");
                 card.className = "faq-card rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 transition-all hover:shadow-md";
@@ -804,8 +806,8 @@
                 container.appendChild(card);
             });
 
-            // Show Load More button if there are more items to display client-side.
-            if (visibleCount < filtered.length) {
+            // Show Load More only on 'all' tab when there are more items
+            if (usesPagination && visibleCount < filtered.length) {
                 const loadMoreBtn = document.createElement("button");
                 loadMoreBtn.id = "load-more-btn";
                 loadMoreBtn.className = "w-full py-3 rounded-lg border border-border bg-card text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors mt-2";
@@ -818,7 +820,7 @@
                 container.appendChild(loadMoreBtn);
             }
 
-            announce(`Hiển thị ${paginated.length}${hasMoreSubmissions ? "+" : ""} câu hỏi phù hợp.`);
+            announce(`Hiển thị ${paginated.length}${usesPagination && visibleCount < filtered.length ? "+" : ""} câu hỏi phù hợp.`);
             if (isAdminActionInProgress) setFaqControlsDisabled(true);
         }
 
