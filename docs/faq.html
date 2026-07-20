@@ -436,7 +436,7 @@
         }
 
         function readFaqCache() {
-            if (hasFaqFilters()) return null;
+            if (sharedQuestionRowIndex !== null) return null;
             try {
                 const raw = localStorage.getItem(FAQ_CACHE_KEY);
                 if (!raw) return null;
@@ -454,7 +454,7 @@
         }
 
         function writeFaqCache() {
-            if (hasFaqFilters()) return;
+            if (sharedQuestionRowIndex !== null || hasFaqFilters()) return;
             localStorage.setItem(FAQ_CACHE_KEY, JSON.stringify({
                 submissions: submissionsList,
                 hasMore: hasMoreSubmissions,
@@ -466,12 +466,26 @@
         async function fetchSubmissions(options = {}) {
             const loader = document.getElementById("loading-indicator");
             const reset = options.reset !== false;
+            
+            // Auto-clear shared question view if user starts filtering or searching
+            const searchText = document.getElementById("search-input")?.value.trim() || "";
+            const timeFilter = document.getElementById("time-filter")?.value || "all";
+            if (sharedQuestionRowIndex !== null && (searchText || activeFilter !== 'all' || timeFilter !== 'all')) {
+                sharedQuestionRowIndex = null;
+                document.body.classList.remove("shared-view");
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+
             if (isLoadingSubmissions || isLoadingMoreSubmissions) return;
 
             const requestId = ++lastFetchRequestId;
             const offset = reset ? 0 : submissionsList.length;
             const cachedPage = reset ? readFaqCache() : null;
             const cachedSubmissions = cachedPage?.submissions || [];
+            const displaySubmissions = (reset && cachedSubmissions.length === 0 && submissionsList.length > 0)
+                ? submissionsList
+                : cachedSubmissions;
             let cachedTail = [];
             const previousScrollY = reset ? null : window.scrollY;
             const renderSubmissions = () => {
@@ -485,9 +499,9 @@
 
             if (reset) {
                 isLoadingSubmissions = true;
-                hasMoreSubmissions = Boolean(cachedPage?.hasMore);
-                submissionsList = cachedSubmissions;
-                loader.classList.toggle("hidden", cachedSubmissions.length > 0);
+                hasMoreSubmissions = Boolean(cachedPage?.hasMore) || (cachedSubmissions.length === 0 && submissionsList.length > 0 && hasMoreSubmissions);
+                submissionsList = displaySubmissions;
+                loader.classList.toggle("hidden", displaySubmissions.length > 0);
                 renderSubmissions();
             } else {
                 isLoadingMoreSubmissions = true;
@@ -505,14 +519,16 @@
                 if (requestId !== lastFetchRequestId) return;
 
                 if (reset) {
+                    const baseSubmissions = cachedSubmissions.length > 0 ? cachedSubmissions : submissionsList;
                     const seen = new Set(freshSubmissions.map(item => item.rowIndex));
-                    cachedTail = cachedSubmissions.filter(item => !seen.has(item.rowIndex));
+                    cachedTail = baseSubmissions.filter(item => !seen.has(item.rowIndex));
                     submissionsList = freshSubmissions.concat(cachedTail);
                 } else {
                     const seen = new Set(submissionsList.map(item => item.rowIndex));
                     submissionsList = submissionsList.concat(freshSubmissions.filter(item => !seen.has(item.rowIndex)));
                 }
-                hasMoreSubmissions = freshHasMore || (reset && cachedTail?.length > 0 && Boolean(cachedPage?.hasMore));
+                const hasMoreFromCache = (cachedSubmissions.length > 0 && Boolean(cachedPage?.hasMore)) || (cachedSubmissions.length === 0 && hasMoreSubmissions);
+                hasMoreSubmissions = freshHasMore || (reset && cachedTail?.length > 0 && hasMoreFromCache);
                 writeFaqCache();
                 renderSubmissions();
             } catch (err) {
@@ -605,7 +621,55 @@
             const existingLoadMore = document.getElementById("load-more-btn");
             if (existingLoadMore) existingLoadMore.remove();
 
-            const filtered = submissionsList;
+            // If we're in shared view, only render the one matching question
+            let filtered = (sharedQuestionRowIndex !== null)
+                ? submissionsList.filter(item => item.rowIndex === sharedQuestionRowIndex)
+                : submissionsList;
+
+            // Apply active filter, search, and timeFilter client-side as well
+            if (sharedQuestionRowIndex === null) {
+                filtered = filtered.filter(item => {
+                    const islanded = isIslanded(item);
+                    if (activeFilter === 'island') {
+                        if (!islanded) return false;
+                    } else {
+                        if (islanded) return false;
+                        if (activeFilter === 'answered' && !item.replyUrl) return false;
+                        if (activeFilter === 'unanswered' && item.replyUrl) return false;
+                    }
+
+                    // Client-side search
+                    const searchText = document.getElementById("search-input")?.value.toLowerCase().trim() || "";
+                    if (searchText) {
+                        const nameText = (item.name || "").toLowerCase();
+                        const questionText = (item.question || "").toLowerCase();
+                        if (!nameText.includes(searchText) && !questionText.includes(searchText)) return false;
+                    }
+
+                    // Client-side time filter
+                    const timeFilter = document.getElementById("time-filter")?.value || "all";
+                    if (timeFilter !== 'all') {
+                        const itemDate = parseDate(item.date);
+                        if (itemDate) {
+                            const now = new Date();
+                            const diffTime = Math.abs(now - itemDate);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            if (timeFilter === 'today') {
+                                const isSameDay = itemDate.getDate() === now.getDate() && 
+                                                  itemDate.getMonth() === now.getMonth() && 
+                                                  itemDate.getFullYear() === now.getFullYear();
+                                if (!isSameDay) return false;
+                            } else if (timeFilter === 'week' && diffDays > 7) {
+                                return false;
+                            } else if (timeFilter === 'month' && diffDays > 30) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                });
+            }
 
             if (filtered.length === 0) {
                 if (isLoadingSubmissions) return;

@@ -58,6 +58,7 @@ function doGet(e) {
 
   try {
     var params = (e && e.parameter) || {};
+    var q = params.q ? parseInt(params.q, 10) : null;
     var limit = Math.max(1, Math.min(parseInt(params.limit, 10) || 10, 50));
     var offset = Math.max(0, parseInt(params.offset, 10) || 0);
     var filter = (params.filter || "all").toString().toLowerCase();
@@ -184,11 +185,29 @@ function doGet(e) {
       return {
         rowIndex: rowIndex,
         date: formatDate(row[dateIdx]),
-        name: row[nameIdx] ? row[nameIdx].toString().trim() : "Nguoi dung an danh",
+        name: row[nameIdx] ? row[nameIdx].toString().trim() : "Người dùng ẩn danh",
         question: row[questionIdx] ? row[questionIdx].toString().trim() : "",
         replyUrl: replyUrl,
         status: row[statusIdx] ? row[statusIdx].toString().trim() : ""
       };
+    }
+
+    if (q !== null) {
+      if (q >= 2 && q <= lastRow) {
+        var row = sheet.getRange(q, 1, 1, lastCol).getValues()[0];
+        var item = makeSubmission(row, q);
+        if (item) {
+          if (sheetUpdated) {
+            SpreadsheetApp.flush();
+          }
+          return makeJsonResponse({
+            submissions: [item],
+            hasMore: false,
+            nextOffset: 0
+          });
+        }
+      }
+      return makeJsonResponse({ submissions: [], hasMore: false, nextOffset: 0 });
     }
 
     function matchesTimeFilter(item) {
