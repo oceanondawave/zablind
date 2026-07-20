@@ -514,6 +514,7 @@
                 if (requestId === lastFetchRequestId) {
                     isLoadingSubmissions = false;
                     loader.classList.add("hidden");
+                    renderFeed(); // Final clean render with isLoadingSubmissions=false
                 }
             }
         }
@@ -649,7 +650,17 @@
             }
 
             if (filtered.length === 0) {
-                if (isLoadingSubmissions) return;
+                if (isLoadingSubmissions) {
+                    // Show inline spinner inside feed while data loads
+                    const spinnerEl = document.createElement("div");
+                    spinnerEl.className = "faq-card flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground text-sm";
+                    spinnerEl.innerHTML = `
+                        <span class="animate-spin h-6 w-6 rounded-full border-2 border-primary border-t-transparent"></span>
+                        <span>Đang tải dữ liệu...</span>
+                    `;
+                    container.appendChild(spinnerEl);
+                    return;
+                }
                 const emptyCard = document.createElement("div");
                 emptyCard.className = "faq-card rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm";
                 emptyCard.innerHTML = `<p>Không tìm thấy câu hỏi nào phù hợp.</p>`;
