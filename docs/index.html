@@ -143,26 +143,42 @@
             margin: 2rem 0;
         }
 
-        .reason-section {
+        .card-section {
             text-align: left;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
         }
 
-        .reason-title {
+        .section-title {
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: var(--text-secondary);
+            color: var(--accent-color);
             font-weight: 600;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
             text-align: center;
         }
 
-        .reason-content {
-            font-size: 1rem;
-            line-height: 1.6;
+        .section-content {
+            font-size: 0.975rem;
+            line-height: 1.7;
             color: var(--text-secondary);
             text-align: justify;
             text-align-last: center;
+        }
+
+        .section-content p {
+            margin-bottom: 1.25rem;
+        }
+
+        .section-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .warning-text {
+            color: #f87171;
+            font-weight: 600;
         }
 
         @keyframes fadeIn {
@@ -174,7 +190,7 @@
 
         @media (max-width: 640px) {
             .card {
-                padding: 2.5rem 1.5rem;
+                padding: 2.5rem 1.25rem;
             }
             .logo-text {
                 font-size: 1.85rem;
@@ -185,8 +201,8 @@
             .main-message {
                 font-size: 1.15rem;
             }
-            .reason-content {
-                font-size: 0.95rem;
+            .section-content {
+                font-size: 0.925rem;
             }
         }
     </style>
@@ -207,11 +223,52 @@
             
             <div class="divider" role="presentation" aria-hidden="true"></div>
             
-            <section class="reason-section" aria-labelledby="reason-heading">
-                <h2 class="reason-title" id="reason-heading">Lý do dừng lại</h2>
-                <p class="reason-content">
-                    Đi sai mong muốn ban đầu khi là một dự án cá nhân. Khi cộng đồng hóa, dự án đã phát sinh nhiều sự phức tạp, chống phá và đố kỵ từ nhiều thành phần khiến tác giả không còn cảm thấy vui vẻ hay muốn tiếp tục phát triển dự án này nữa.
-                </p>
+            <section class="card-section" aria-labelledby="heading-reason">
+                <h2 class="section-title" id="heading-reason">Lý do dừng lại</h2>
+                <div class="section-content">
+                    <p>
+                        Dự án đã đi sai lệch so với mong muốn cá nhân ban đầu của tác giả. Khi quyết định cộng đồng hóa, dự án phát sinh quá nhiều sự phức tạp, cùng với sự chống phá và đố kỵ từ nhiều thành phần xấu trong cộng đồng. Điều này khiến tác giả không còn cảm thấy vui vẻ hay có động lực để tiếp tục duy trì sản phẩm này nữa.
+                    </p>
+                </div>
+            </section>
+
+            <section class="card-section" aria-labelledby="heading-message">
+                <h2 class="section-title" id="heading-message">Lời cảm ơn & Sự thật về dự án</h2>
+                <div class="section-content">
+                    <p>
+                        Lời đầu tiên, tác giả xin gửi lời tri ân chân thành nhất tới những người dùng đã luôn tin tưởng, đồng hành và ủng hộ dự án suốt chặng đường qua. 
+                    </p>
+                    <p>
+                        Đồng thời, sự kết thúc này là minh chứng đanh thép cho thấy sự độc hại của một bộ phận cộng đồng đã bóp chết một sản phẩm phi lợi nhuận dành cho chính họ như thế nào. 
+                    </p>
+                    <p>
+                        Tác giả xin phép quay trở lại với giá trị nguyên thủy của Zablind: <strong>Là một sản phẩm cá nhân tự làm dành riêng cho người yêu của mình</strong>. Zablind chưa bao giờ mang bất cứ trách nhiệm pháp lý hay nghĩa vụ cụ thể nào đối với cộng đồng. Vì vậy, xin hãy ngừng đòi hỏi. Nếu cảm thấy bản thân đủ giỏi và có khả năng, các bạn có thể tự mình thực hiện.
+                    </p>
+                </div>
+            </section>
+
+            <section class="card-section" aria-labelledby="heading-legacy">
+                <h2 class="section-title" id="heading-legacy">Di sản để lại & Tương lai</h2>
+                <div class="section-content">
+                    <p>
+                        Đối với những ai đang và sẽ tiếp tục sử dụng phiên bản cuối cùng của Zablind: Dù dự án đã chấm dứt, tác giả vẫn để lại một di sản thiết thực mà không một ai có thể phủ nhận giá trị — bất kể đó là người ủng hộ hay bên chống phá.
+                    </p>
+                    <p>
+                        Tuy nhiên, cần lưu ý rằng trong tương lai, khi Zalo cập nhật các phiên bản mới, Zablind chắc chắn sẽ trở nên lỗi thời và ngừng hoạt động hoàn toàn.
+                    </p>
+                </div>
+            </section>
+
+            <section class="card-section" aria-labelledby="heading-copyright">
+                <h2 class="section-title" id="heading-copyright">Bản quyền & Tuyên bố trách nhiệm</h2>
+                <div class="section-content">
+                    <p>
+                        Tác giả hoàn toàn không chịu trách nhiệm đối với bất kỳ nguồn, tổ chức, hay cá nhân nào tiếp tục phân phối hoặc lưu trữ sản phẩm hiện có cho người dùng, cũng như không chịu trách nhiệm cho mọi sự cố phát sinh trong quá trình sử dụng.
+                    </p>
+                    <p class="warning-text">
+                        Nghiêm cấm mọi hành vi cố ý tiếp tục phân phối sản phẩm. Nếu bất kỳ tổ chức hay cá nhân nào bị phát hiện cố ý phân phối trái phép, tác giả sẽ thực hiện báo cáo vi phạm bản quyền và yêu cầu gỡ bỏ nội dung một cách triệt để, thẳng tay.
+                    </p>
+                </div>
             </section>
         </article>
     </main>
