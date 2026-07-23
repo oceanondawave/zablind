@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zablind - By Luga & Ocean</title>
+
+    <!-- Open Graph / Facebook Metadata -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oceanondawave.github.io/zablind/" />
+    <meta property="og:title" content="Zablind - Hỗ trợ tiếp cận Zalo PC cho người khiếm thị" />
+    <meta property="og:description" content="Công cụ hỗ trợ tiếp cận giúp người khiếm thị sử dụng Zalo PC trên Windows hiệu quả qua trình đọc màn hình." />
+    <meta property="og:image" content="https://img.youtube.com/vi/bSSvD66qby0/maxresdefault.jpg" />
+
+    <!-- Twitter / Discord / Telegram Metadata -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://oceanondawave.github.io/zablind/" />
+    <meta property="twitter:title" content="Zablind - Hỗ trợ tiếp cận Zalo PC cho người khiếm thị" />
+    <meta property="twitter:description" content="Công cụ hỗ trợ tiếp cận giúp người khiếm thị sử dụng Zalo PC trên Windows hiệu quả qua trình đọc màn hình." />
+    <meta property="twitter:image" content="https://img.youtube.com/vi/bSSvD66qby0/maxresdefault.jpg" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(var(--destructive))",
+                            foreground: "hsl(var(--destructive-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                    },
+                    borderRadius: {
+                        lg: "var(--radius)",
+                        md: "calc(var(--radius) - 2px)",
+                        sm: "calc(var(--radius) - 4px)",
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --background: 222.2 84% 4.9%;
+                --foreground: 210 40% 98%;
+                --card: 222.2 84% 4.9%;
+                --card-foreground: 210 40% 98%;
+                --popover: 222.2 84% 4.9%;
+                --popover-foreground: 210 40% 98%;
+                --primary: 217.2 91.2% 59.8%;
+                --primary-foreground: 222.2 47.4% 11.2%;
+                --secondary: 217.2 32.6% 17.5%;
+                --secondary-foreground: 210 40% 98%;
+                --muted: 217.2 32.6% 17.5%;
+                --muted-foreground: 215 20.2% 65.1%;
+                --accent: 217.2 32.6% 17.5%;
+                --accent-foreground: 210 40% 98%;
+                --destructive: 0 62.8% 30.6%;
+                --destructive-foreground: 210 40% 98%;
+                --border: 217.2 32.6% 17.5%;
+                --input: 217.2 32.6% 17.5%;
+                --ring: 224.3 76.3% 48%;
+                --radius: 0.5rem;
+            }
+            .dark {
+                --background: 222.2 84% 4.9%;
+                --foreground: 210 40% 98%;
+                --card: 222.2 84% 4.9%;
+                --card-foreground: 210 40% 98%;
+                --popover: 222.2 84% 4.9%;
+                --popover-foreground: 210 40% 98%;
+                --primary: 217.2 91.2% 59.8%;
+                --primary-foreground: 222.2 47.4% 11.2%;
+                --secondary: 217.2 32.6% 17.5%;
+                --secondary-foreground: 210 40% 98%;
+                --muted: 217.2 32.6% 17.5%;
+                --muted-foreground: 215 20.2% 65.1%;
+                --accent: 217.2 32.6% 17.5%;
+                --accent-foreground: 210 40% 98%;
+                --destructive: 0 62.8% 30.6%;
+                --destructive-foreground: 210 40% 98%;
+                --border: 217.2 32.6% 17.5%;
+                --input: 217.2 32.6% 17.5%;
+                --ring: 224.3 76.3% 48%;
+            }
+        }
+        @layer base {
+            * {
+                @apply border-border;
+            }
+            body {
+                @apply bg-background text-foreground;
+                font-feature-settings: "rlig" 1, "calt" 1;
+            }
+        }
+        
+        /* Markdown rendering styles */
+        .markdown-content h1 { @apply text-2xl font-bold mt-4 mb-2 text-primary; }
+        .markdown-content h2 { @apply text-xl font-semibold mt-4 mb-2 text-primary; }
+        .markdown-content h3 { @apply text-lg font-semibold mt-3 mb-1 text-foreground; }
+        .markdown-content ul { @apply list-disc pl-6 mb-4 space-y-1; }
+        .markdown-content ol { @apply list-decimal pl-6 mb-4 space-y-1; }
+        .markdown-content p { @apply mb-3 leading-relaxed; }
+        .markdown-content code { @apply font-mono text-xs bg-muted/80 px-1.5 py-0.5 rounded border border-border/40; }
+        .markdown-content strong { @apply font-bold text-foreground; }
+    </style>
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body class="min-h-screen antialiased py-10 px-4 md:px-0">
+    <!-- Hidden live region for accessibility announcements -->
+    <div id="accessibility-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+    <main class="max-w-3xl mx-auto space-y-8">
+
+        <!-- Header -->
+        <header class="space-y-4 text-center sm:text-left">
+            <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl text-primary">
+                Zablind
+            </h1>
+            <p class="text-xl text-muted-foreground leading-relaxed">
+                Nâng tầm trải nghiệm dùng Zalo PC trên Windows cho người khiếm thị.
+            </p>
+        </header>
+
+        <!-- Backstory & Legal Section -->
+        <section class="space-y-6">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
+                Câu chuyện dự án &amp; Cơ sở pháp lý
+            </h2>
+            <div class="grid gap-6 md:grid-cols-2">
+                <!-- Backstory Card -->
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+                    <div class="p-6 space-y-3 text-sm text-muted-foreground">
+                        <h3 class="text-lg font-semibold text-foreground leading-none tracking-tight">Hành trình từ tình yêu đến cộng đồng</h3>
+                        <p class="leading-relaxed">
+                            Zablind bắt đầu từ tình yêu và mong muốn giúp người yêu khiếm thị của mình sử dụng Zalo trên máy tính Windows một cách hiệu quả hơn. Dù hành trình ban đầu vô cùng gian nan và đầy thách thức về mặt công nghệ, mình đã nỗ lực vượt qua để hoàn thiện nó. Giờ đây, Zablind đã trở thành một sản phẩm mã nguồn mở ý nghĩa dành cho toàn cộng đồng.
+                        </p>
+                        <p class="leading-relaxed">
+                            Dự án cũng tự hào thông báo đã xuất sắc đạt <strong>Giải Nhất tại Hội thi Tin học dành cho người mù toàn quốc năm 2025</strong> và vinh dự được nhận <strong>Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ</strong> trao tặng.
+                        </p>
+                    </div>
+                    <!-- Couple Photo -->
+                    <div class="px-6 pb-6">
+                        <figure class="rounded border overflow-hidden bg-muted/20">
+                            <img src="couple.png" alt="Ocean (Nguyễn Trí Minh) và người yêu Ma Thị Phương" class="w-full h-auto object-cover max-h-[320px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                            <div class="hidden p-6 text-center text-sm text-muted-foreground bg-muted/10 h-40 w-full flex items-center justify-center font-medium">
+                                [Ảnh couple.png]
+                            </div>
+                            <figcaption class="text-xs text-center text-muted-foreground py-2 px-4">
+                                Ocean (Nguyễn Trí Minh) và người yêu Ma Thị Phương
+                            </figcaption>
+                        </figure>
+                    </div>
+                </div>
+
+                <!-- Legal Card -->
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4 text-sm text-muted-foreground flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground leading-none tracking-tight">Cơ sở pháp lý</h3>
+                        <p class="leading-relaxed">
+                            Zablind là phần mềm trợ năng <strong>phi lợi nhuận, mã nguồn mở</strong>, được phát triển và phân phối hoàn toàn miễn phí với mục tiêu duy nhất là hỗ trợ người khiếm thị tiếp cận ứng dụng Zalo PC thông qua trình đọc màn hình.
+                        </p>
+                        <p class="leading-relaxed">
+                            Theo <strong>điểm m, khoản 1, Điều 25</strong> của <a href="https://quochoi.vn/tintuc/Pages/tin-hoat-dong-cua-quoc-hoi.aspx?ItemID=72721" target="_blank" rel="noopener noreferrer" class="underline underline-offset-2 hover:text-foreground transition-colors">Văn bản hợp nhất số 11/VBHN-VPQH — Luật Sở hữu trí tuệ Việt Nam</a> hiện hành, hành vi sử dụng tác phẩm đã công bố nhằm chuyển đổi sang định dạng tiếp cận được (bao gồm định dạng âm thanh) phục vụ người khuyết tật về nhìn thuộc trường hợp <strong>ngoại lệ không xâm phạm quyền tác giả</strong> — <strong>không cần xin phép</strong> và <strong>không phải trả thù lao</strong> cho chủ sở hữu quyền tác giả.
+                        </p>
+                        <p class="leading-relaxed">
+                            Hoạt động cốt lõi của Zablind — gán nhãn trợ năng (accessibility labels) và tối ưu phím tắt để chuyển đổi giao diện hiển thị của Zalo PC sang ngôn ngữ âm thanh tương thích với trình đọc màn hình — hoàn toàn nằm trong phạm vi bảo hộ của điều khoản ngoại lệ này. Dự án không kinh doanh, không thu phí và không nhằm mục đích thương mại dưới bất kỳ hình thức nào.
+                        </p>
+                    </div>
+
+                    <div class="border-t pt-3 mt-1 space-y-2 text-sm text-muted-foreground">
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-foreground/60">Quyền riêng tư &amp; Bảo mật</h4>
+                        <p>Zablind chỉ chỉnh sửa giao diện và <strong>KHÔNG THU THẬP DỮ LIỆU</strong> người dùng.</p>
+                        <p>Mã nguồn mở hoàn toàn, bạn có thể kiểm tra tại <a href="https://github.com/oceanondawave/zablind" target="_blank" rel="noopener noreferrer" class="font-medium text-primary hover:underline underline-offset-4">GitHub Repo</a>.</p>
+                        <p>Zablind là dự án độc lập, không liên quan đến Zalo Group hay VNG.</p>
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        <a href="https://quochoi.vn/tintuc/Pages/tin-hoat-dong-cua-quoc-hoi.aspx?ItemID=72721" target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 w-full shadow-sm">
+                            Xem Luật Sở hữu trí tuệ — Quốc hội Việt Nam
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Certificates Grid (Full-Width Card) -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <figure class="rounded border overflow-hidden bg-muted/20 flex flex-col">
+                        <img src="certificate-ocean.jpg" alt="Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ trao tặng Nguyễn Trí Minh" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
+                            [Gắn ảnh certificate-ocean.jpg]
+                        </div>
+                        <figcaption class="text-xs text-center text-muted-foreground py-2 px-4">
+                            Bằng khen Bộ trưởng Bộ KH&amp;CN — Nguyễn Trí Minh
+                        </figcaption>
+                    </figure>
+                    <figure class="rounded border overflow-hidden bg-muted/20 flex flex-col">
+                        <img src="certificate-girlfriend.jpg" alt="Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ trao tặng Ma Thị Phương" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
+                            [Gắn ảnh certificate-girlfriend.jpg]
+                        </div>
+                        <figcaption class="text-xs text-center text-muted-foreground py-2 px-4">
+                            Bằng khen Bộ trưởng Bộ KH&amp;CN — Ma Thị Phương
+                        </figcaption>
+                    </figure>
+                </div>
+
+                <!-- Award Ceremony Photo -->
+                <div class="mt-6 border-t pt-6">
+                    <figure class="rounded border overflow-hidden bg-muted/20 flex flex-col max-w-xl mx-auto">
+                        <img src="award-girlfriend.jpg" alt="Ma Thị Phương được vinh danh trên sân khấu" class="w-full h-auto object-contain max-h-[500px]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="hidden p-8 text-center text-sm text-muted-foreground bg-muted/10 h-48 w-full flex items-center justify-center font-medium">
+                            [Gắn ảnh award-girlfriend.jpg]
+                        </div>
+                        <figcaption class="text-xs text-center text-muted-foreground py-2 px-4">
+                            Ma Thị Phương được vinh danh trên sân khấu Hội thi toàn quốc
+                        </figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- Installer Section (Dynamic) -->
+        <section id="installer" class="space-y-4">
+            <!-- Loading State -->
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm w-full">
+                <div class="p-6 flex flex-col items-center justify-center space-y-3 min-h-[150px]">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p class="text-sm text-muted-foreground">Đang tải bộ cài đặt mới nhất...</p>
+                </div>
+            </div>
+        </section>
+
+
+
+        <!-- Podcast & Video Guide -->
+        <section class="space-y-4">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
+                Xem podcast và video hướng dẫn về Zablind
+            </h2>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
+                <p class="text-sm text-muted-foreground leading-relaxed">
+                    Xem video hướng dẫn sử dụng và lắng nghe chia sẻ chi tiết về hành trình phát triển Zablind.
+                </p>
+                <div class="aspect-video w-full rounded-md overflow-hidden border bg-muted">
+                    <iframe 
+                        class="w-full h-full"
+                        src="https://www.youtube.com/embed/bSSvD66qby0" 
+                        title="Xem podcast và video hướng dẫn về Zablind" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
+                <div class="pt-2 text-center">
+                    <a href="https://youtu.be/bSSvD66qby0" target="_blank"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 shadow-sm gap-2">
+                        <svg class="h-4 w-4 text-red-500 fill-current" viewBox="0 0 24 24">
+                            <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.108C19.52 3.5 12 3.5 12 3.5s-7.52 0-9.388.555a3.002 3.002 0 0 0-2.11 2.108C0 8.03 0 12 0 12s0 3.97.502 5.837a3.003 3.003 0 0 0 2.11 2.108C4.48 20.5 12 20.5 12 20.5s7.52 0 9.388-.555a3.002 3.002 0 0 0 2.11-2.108C24 15.97 24 12 24 12s0-3.97-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        Xem trên YouTube
+                    </a>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Installation Instructions -->
+        <section class="space-y-4">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">
+                Lưu ý khi cài đặt
+            </h2>
+            <div class="space-y-4 text-muted-foreground">
+                <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
+                    <ul class="list-disc pl-6 space-y-2 text-sm">
+                        <li><strong>Kết nối Internet:</strong> Chỉ cần thiết khi tải bộ cài đặt Zablind lần đầu hoặc để tự động cập nhật phiên bản mới. Quá trình cài đặt diễn ra hoàn toàn ngoại tuyến (offline).</li>
+                        <li><strong>Phiên bản Zalo:</strong> Cần sử dụng phiên bản Zalo PC mới nhất (<a href="https://zalo.me/pc"
+                                class="text-primary hover:underline">Tải Zalo</a>).</li>
+                        <li><strong>Cài đặt / Cài đặt lại:</strong> Chạy tệp cài đặt và nhấn nút <kbd class="font-sans font-semibold">1. Cài đặt / Cài đặt lại</kbd> trên cửa sổ giao diện của bộ cài đặt.</li>
+                        <li><strong>Gỡ cài đặt:</strong> Chạy tệp cài đặt và nhấn nút <kbd class="font-sans font-semibold">2. Gỡ cài đặt Zablind</kbd> trên cửa sổ giao diện để khôi phục phiên bản Zalo gốc.</li>
+                        <li><strong>Cập nhật:</strong> Tự động kiểm tra và cập nhật sau mỗi 6 giờ. Bạn cũng có thể bấm <kbd class="font-sans font-semibold">Ctrl + Shift + U</kbd> khi ở trong Zalo để kiểm tra cập nhật thủ công.</li>
+                        <li><strong>Hướng dẫn sử dụng:</strong> Bấm phím tắt <kbd class="font-sans font-semibold">Ctrl + Shift + H</kbd> khi đang ở trong Zalo để xem danh sách phím tắt hướng dẫn chi tiết.</li>
+                        <li><strong>Hỗ trợ trình đọc màn hình:</strong> <strong>NVDA</strong> được hỗ trợ tốt nhất. Nếu dùng <strong>JAWS</strong>, bấm <kbd class="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 border-border">Insert + Z</kbd> để tắt con trỏ ảo trước khi sử dụng.</li>
+                    </ul>
+                </div>
+
+                <div role="alert"
+                    class="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="absolute left-4 top-4 h-4 w-4">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <h5 class="mb-1 font-medium leading-none tracking-tight">Lưu ý phím Application</h5>
+                    <div class="text-sm opacity-90 mt-2">
+                        Nếu phím <strong>Application/Menu</strong> không hoạt động, hãy thử <kbd
+                            class="font-sans font-semibold">Shift + F10</kbd>. Nếu vẫn không được, hãy tải phần mềm
+                        <a href="https://apps.microsoft.com/detail/xpffcg7m673d4f?hl=vi-VN&gl=US" target="_blank"
+                            class="font-semibold underline decoration-2 underline-offset-2 hover:opacity-80">SharpKeys trên Microsoft Store</a> để gán lại phím.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Donation Section -->
+        <section class="space-y-4">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
+                Đồng hành & Ủng hộ
+            </h2>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
+                <p class="text-sm text-muted-foreground leading-relaxed">
+                    Nếu các bạn muốn ủng hộ tác giả một ly cà phê nhỏ (hoàn toàn không bắt buộc) để động viên đóng góp và công sức của mình dành cho dự án, mình luôn vô cùng trân quý sự ủng hộ của các bạn. Thông tin ngân hàng nhận ủng hộ dưới đây (bạn vui lòng ghi nội dung chuyển khoản là <strong>ung ho Zablind</strong> để mình biết nhé):
+                </p>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <!-- BVBank Account Card -->
+                    <div class="rounded-lg border bg-muted/20 p-4 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="text-xs text-muted-foreground uppercase font-semibold">Ngân hàng Bản Việt (BVBank)</div>
+                            <div class="text-lg font-bold text-foreground mt-1">9021622808735</div>
+                            <div class="text-sm text-muted-foreground mt-1">Chủ tài khoản: NGUYEN TRI MINH</div>
+                        </div>
+                        <button onclick="copyToClipboard(this, '9021622808735', 'BVBank')" 
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full shadow-sm"
+                            aria-label="Sao chép số tài khoản BVBank 9021622808735">
+                            Sao chép số tài khoản
+                        </button>
+                    </div>
+                    <!-- Timo Account Card -->
+                    <div class="rounded-lg border bg-muted/20 p-4 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="text-xs text-muted-foreground uppercase font-semibold">Ngân hàng Timo</div>
+                            <div class="text-lg font-bold text-foreground mt-1">0965567003</div>
+                            <div class="text-sm text-muted-foreground mt-1">Chủ tài khoản: NGUYEN TRI MINH</div>
+                        </div>
+                        <button onclick="copyToClipboard(this, '0965567003', 'Timo')" 
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full shadow-sm"
+                            aria-label="Sao chép số tài khoản Timo 0965567003">
+                            Sao chép số tài khoản
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact & Support -->
+        <section class="space-y-4">
+            <h2 class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">
+                Thông tin & Liên hệ
+            </h2>
+            <div class="grid gap-6 md:grid-cols-2">
+                <a href="https://tally.so/r/3X6NKd" target="_blank" class="block group">
+                    <div
+                        class="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer p-6 h-full flex flex-col justify-between">
+                        <div>
+                            <h3
+                                class="font-semibold flex items-center gap-2 mb-2 group-hover:text-primary transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                </svg>
+                                Góp ý & Báo lỗi
+                            </h3>
+                            <p class="text-sm text-muted-foreground">Gửi ý kiến đóng góp, phản hồi hoặc báo lỗi về Zablind cho tác giả.</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="faq.html" class="block group">
+                    <div
+                        class="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer p-6 h-full flex flex-col justify-between">
+                        <div>
+                            <h3
+                                class="font-semibold flex items-center gap-2 mb-2 group-hover:text-primary transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                </svg>
+                                Giải đáp thắc mắc (FAQ)
+                            </h3>
+                            <p class="text-sm text-muted-foreground">Xem câu trả lời bằng giọng nói của tác giả cho các thắc mắc phổ biến của cộng đồng.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="border-t pt-8 text-center text-sm text-muted-foreground space-y-2">
+            <p>Được phát triển bởi <strong>Nguyễn Trí Minh (Ocean Kid)</strong></p>
+            <p class="text-xs text-muted-foreground/60 max-w-2xl mx-auto">
+                Sản phẩm miễn phí vì cộng đồng. Vui lòng ghi rõ nguồn khi chia sẻ. Mọi hành vi thương mại hóa đều bị
+                cấm.
+            </p>
+            <div class="pt-4 text-xs font-mono flex items-center justify-center gap-2 flex-wrap text-muted-foreground/60">
+                <span>Ⓒ <span id="copyright-year">2026</span> Minh Tri Nguyen</span>
+                <span>|</span>
+                <span aria-label="Số lượt truy cập trang web">Lượt truy cập: <span id="page-views" class="font-bold text-foreground">...</span></span>
+            </div>
+        </footer>
+
+        <!-- Release History -->
+        <section class="space-y-6 pt-8">
+            <h2 class="text-2xl font-semibold tracking-tight">Lịch sử phát hành</h2>
+            <div id="versions" class="space-y-4">
+                <!-- Loading Version -->
+                <div class="space-y-3">
+                    <div class="h-24 w-full rounded-lg bg-muted/50 animate-pulse"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const API_URL = "https://api.github.com/repos/oceanondawave/zablind/releases/latest";
+        const installer = document.getElementById("installer");
+
+        function getReleaseDisclosureId(prefix, value) {
+            const safeValue = String(value || "release")
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, "-")
+                .replace(/^-+|-+$/g, "")
+                .slice(0, 48) || "release";
+            return `${prefix}-${safeValue}`;
+        }
+
+        function updateReleaseDisclosureState(details) {
+            const summary = details.querySelector("summary");
+            if (!summary) return;
+            summary.setAttribute("aria-expanded", details.open ? "true" : "false");
+        }
+
+        function enhanceReleaseDisclosure(details) {
+            const summary = details.querySelector("summary");
+            if (!summary || summary.dataset.zablindDisclosureEnhanced === "true") return;
+
+            summary.dataset.zablindDisclosureEnhanced = "true";
+            summary.setAttribute("role", "button");
+            summary.setAttribute("tabindex", "0");
+            updateReleaseDisclosureState(details);
+
+            summary.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    details.open = !details.open;
+                    summary.focus();
+                }
+            });
+        }
+
+        fetch(API_URL)
+            .then(res => {
+                if (!res.ok) throw new Error("Could not fetch the latest release from GitHub.");
+                return res.json();
+            })
+            .then(release => {
+                installer.innerHTML = "";
+
+                const div = document.createElement("div");
+                // Card Style with Primary Accent (Dark mode adjusted)
+                div.className = "rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden border-primary/20 bg-primary/5";
+
+                const date = new Date(release.published_at).toLocaleDateString();
+
+                // Build assets list (filtering out .zip files as they are only for background updates)
+                let assetsHtml = "";
+                if (release.assets && release.assets.length > 0) {
+                    const filteredAssets = release.assets.filter(asset => !asset.name.endsWith('.zip'));
+                    if (filteredAssets.length > 0) {
+                        assetsHtml = `<div class="mt-6 flex flex-wrap gap-3 justify-center sm:justify-start">` +
+                            filteredAssets.map(asset => `
+                                <a href="https://ghproxy.net/${asset.browser_download_url}" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 w-full sm:w-auto shadow-md" aria-label="Tải bộ cài đặt ${asset.name} tốc độ cao">
+                                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Tải ${asset.name}
+                                </a>
+                        `).join('') +
+                            `</div>`;
+                    }
+                }
+
+                const releaseDisclosureId = getReleaseDisclosureId("latest-release-notes", release.tag_name || release.name);
+                const releaseSummaryId = `${releaseDisclosureId}-summary`;
+                const releasePanelId = `${releaseDisclosureId}-panel`;
+
+                div.innerHTML = `
+                    <div class="flex flex-col space-y-1.5 p-6 border-b border-border/50">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h3 class="text-2xl font-semibold leading-none tracking-tight text-primary">
+                                ${release.name || release.tag_name}
+                            </h3>
+                            <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground shadow-sm hover:bg-primary/80">
+                                Phiên bản mới nhất
+                            </span>
+                        </div>
+                        <p class="text-sm text-muted-foreground">Phát hành ngày ${date}</p>
+                    </div>
+                    <div class="p-6">
+                        ${release.body ? `
+                        <details class="mb-4 group">
+                            <summary id="${releaseSummaryId}" class="cursor-pointer select-none list-none flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors py-1" aria-expanded="false" aria-controls="${releasePanelId}">
+                                <svg class="w-4 h-4 transition-transform duration-200 group-open:rotate-90 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                Ghi chú phát hành
+                                <span class="sr-only">, mục có thể mở rộng. Nhấn Enter hoặc Space để mở rộng hoặc thu gọn.</span>
+                            </summary>
+                            <div id="${releasePanelId}" role="region" aria-labelledby="${releaseSummaryId}" class="mt-3 text-sm text-foreground/90 space-y-2 leading-relaxed markdown-content border-l-2 border-border pl-4">
+                                ${marked.parse(release.body)}
+                            </div>
+                        </details>` : ""}
+                        ${assetsHtml}
+                    </div>
+                `;
+
+                installer.appendChild(div);
+                div.querySelectorAll("details").forEach(enhanceReleaseDisclosure);
+            })
+            .catch(err => {
+                installer.innerHTML = `
+                    <div role="alert" class="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <strong>Lỗi:</strong> Không thể tải thông tin bản cập nhật. Vui lòng kiểm tra kết nối mạng.
+                        </div>
+                    </div>`;
+                console.error(err);
+            });
+    </script>
+
+    <script>
+        const API_VERSIONS_URL = "https://api.github.com/repos/oceanondawave/zablind/releases";
+        const versions = document.getElementById("versions");
+
+        fetch(API_VERSIONS_URL)
+            .then(res => res.json())
+            .then(releases => {
+                versions.innerHTML = "";
+
+                if (!Array.isArray(releases) || releases.length === 0) {
+                    versions.innerHTML = "<p class='text-muted-foreground'>Không có dữ liệu.</p>";
+                    return;
+                }
+
+                releases.forEach(release => {
+                    const details = document.createElement("details");
+                    details.className = "group rounded-lg border bg-card text-card-foreground shadow-sm mb-4 overflow-hidden [&_summary::-webkit-details-marker]:hidden";
+
+                    const date = new Date(release.published_at).toLocaleDateString();
+                    const releaseDisclosureId = getReleaseDisclosureId("release-history", release.tag_name || release.name);
+                    const releaseSummaryId = `${releaseDisclosureId}-summary`;
+                    const releasePanelId = `${releaseDisclosureId}-panel`;
+
+                    details.innerHTML = `
+                        <summary id="${releaseSummaryId}" class="flex flex-col space-y-1.5 p-6 border-b border-transparent bg-muted/30 hover:bg-muted/50 cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors select-none" aria-expanded="false" aria-controls="${releasePanelId}">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg class="h-4 w-4 text-muted-foreground transition-transform duration-200 group-open:rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                    <h4 class="font-semibold leading-none tracking-tight">${release.name || release.tag_name}</h4>
+                                </div>
+                                <span class="text-xs text-muted-foreground font-mono bg-muted/60 px-2 py-1 rounded">${release.tag_name}</span>
+                            </div>
+                            <p class="text-xs text-muted-foreground mt-1 ml-6">${date}</p>
+                            <span class="sr-only">Mục có thể mở rộng. Nhấn Enter hoặc Space để mở rộng hoặc thu gọn.</span>
+                        </summary>
+                        <div id="${releasePanelId}" role="region" aria-labelledby="${releaseSummaryId}" class="p-6 text-sm text-muted-foreground space-y-2 markdown-content border-t border-border/40">
+                             ${release.body ? marked.parse(release.body) : "Không có mô tả."}
+                        </div>
+                    `;
+                    versions.appendChild(details);
+                    enhanceReleaseDisclosure(details);
+                });
+            })
+            .catch(err => {
+                versions.innerHTML = `
+                    <div class="text-sm text-destructive">
+                        Không thể tải lịch sử phát hành.
+                    </div>`;
+                console.error(err);
+            });
+
+        // Set current copyright year dynamically
+        document.getElementById("copyright-year").textContent = new Date().getFullYear();
+
+        // Fetch and increment page views
+        const VIEWS_API = "https://api.counterapi.dev/v1/zablind/hits/up";
+        const viewsEl = document.getElementById("page-views");
+        if (viewsEl) {
+            fetch(VIEWS_API)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && typeof data.count === 'number') {
+                        viewsEl.textContent = data.count.toLocaleString();
+                    } else {
+                        viewsEl.textContent = "—";
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi khi tải số lượt truy cập:", err);
+                    viewsEl.textContent = "—";
+                });
+        }
+
+        // Accessible clipboard copy helper
+        function copyToClipboard(button, text, bankName) {
+            navigator.clipboard.writeText(text).then(() => {
+                const announcer = document.getElementById("accessibility-announcer");
+                if (announcer) {
+                    announcer.textContent = "";
+                    setTimeout(() => {
+                        announcer.textContent = "Đã sao chép số tài khoản " + bankName + ": " + text;
+                    }, 50);
+                }
+                
+                const originalText = button.textContent;
+                button.textContent = "Đã sao chép!";
+                button.classList.add("bg-green-500/10", "text-green-500", "border-green-500/30", "hover:bg-green-500/20");
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove("bg-green-500/10", "text-green-500", "border-green-500/30", "hover:bg-green-500/20");
+                }, 2000);
+            }).catch(err => {
+                console.error("Lỗi khi sao chép:", err);
+            });
+        }
+
+        // Dynamically update aria-expanded state on toggle events
+        document.addEventListener('toggle', (event) => {
+            if (event.target.tagName === 'DETAILS') {
+                updateReleaseDisclosureState(event.target);
+            }
+        }, true);
+    </script>
+</body>
+
+</html>
