@@ -25,31 +25,26 @@
             padding: 0;
         }
 
+        html {
+            background-color: var(--bg-color);
+            overflow-x: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
         body {
             background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 15%, var(--accent-glow) 0%, transparent 60%);
             color: var(--text-primary);
             font-family: 'Outfit', sans-serif;
             min-height: 100vh;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1.5rem;
             overflow-x: hidden;
             position: relative;
-        }
-
-        /* Ambient background glow */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            z-index: 1;
-            pointer-events: none;
         }
 
         .container {
