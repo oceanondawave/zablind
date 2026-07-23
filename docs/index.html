@@ -48,6 +48,7 @@
         }
 
         .container {
+            margin: auto 0;
             max-width: 600px;
             width: 100%;
             z-index: 2;
@@ -191,21 +192,23 @@
     </style>
 </head>
 <body>
-    <main class="container">
-        <article class="card">
+    <main class="container" aria-label="Thông báo từ biệt từ dự án Zablind">
+        <article class="card" role="article">
             <header class="logo-area">
-                <div class="logo-text">Zablind</div>
+                <div class="logo-text" aria-label="Tên dự án: Zablind">Zablind</div>
             </header>
             
             <h1>Dự án Zablind chính thức nói lời từ biệt</h1>
-            <div class="timeline" aria-label="Thời gian dự án hoạt động">09/07/2025 — 23/07/2026</div>
+            <div class="timeline" aria-label="Thời gian dự án hoạt động: từ ngày 9 tháng 7 năm 2025 đến ngày 23 tháng 7 năm 2026">
+                <span style="white-space: nowrap;">09/07/2025</span> — <span style="white-space: nowrap;">23/07/2026</span>
+            </div>
             
             <p class="main-message">Cảm ơn tất cả người dùng đã đồng hành cùng chúng tôi.</p>
             
-            <div class="divider" role="presentation"></div>
+            <div class="divider" role="presentation" aria-hidden="true"></div>
             
-            <section class="reason-section">
-                <h2 class="reason-title">Lý do dừng lại</h2>
+            <section class="reason-section" aria-labelledby="reason-heading">
+                <h2 class="reason-title" id="reason-heading">Lý do dừng lại</h2>
                 <p class="reason-content">
                     Đi sai mong muốn ban đầu khi là một dự án cá nhân. Khi cộng đồng hóa, dự án đã phát sinh nhiều sự phức tạp, chống phá và đố kỵ từ nhiều thành phần khiến tác giả không còn cảm thấy vui vẻ hay muốn tiếp tục phát triển dự án này nữa.
                 </p>
