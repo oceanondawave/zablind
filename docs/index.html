@@ -6,7 +6,7 @@
     <title>Zablind - Lời từ biệt</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0d0e12;
@@ -25,11 +25,20 @@
             padding: 0;
         }
 
+        html {
+            background-color: var(--bg-color);
+            overflow-x: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
         body {
             background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 15%, var(--accent-glow) 0%, transparent 60%);
             color: var(--text-primary);
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Be Vietnam Pro', sans-serif;
             min-height: 100vh;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -38,21 +47,8 @@
             position: relative;
         }
 
-        /* Ambient background glow */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            z-index: 1;
-            pointer-events: none;
-        }
-
         .container {
+            margin: auto 0;
             max-width: 600px;
             width: 100%;
             z-index: 2;
@@ -147,29 +143,48 @@
             margin: 2rem 0;
         }
 
-        .reason-section {
+        .card-section {
             text-align: left;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
         }
 
-        .reason-title {
+        .section-title {
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: var(--text-secondary);
+            color: var(--accent-color);
             font-weight: 600;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
             text-align: center;
         }
 
-        .reason-content {
-            font-size: 1rem;
-            line-height: 1.6;
+        .section-content {
+            font-size: 0.975rem;
+            line-height: 1.7;
             color: var(--text-secondary);
             text-align: justify;
             text-align-last: center;
         }
+
+        .section-content p {
+            margin-bottom: 1.25rem;
+        }
+
+        .section-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .warning-text {
+            color: #f87171;
+            font-weight: 600;
+        }
+
         .uninstall-section {
-            margin-top: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -179,15 +194,15 @@
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: var(--text-secondary);
+            color: var(--accent-color);
             font-weight: 600;
             margin-bottom: 0.75rem;
             text-align: center;
         }
 
         .uninstall-desc {
-            font-size: 1rem;
-            line-height: 1.6;
+            font-size: 0.975rem;
+            line-height: 1.7;
             color: var(--text-secondary);
             text-align: center;
             margin-bottom: 1.5rem;
@@ -232,7 +247,7 @@
 
         @media (max-width: 640px) {
             .card {
-                padding: 2.5rem 1.5rem;
+                padding: 2.5rem 1.25rem;
             }
             .logo-text {
                 font-size: 1.85rem;
@@ -243,48 +258,98 @@
             .main-message {
                 font-size: 1.15rem;
             }
-            .reason-content {
-                font-size: 0.95rem;
+            .section-content {
+                font-size: 0.925rem;
             }
         }
     </style>
 </head>
 <body>
-    <main class="container">
-        <article class="card">
+    <main class="container" aria-label="Thông báo từ biệt từ dự án Zablind">
+        <article class="card" role="article">
             <header class="logo-area">
-                <div class="logo-text">Zablind</div>
+                <div class="logo-text" aria-label="Tên dự án: Zablind">Zablind</div>
             </header>
             
             <h1>Dự án Zablind chính thức nói lời từ biệt</h1>
-            <div class="timeline" aria-label="Thời gian dự án hoạt động">09/07/2025 — 23/07/2026</div>
+            <div class="timeline" aria-label="Thời gian dự án hoạt động: từ ngày 9 tháng 7 năm 2025 đến ngày 23 tháng 7 năm 2026">
+                <span style="white-space: nowrap;">09/07/2025</span> — <span style="white-space: nowrap;">23/07/2026</span>
+            </div>
             
             <p class="main-message">Cảm ơn tất cả người dùng đã đồng hành cùng chúng tôi.</p>
             
-            <div class="divider" role="presentation"></div>
+            <div class="divider" role="presentation" aria-hidden="true"></div>
             
-            <section class="reason-section">
-                <h2 class="reason-title">Lý do dừng lại</h2>
-                <p class="reason-content">
-                    Dự án đã đi xa hơn mong muốn cá nhân ban đầu của tác giả. Khi quyết định cộng đồng hóa, dự án phát sinh thêm nhiều vấn đề vận hành, kỳ vọng và trách nhiệm ngoài phạm vi ban đầu. Vì vậy, tác giả không còn đủ thời gian, năng lượng và động lực để tiếp tục duy trì sản phẩm này.
-                </p>
+            <section class="card-section" aria-labelledby="heading-reason">
+                <h2 class="section-title" id="heading-reason">Lý do dừng lại</h2>
+                <div class="section-content">
+                    <p>
+                        Dự án đã đi xa hơn mong muốn cá nhân ban đầu của tác giả. Khi quyết định cộng đồng hóa, dự án phát sinh thêm nhiều vấn đề vận hành, kỳ vọng và trách nhiệm ngoài phạm vi ban đầu. Vì vậy, tác giả không còn đủ thời gian, năng lượng và động lực để tiếp tục duy trì sản phẩm này.
+                    </p>
+                </div>
             </section>
 
-            <div class="divider" role="presentation"></div>
+            <section class="card-section" aria-labelledby="heading-message">
+                <h2 class="section-title" id="heading-message">Lời cảm ơn & Sự thật về dự án</h2>
+                <div class="section-content">
+                    <p>
+                        Lời đầu tiên, tác giả xin gửi lời tri ân chân thành nhất tới những người dùng đã luôn tin tưởng, đồng hành và ủng hộ dự án suốt chặng đường qua. 
+                    </p>
+                    <p>
+                        Việc khép lại dự án là một quyết định cá nhân sau quá trình cân nhắc kỹ lưỡng về phạm vi, mục tiêu và khả năng duy trì lâu dài.
+                    </p>
+                    <p>
+                        Tác giả xin phép quay trở lại với giá trị nguyên thủy của Zablind: <strong>Là một sản phẩm cá nhân tự làm dành riêng cho người yêu của mình</strong>. Zablind không còn được duy trì như một dự án cộng đồng, nên tác giả mong người dùng thông cảm nếu không thể tiếp tục hỗ trợ, cập nhật hoặc mở rộng sản phẩm.
+                    </p>
+                </div>
+            </section>
 
-            <section class="uninstall-section">
-                <h2 class="uninstall-title">Gỡ cài đặt Zablind</h2>
+            <section class="card-section" aria-labelledby="heading-legacy">
+                <h2 class="section-title" id="heading-legacy">Di sản để lại & Tương lai</h2>
+                <div class="section-content">
+                    <p>
+                        Đối với những ai đang và sẽ tiếp tục sử dụng phiên bản cuối cùng của Zablind: Dù dự án đã chấm dứt, tác giả hy vọng sản phẩm vẫn có thể mang lại giá trị thiết thực trong thời gian còn phù hợp.
+                    </p>
+                    <p>
+                        Tuy nhiên, cần lưu ý rằng trong tương lai, khi Zalo cập nhật các phiên bản mới, Zablind chắc chắn sẽ trở nên lỗi thời và ngừng hoạt động hoàn toàn.
+                    </p>
+                </div>
+            </section>
+
+            <section class="card-section" aria-labelledby="heading-copyright">
+                <h2 class="section-title" id="heading-copyright">Bản quyền & Tuyên bố trách nhiệm</h2>
+                <div class="section-content">
+                    <p>
+                        Tác giả hoàn toàn không chịu trách nhiệm đối với bất kỳ nguồn, tổ chức, hay cá nhân nào tiếp tục phân phối hoặc lưu trữ sản phẩm hiện có cho người dùng, cũng như không chịu trách nhiệm cho mọi sự cố phát sinh trong quá trình sử dụng.
+                    </p>
+                    <p class="warning-text">
+                        Nghiêm cấm mọi hành vi cố ý tiếp tục phân phối sản phẩm. Nếu bất kỳ tổ chức hay cá nhân nào bị phát hiện cố ý phân phối trái phép, tác giả sẽ thực hiện báo cáo vi phạm bản quyền và yêu cầu gỡ bỏ nội dung một cách triệt để, thẳng tay.
+                    </p>
+                </div>
+            </section>
+
+            <section class="uninstall-section" aria-labelledby="heading-uninstall">
+                <h2 class="uninstall-title" id="heading-uninstall">Gỡ cài đặt Zablind</h2>
                 <p class="uninstall-desc">
                     Nếu bạn đang cài đặt Zablind và muốn gỡ bỏ hoàn toàn khỏi Zalo, vui lòng tải công cụ gỡ cài đặt tự động dưới đây:
                 </p>
-                <a href="https://github.com/oceanondawave/zablind/releases/download/v2.1.2/ZablindUninstaller.exe" class="download-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <a href="https://github.com/oceanondawave/zablind/releases/download/v2.1.2/ZablindUninstaller.exe"
+                   class="download-btn"
+                   aria-label="Tải công cụ gỡ cài đặt Zablind">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
                     Tải công cụ gỡ cài đặt (ZablindUninstaller.exe)
                 </a>
+            </section>
+
+            <footer style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border-color); text-align: right;" aria-label="Thông tin tác giả">
+                <p style="font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.9rem; font-style: italic; color: var(--text-muted);">
+                    Tác giả: <strong>Nguyễn Trí Minh (Ocean Kid)</strong> — TP. HCM — 24/07/2026
+                </p>
+            </footer>
         </article>
     </main>
 </body>
