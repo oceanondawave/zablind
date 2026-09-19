@@ -458,17 +458,19 @@ function initMessageObserver() {
                               const headerNameEl = document.querySelector('.header-title, .chat-title, .chat-box-header__title, .header-name, .chat-header__name, .chat-header__title, [class*="header-title"], [class*="chat-title"], [class*="header-name"]');
                               const chatPartnerName = headerNameEl ? headerNameEl.innerText.trim() : "Tin nhắn mới";
                               
-                              const { triggerNativeNotification } = require("./accessibility.js");
-                              triggerNativeNotification(chatPartnerName, contentText, "");
+                              const { triggerNativeNotification, announce } = require("./accessibility.js");
+                              if (state && state.windowsNotificationsEnabled === false) {
+                                  announce(contentText);
+                              } else {
+                                  triggerNativeNotification(chatPartnerName, contentText, "");
+                              }
                           }
                       }
                   }
               }
              
-             if (lastId && lastId !== state.messages.currentId) {
-                 state.messages.currentId = lastId;
-                 highlightMessageById(lastId, false);
-             }
+             // Do not steal DOM focus or move cursor to the latest message automatically.
+             // This allows NVDA to read the message without interrupting user typing or browsing.
         }
     });
     
