@@ -257,27 +257,27 @@
             </div>
 
             <!-- Download Action Buttons -->
-            <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3" id="hero-download-buttons">
+            <div class="pt-2 flex flex-col sm:flex-row items-stretch gap-3" id="hero-download-buttons">
                 <a id="btn-primary-download" href="https://github.com/oceanondawave/zablind/releases/download/v2.1.3/ZablindInstaller_v2.1.3.exe" 
                    class="inline-flex items-center justify-center gap-2.5 rounded-xl bg-primary text-primary-foreground font-bold px-6 py-3.5 text-base shadow-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all transform active:scale-95"
                    aria-label="Tải trực tiếp bộ cài đặt ZablindInstaller_v2.1.3.exe">
-                    <svg aria-hidden="true" class="h-5 w-5 fill-current" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" class="h-5 w-5 fill-current shrink-0" viewBox="0 0 24 24">
                         <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                     </svg>
                     Tải Bộ Cài Đặt (ZablindInstaller_v2.1.3.exe)
                 </a>
 
                 <a id="btn-mirror-download" href="https://ghproxy.net/https://github.com/oceanondawave/zablind/releases/download/v2.1.3/ZablindInstaller_v2.1.3.exe" 
-                   class="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background/80 hover:bg-accent hover:text-accent-foreground font-medium px-4 py-3.5 text-sm shadow-sm transition-colors"
+                   class="inline-flex items-center justify-center gap-2.5 rounded-xl border border-input bg-background/80 hover:bg-accent hover:text-accent-foreground font-bold px-6 py-3.5 text-base shadow-sm transition-colors"
                    aria-label="Tải qua link dự phòng siêu tốc tại Việt Nam">
-                    <svg aria-hidden="true" class="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                     </svg>
                     Tải Dự Phòng (Tốc Độ Cao VN)
                 </a>
 
                 <a href="https://github.com/oceanondawave/zablind/releases" target="_blank" rel="noopener noreferrer"
-                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-transparent hover:border-border text-xs text-muted-foreground hover:text-foreground px-3 py-2 transition-colors sm:ml-auto text-center">
+                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-transparent hover:border-border text-xs text-muted-foreground hover:text-foreground px-3 py-2 transition-colors sm:ml-auto text-center self-center">
                     Xem trên GitHub Releases &rarr;
                 </a>
             </div>
@@ -921,20 +921,17 @@
         // Set current copyright year dynamically
         document.getElementById("copyright-year").textContent = new Date().getFullYear();
 
-        // Fetch and increment page views
-        const VIEWS_API = "https://api.counterapi.dev/v1/zablind/hits/up";
+        // Fetch and increment page views (countapi.mileshilliard.com - no account required)
+        const VIEWS_API = "https://countapi.mileshilliard.com/api/v1/hit/zablind-official-page";
         const viewsEl = document.getElementById("page-views");
         if (viewsEl) {
             fetch(VIEWS_API)
                 .then(res => res.json())
                 .then(data => {
-                    if (data && typeof data.count === 'number') {
-                        viewsEl.textContent = data.count.toLocaleString();
-                    } else {
-                        viewsEl.textContent = "—";
-                    }
+                    const count = data && typeof data.value === 'number' ? data.value : null;
+                    viewsEl.textContent = count !== null ? count.toLocaleString() : "—";
                 })
-                .catch(err => {
+                .catch(() => {
                     viewsEl.textContent = "—";
                 });
         }
