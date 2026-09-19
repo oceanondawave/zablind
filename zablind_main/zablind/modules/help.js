@@ -841,7 +841,7 @@ function injectHelpButton() {
     helpBtn.id = "zablind-help-tab-btn";
     helpBtn.className = "zablind-help-tab-item nav-item";
     helpBtn.setAttribute("title", loc("Trợ giúp phím tắt Zablind (Ctrl+Shift+H)", "Zablind Keyboard Shortcuts Help (Ctrl+Shift+H)"));
-    helpBtn.setAttribute("tabindex", "0");
+    helpBtn.setAttribute("tabindex", "-1");
     helpBtn.setAttribute("role", "button");
     helpBtn.setAttribute("aria-label", loc("Trợ giúp phím tắt Zablind", "Zablind Keyboard Shortcuts Help"));
     

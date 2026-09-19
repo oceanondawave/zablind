@@ -116,8 +116,58 @@ function toggleFreeArrowNavigation(liveRegion) {
     } catch(e) {}
 
     if (next) {
+        // Turning Browse Mode ON:
+        // 1. Blur active input/element so NVDA exits form editing mode
+        if (document.activeElement && document.activeElement !== document.body) {
+            try {
+                document.activeElement.blur();
+            } catch(e) {}
+        }
+        try {
+            document.body.tabIndex = -1;
+            document.body.focus();
+            window.focus();
+        } catch(e) {}
+
+        // 2. Trigger OS-level window refocus via IPC so NVDA immediately creates Virtual Buffer
+        // without requiring the user to Alt-Tab or Ctrl-Tab!
+        try {
+            const { ipcRenderer } = require('electron');
+            if (ipcRenderer) {
+                ipcRenderer.send('zablind-activate-browse-mode');
+            }
+        } catch(e) {}
+
         announce(loc("Đã bật điều hướng tự do bằng phím mũi tên. Tự động tắt khi khởi động lại Zalo.", "Free arrow key navigation enabled. Automatically turns off when Zalo restarts."), liveRegion);
     } else {
+        // Turning Browse Mode OFF:
+        // 1. Blur whatever element browse mode left focus on (e.g. help button or random element)
+        if (document.activeElement && document.activeElement !== document.body) {
+            try {
+                document.activeElement.blur();
+            } catch(e) {}
+        }
+
+        // 2. Restore proper focus context and DOM focus so Enter works correctly
+        const chatView = document.querySelector('.chat-view, #chatView');
+        if (chatView) {
+            try {
+                const { focusChatInput } = require("./input.js");
+                focusChatInput();
+                setFocusContext("messages");
+            } catch(e) {
+                setFocusContext("conversations");
+            }
+        } else {
+            setFocusContext("conversations");
+            try {
+                const { highlightConversationById } = require("./conversations.js");
+                if (state.conversations && state.conversations.currentId) {
+                    highlightConversationById(state.conversations.currentId, liveRegion);
+                }
+            } catch(e) {}
+        }
+
         announce(loc("Đã bật điều hướng Zablind", "Zablind navigation enabled"), liveRegion);
     }
 }

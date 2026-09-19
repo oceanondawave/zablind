@@ -567,7 +567,7 @@ if (process.type === 'browser') {
     });
     debugLog('[IPC] Registered zablind-outgoing-call listener in main process');
 
-    const { Notification } = require('electron');
+    const { Notification, BrowserWindow } = require('electron');
     ipcMain.on('zablind-show-notification', (event, data) => {
       try {
         if (Notification && Notification.isSupported()) {
@@ -584,6 +584,26 @@ if (process.type === 'browser') {
       }
     });
     debugLog('[IPC] Registered zablind-show-notification listener in main process');
+
+    ipcMain.on('zablind-activate-browse-mode', (event) => {
+      try {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win) {
+          // Momentarily blur and re-focus the window at OS level
+          // This triggers WM_ACTIVATE so NVDA automatically creates its Virtual Buffer immediately
+          win.blur();
+          setTimeout(() => {
+            try {
+              win.focus();
+              win.webContents.focus();
+            } catch (e) {}
+          }, 40);
+        }
+      } catch (browseErr) {
+        debugLog(`[BROWSE] Error in zablind-activate-browse-mode: ${browseErr.message}`);
+      }
+    });
+    debugLog('[IPC] Registered zablind-activate-browse-mode listener in main process');
   } catch (ipcError) {
     debugLog(`[IPC] Error registering ipcMain listener: ${ipcError.message}`);
   }
