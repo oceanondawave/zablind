@@ -20,7 +20,10 @@ pyinstaller --onefile ^
     --add-data="zablind_main/html/popup-viewer.html;." ^
     --add-data="zablind_main/zablind;zablind" ^
     --hidden-import=psutil ^
+    --hidden-import=accessible_output2 ^
+    --hidden-import=accessible_output2.outputs.auto ^
     --collect-all=psutil ^
+    --collect-all=accessible_output2 ^
     zablind_installer.py
 
 if errorlevel 1 (

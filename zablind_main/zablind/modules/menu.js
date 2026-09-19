@@ -52,13 +52,37 @@ async function getAllowedMenuItems(timeout = 1000, isAttachment = false) {
   });
 }
 
-function highlightMenuItem(index) {
+function highlightMenuItem(index, liveRegion) {
+  const { announce } = require("./accessibility.js");
   state.menu.items.forEach((item, i) => {
     item.classList.toggle(HIGHLIGHT_CLASS, i === index);
     if (i === index) {
+      // If item is inside .zmenu-sub, ensure parent .zmenu-sub is visible
+      const parentSub = item.closest('.zmenu-sub');
+      if (parentSub) {
+        parentSub.style.display = 'block';
+        parentSub.style.opacity = '1';
+        parentSub.style.visibility = 'visible';
+        const parentMute = parentSub.closest('.zmenu-item');
+        if (parentMute) simulateHover(parentMute);
+      }
+      // If item has a child .zmenu-sub (like mute item), keep it ready
+      const childSub = item.querySelector('.zmenu-sub');
+      if (childSub) {
+        childSub.style.display = 'block';
+        childSub.style.opacity = '1';
+        childSub.style.visibility = 'visible';
+      }
+
       simulateHover(item);
       item.focus();
       item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      const customLabel = item.getAttribute("data-zablind-label");
+      const label = customLabel || item.innerText.replace(/\s+/g, " ").trim();
+      if (liveRegion && label) {
+        announce(label, liveRegion);
+      }
     }
   });
 }
@@ -70,7 +94,7 @@ function handleMenuNavigation(event, liveRegion) {
     event.preventDefault();
     state.menu.currentIndex =
       (state.menu.currentIndex + 1) % state.menu.items.length;
-    highlightMenuItem(state.menu.currentIndex);
+    highlightMenuItem(state.menu.currentIndex, liveRegion);
     return;
   }
 
@@ -79,31 +103,108 @@ function handleMenuNavigation(event, liveRegion) {
     state.menu.currentIndex =
       (state.menu.currentIndex - 1 + state.menu.items.length) %
       state.menu.items.length;
-    highlightMenuItem(state.menu.currentIndex);
+    highlightMenuItem(state.menu.currentIndex, liveRegion);
     return;
   }
 
+  if (event.key === "ArrowRight") {
+    const currentItem = state.menu.items[state.menu.currentIndex];
+    const subContainer = currentItem?.querySelector('.zmenu-sub, .sub-menu');
+    const subItems = subContainer ? Array.from(subContainer.querySelectorAll('.zmenu-item, div-14.zmenu-item')) : [];
+    if (subItems.length > 0) {
+      event.preventDefault();
+      state.menu.parentItems = state.menu.items;
+      state.menu.parentIndex = state.menu.currentIndex;
+      state.menu.items = subItems;
+      state.menu.currentIndex = 0;
+      subItems.forEach((sub, idx) => {
+        sub.setAttribute("role", "menuitem");
+        sub.tabIndex = idx === 0 ? 0 : -1;
+        sub.style.display = '';
+        sub.style.pointerEvents = 'auto';
+      });
+      highlightMenuItem(0, liveRegion);
+      return;
+    }
+  }
+
+  if (event.key === "ArrowLeft") {
+    if (state.menu.parentItems && state.menu.parentItems.length > 0) {
+      event.preventDefault();
+      state.menu.items = state.menu.parentItems;
+      state.menu.currentIndex = state.menu.parentIndex || 0;
+      state.menu.parentItems = null;
+      highlightMenuItem(state.menu.currentIndex, liveRegion);
+      return;
+    }
+  }
+
   if (event.key === "Enter" && state.menu.currentIndex !== -1) {
+    const currentItem = state.menu.items[state.menu.currentIndex];
+    const subContainer = currentItem?.querySelector('.zmenu-sub, .sub-menu');
+    const subItems = subContainer ? Array.from(subContainer.querySelectorAll('.zmenu-item, div-14.zmenu-item')) : [];
+    if (subItems.length > 0) {
+      event.preventDefault();
+      state.menu.parentItems = state.menu.items;
+      state.menu.parentIndex = state.menu.currentIndex;
+      state.menu.items = subItems;
+      state.menu.currentIndex = 0;
+      subItems.forEach((sub, idx) => {
+        sub.setAttribute("role", "menuitem");
+        sub.tabIndex = idx === 0 ? 0 : -1;
+        sub.style.display = '';
+        sub.style.pointerEvents = 'auto';
+      });
+      highlightMenuItem(0, liveRegion);
+      return;
+    }
+
     event.preventDefault();
-    activateMenuItem();
+    activateMenuItem(liveRegion);
     return;
   }
 
   if (event.key === "Escape") {
+    if (state.menu.parentItems && state.menu.parentItems.length > 0) {
+      event.preventDefault();
+      state.menu.items = state.menu.parentItems;
+      state.menu.currentIndex = state.menu.parentIndex || 0;
+      state.menu.parentItems = null;
+      highlightMenuItem(state.menu.currentIndex, liveRegion);
+      return;
+    }
     closeMenu(liveRegion);
     return;
   }
 }
 
-function activateMenuItem() {
+function activateMenuItem(liveRegion) {
   const item = state.menu.items[state.menu.currentIndex];
+  if (!item) return;
+
+  const customLabel = item.getAttribute("data-zablind-label");
+  const label = customLabel || item.innerText.replace(/\s+/g, " ").trim();
+
   ["mousedown", "mouseup", "click"].forEach((evt) =>
     item.dispatchEvent(new MouseEvent(evt, { bubbles: true }))
   );
-  item.focus();
+  try { item.click(); } catch(e) {}
+
+  const { announce } = require("./accessibility.js");
+  if (liveRegion && label) {
+    announce(loc(`Đã chọn: ${label}`, `Selected: ${label}`), liveRegion);
+  }
 
   setTimeout(() => {
     resetMenuState();
+    // Return focus to conversation or message
+    if (state.focusContext === "conversations" || state.focusContext === "search_results") {
+      const conv = state.conversations.map.get(state.conversations.currentId);
+      if (conv) conv.focus();
+    } else if (state.focusContext === "messages") {
+      const msg = state.messages.map.get(state.messages.currentId);
+      if (msg) msg.focus();
+    }
   }, 200);
 }
 
@@ -126,12 +227,26 @@ function closeMenu(liveRegion) {
     }, 10);
   }
 
-  const currentId = state.messages.currentId;
-  const message = state.messages.map.get(currentId);
+  const popup = document.querySelector(SELECTORS.menuPopup);
+  if (popup) {
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    document.body.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    document.body.click();
+  }
 
-  if (message) {
-    message.tabIndex = 0;
-    message.focus();
+  if (state.focusContext === "conversations" || state.focusContext === "search_results") {
+    const conv = state.conversations.map.get(state.conversations.currentId);
+    if (conv) {
+      conv.tabIndex = 0;
+      conv.focus();
+    }
+  } else {
+    const currentId = state.messages.currentId;
+    const message = state.messages.map.get(currentId);
+    if (message) {
+      message.tabIndex = 0;
+      message.focus();
+    }
   }
 
   resetMenuState();
@@ -225,6 +340,173 @@ async function openAttachmentMenu(event, liveRegion) {
   }
 }
 
+async function openConversationContextMenu(event, liveRegion) {
+  const { announce } = require("./accessibility.js");
+  const { updateConversationItems } = require("./conversations.js");
+  
+  const isSearch = state.focusContext === "search_results";
+  updateConversationItems(isSearch);
+
+  let convItem = null;
+  if (state.conversations.currentId) {
+    convItem = state.conversations.map.get(state.conversations.currentId);
+  }
+  if (!convItem) {
+    convItem = document.querySelector('.conv-item.selected') || document.querySelector('.conv-item');
+  }
+
+  if (!convItem) {
+    announce(loc("Chưa chọn cuộc hội thoại nào.", "No conversation selected."), liveRegion);
+    return;
+  }
+
+  if (event) {
+    event.preventDefault();
+  }
+
+  convItem.focus();
+  simulateHover(convItem);
+  await sleep(40);
+
+  const rect = convItem.getBoundingClientRect();
+  const clickX = rect.left + 50;
+  const clickY = rect.top + 20;
+
+  // Try dispatching contextmenu event
+  convItem.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      clientX: clickX,
+      clientY: clickY,
+    })
+  );
+
+  let popup = document.querySelector(SELECTORS.menuPopup);
+  if (!popup) {
+    await sleep(80);
+    popup = document.querySelector(SELECTORS.menuPopup);
+    if (!popup) {
+      const moreBtn = convItem.querySelector('.conv-action__menu-v2, [icon="More_24_Line"], [data-translate-title="Thêm"]');
+      if (moreBtn) {
+        moreBtn.click();
+      }
+    }
+  }
+
+  const start = Date.now();
+  while (!popup && Date.now() - start < 1000) {
+    popup = document.querySelector(SELECTORS.menuPopup);
+    if (popup) break;
+    await sleep(30);
+  }
+
+  if (!popup) {
+    announce(loc("Không mở được menu cho hội thoại.", "Could not open conversation menu."), liveRegion);
+    return;
+  }
+
+  let rawItems = [];
+  while (rawItems.length === 0 && Date.now() - start < 1000) {
+    rawItems = Array.from(popup.querySelectorAll('.zmenu-item, div-14.zmenu-item'));
+    if (rawItems.length > 0) break;
+    await sleep(30);
+  }
+
+  popup.setAttribute("role", "menu");
+
+  const allowedItems = [];
+
+  // 1. Find Pin item ("Ghim hội thoại" or "Bỏ ghim hội thoại")
+  const pinItem = rawItems.find(item => {
+    const text = item.innerText.toLowerCase();
+    return (text.includes("ghim") || text.includes("pin")) && !text.includes("phân loại");
+  });
+
+  // 2. Find Unmute item ("Bật thông báo")
+  const unmuteItem = rawItems.find(item => {
+    const text = item.innerText.toLowerCase();
+    return text.includes("bật thông báo") || text.includes("unmute") || text.includes("turn on notification");
+  });
+
+  // 3. Find Mute item ("Tắt thông báo")
+  const muteItem = rawItems.find(item => {
+    const text = item.innerText.toLowerCase();
+    return (text.includes("tắt thông báo") || text.includes("mute") || text.includes("turn off notification")) && !text.includes("bật");
+  });
+
+  if (pinItem) {
+    pinItem.style.display = '';
+    pinItem.setAttribute('role', 'menuitem');
+    pinItem.tabIndex = 0;
+    pinItem.setAttribute('aria-hidden', 'false');
+    pinItem.style.pointerEvents = 'auto';
+    allowedItems.push(pinItem);
+  }
+
+  const notifItem = unmuteItem || muteItem;
+  if (notifItem) {
+    notifItem.style.display = '';
+    notifItem.setAttribute('role', 'menuitem');
+    notifItem.tabIndex = -1;
+    notifItem.setAttribute('aria-hidden', 'false');
+    notifItem.style.pointerEvents = 'auto';
+
+    if (notifItem === muteItem) {
+      notifItem.setAttribute('data-zablind-label', loc("Tắt thông báo, menu con. Bấm Enter hoặc Mũi tên phải để chọn thời gian.", "Mute notifications, submenu. Press Enter or Right Arrow to choose duration."));
+
+      // Ensure all sub-items inside .zmenu-sub are enabled and labeled
+      const subItems = Array.from(muteItem.querySelectorAll('.zmenu-sub .zmenu-item, .sub-menu .zmenu-item, .zmenu-sub div-14.zmenu-item, .sub-menu div-14.zmenu-item'));
+      subItems.forEach((sub) => {
+        sub.style.display = '';
+        sub.setAttribute('role', 'menuitem');
+        sub.tabIndex = -1;
+        sub.setAttribute('aria-hidden', 'false');
+        sub.style.pointerEvents = 'auto';
+        const subText = sub.innerText.replace(/\s+/g, ' ').trim();
+        sub.setAttribute('data-zablind-label', loc(`Tắt thông báo: ${subText}`, `Mute notifications: ${subText}`));
+      });
+    } else {
+      notifItem.setAttribute('data-zablind-label', loc("Bật thông báo", "Turn on notifications"));
+    }
+
+    allowedItems.push(notifItem);
+  }
+
+  // Lock and hide all other children in popup
+  const menuContainer = popup.querySelector('.zmenu-body > div > div') || popup.querySelector('.zmenu-body');
+  const allChildren = Array.from(menuContainer ? menuContainer.children : popup.querySelectorAll('.zmenu-item, .zmenu-separator'));
+
+  allChildren.forEach(child => {
+    const isAllowed = allowedItems.some(allowed => allowed === child || child.contains(allowed));
+    if (!isAllowed) {
+      child.style.display = 'none';
+      child.setAttribute('aria-hidden', 'true');
+      child.style.pointerEvents = 'none';
+      child.querySelectorAll('*').forEach(el => {
+        el.tabIndex = -1;
+        el.setAttribute('aria-hidden', 'true');
+      });
+    }
+  });
+
+  popup.querySelectorAll('.zmenu-separator').forEach(sep => {
+    sep.style.display = 'none';
+  });
+
+  state.menu.parentItems = null;
+  state.menu.parentIndex = 0;
+  updateMenuState(allowedItems, allowedItems.length > 0 ? 0 : -1);
+
+  if (allowedItems.length > 0) {
+    await sleep(50);
+    highlightMenuItem(0, liveRegion);
+  } else {
+    announce(loc("Không có lựa chọn hợp lệ trong menu.", "No valid options in menu."), liveRegion);
+  }
+}
+
 module.exports = {
   getAllowedMenuItems,
   highlightMenuItem,
@@ -233,6 +515,7 @@ module.exports = {
   closeMenu,
   openContextMenu,
   openAttachmentMenu,
+  openConversationContextMenu,
 };
 
 

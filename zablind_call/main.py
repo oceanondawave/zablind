@@ -7,6 +7,23 @@ Automatically focuses ZaloCall window when incoming call is detected.
 import sys
 import traceback
 
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    try:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
+def safe_input(prompt=""):
+    try:
+        return input(prompt)
+    except Exception:
+        return ""
+
 def global_exception_handler(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
@@ -14,10 +31,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     print("FATAL ERROR DURING STARTUP:", file=sys.stderr)
     traceback.print_exception(exc_type, exc_value, exc_traceback)
     print("\nPress Enter to exit...")
-    try:
-        input()
-    except:
-        pass
+    safe_input()
 
 sys.excepthook = global_exception_handler
 
@@ -132,7 +146,7 @@ def _ensure_dependencies():
             print(f"\nFailed to auto-install! Error: {e}")
             print(f"Please install manually: pip install {' '.join(missing_pip)}")
             print("Press Enter to exit...")
-            try: input() 
+            try: safe_input() 
             except: pass
             sys.exit(1)
 
@@ -675,6 +689,13 @@ class ZaloCallHandler:
         try:
             x, y = point
             print(f"[CLICK] Cached {label} click at position ({x}, {y})")
+            if self.zalocall_window_handle:
+                try:
+                    if win32gui.IsWindow(self.zalocall_window_handle):
+                        win32gui.ShowWindow(self.zalocall_window_handle, win32con.SW_RESTORE)
+                        win32gui.SetForegroundWindow(self.zalocall_window_handle)
+                except Exception:
+                    pass
             current_pos = win32gui.GetCursorPos()
             win32api.SetCursorPos((x, y))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
@@ -1085,12 +1106,6 @@ class ZaloCallHandler:
                     arr = None
 
                 if not arr or arr.Length == 0:
-                    if cache_request:
-                        arr = root.FindAllBuildCache(UIA.TreeScope_Descendants, condition, cache_request)
-                    else:
-                        arr = root.FindAll(UIA.TreeScope_Descendants, condition)
-
-                if not arr:
                     continue
 
                 for i in range(arr.Length):
@@ -1743,10 +1758,6 @@ try {{
             return None
             
         try:
-            fallback_root = self._get_process_root_element_via_uia_desktop()
-            if fallback_root:
-                return fallback_root
-
             # 1. Check if we already have the window handle and it's valid
             hwnd_ok = False
             if self.zalocall_window_handle:
@@ -1791,7 +1802,9 @@ try {{
                 except Exception as uia_handle_err:
                     print(f"[ROOT] ElementFromHandle failed: {uia_handle_err}")
                     self.zalocall_window_handle = None
-            return None
+
+            # 4. Fallback only if Win32 handle lookup failed
+            return self._get_process_root_element_via_uia_desktop()
         except Exception as e:
             print(f"Error getting process root element: {e}")
             return None
@@ -2020,53 +2033,6 @@ try {{
         """Find active call control buttons (camera, end call, microphone) - not accept/deny buttons."""
         if not self.automation:
             return []
-        
-        try:
-            root = self.get_process_root_element()
-            if not root:
-                return []
-            
-            checkboxes = []
-            elements = self.get_interactive_elements(root)
-            for element in elements:
-                try:
-                    control_type = self._get_el_control_type(element)
-                    if control_type in [UIA.UIA_CheckBoxControlTypeId, UIA.UIA_ButtonControlTypeId]:
-                        # Filter out window controls by name
-                        name = self._get_el_name(element).lower()
-                        auto_id = self._get_el_auto_id(element).lower()
-                        combined = f"{name} {auto_id}"
-                        if any(kw in combined for kw in ["minimize", "maximize", "close", "restore", "thu nhỏ", "phóng to", "đóng"]):
-                            continue
-                            
-                        # Filter out small dropdown/expand arrows (which are narrow, e.g. width=20, height=46)
-                        rect = self._get_el_rect(element)
-                        width = rect.right - rect.left
-                        height = rect.bottom - rect.top
-                        if width > 0 and height > 0:
-                            aspect_ratio = width / height
-                            if width < 35 or height < 32 or aspect_ratio < 0.8:
-                                continue
-                                
-                        checkboxes.append(element)
-                except:
-                    pass
-            
-            # Sort strictly left-to-right
-            try:
-                checkboxes.sort(key=lambda cb: self._get_el_rect(cb).left)
-            except Exception as sort_err:
-                print(f"[ACTIVE CALL] Error sorting active checkboxes: {sort_err}")
-                
-            return checkboxes
-        except Exception as e:
-            print(f"Error finding active call checkboxes: {e}")
-            return []
-
-    def find_active_call_checkboxes(self) -> List[UIA.IUIAutomationElement]:
-        """Find active call controls using geometry only."""
-        if not self.automation:
-            return []
 
         try:
             root = self.get_process_root_element()
@@ -2079,10 +2045,18 @@ try {{
                 root_rect = None
 
             controls = []
-            for element in self.get_interactive_elements(root):
+            elements = self.get_interactive_elements(root)
+            for element in elements:
                 try:
                     control_type = self._get_el_control_type(element)
                     if control_type not in [UIA.UIA_CheckBoxControlTypeId, UIA.UIA_ButtonControlTypeId]:
+                        continue
+
+                    # Filter out window controls by name
+                    name = self._get_el_name(element).lower()
+                    auto_id = self._get_el_auto_id(element).lower()
+                    combined = f"{name} {auto_id}"
+                    if any(kw in combined for kw in ["minimize", "maximize", "close", "restore", "thu nhỏ", "phóng to", "đóng"]):
                         continue
 
                     rect = self._get_el_rect(element)
@@ -2582,96 +2556,6 @@ try {{
             print(f"[INCOMING MAP] Error reading call type hint: {e}")
         return None
 
-    def _map_incoming_controls_by_geometry(self, controls, root=None, allow_extra_no_cam: bool = False):
-        """Map incoming popup controls by layout: bottom-row left is deny, bottom-row right is accept."""
-        candidates = []
-        seen = set()
-        for ctrl in controls or []:
-            try:
-                rect = self._get_el_rect(ctrl)
-                width = rect.right - rect.left
-                height = rect.bottom - rect.top
-                if width <= 20 or height <= 20 or width > 420 or height > 220:
-                    continue
-                key = (rect.left, rect.top, rect.right, rect.bottom)
-                if key in seen:
-                    continue
-                seen.add(key)
-                name = self._get_el_name(ctrl).lower()
-                auto_id = self._get_el_auto_id(ctrl).lower()
-                combined = f"{name} {auto_id}"
-                if any(kw in combined for kw in ["minimize", "maximize", "restore", "thu nhá»", "phÃ³ng to"]):
-                    continue
-                candidates.append((rect.left, rect.top, rect.right, rect.bottom, ctrl, combined))
-            except:
-                pass
-
-        if len(candidates) < 2:
-            return None, None, None
-
-        for left, top, right, bottom, ctrl, combined in candidates:
-            print(f"[INCOMING MAP] Candidate at ({left},{top},{right},{bottom}) text='{combined.strip()}'")
-
-        # Accept/deny are the two controls on the lowest row of the incoming popup.
-        max_top = max(c[1] for c in candidates)
-        bottom_row = [c for c in candidates if abs(c[1] - max_top) <= 120]
-        if len(bottom_row) < 2:
-            bottom_row = sorted(candidates, key=lambda c: (c[1], c[0]))[-2:]
-        bottom_row.sort(key=lambda c: c[0])
-
-        deny_btn = bottom_row[0][4]
-        accept_btn = bottom_row[1][4]
-
-        extra_controls = [c for c in candidates if c[4] not in [deny_btn, accept_btn]]
-        no_cam_btn = None
-        for c in candidates:
-            if self.is_accept_without_camera_button(c[4]):
-                no_cam_btn = c[4]
-                break
-
-        hint = self._incoming_call_type_hint_from_root(root) if root else None
-        if not hint and self.call_type in ["audio", "video"]:
-            hint = self.call_type
-
-        if hint == "video" and len(candidates) == 2:
-            pair = sorted(candidates, key=lambda c: c[0])
-            no_cam_btn = pair[0][4]
-            accept_btn = pair[1][4]
-            print(f"[INCOMING MAP] Video pair result: no_cam=({pair[0][0]},{pair[0][1]}), accept=({pair[1][0]},{pair[1][1]})")
-            return None, accept_btn, no_cam_btn
-
-        if hint == "video" and len(candidates) >= 3:
-            rows = []
-            for cand in sorted(candidates, key=lambda c: c[1]):
-                placed = False
-                for row in rows:
-                    if abs(cand[1] - row["top"]) <= 120:
-                        row["items"].append(cand)
-                        row["top"] = sum(item[1] for item in row["items"]) / len(row["items"])
-                        placed = True
-                        break
-                if not placed:
-                    rows.append({"top": cand[1], "items": [cand]})
-            accept_rows = [row for row in rows if len(row["items"]) >= 2]
-            deny_rows = [row for row in rows if len(row["items"]) == 1]
-            if accept_rows:
-                accept_row = max(accept_rows, key=lambda row: (len(row["items"]), row["top"]))
-                pair = sorted(accept_row["items"], key=lambda c: c[0])[:2]
-                no_cam_btn = pair[0][4]
-                accept_btn = pair[1][4]
-                if deny_rows:
-                    deny_row = max(deny_rows, key=lambda row: row["top"])
-                    deny_btn = deny_row["items"][0][4]
-                print(f"[INCOMING MAP] Video row result: deny={'yes' if deny_btn else 'no'}, no_cam=({pair[0][0]},{pair[0][1]}), accept=({pair[1][0]},{pair[1][1]})")
-                return deny_btn, accept_btn, no_cam_btn
-
-        if not no_cam_btn and extra_controls and (hint == "video" or allow_extra_no_cam):
-            # Zalo often exposes this anonymous control above/right of the accept row.
-            extra_controls.sort(key=lambda c: (c[1], -c[0]))
-            no_cam_btn = extra_controls[0][4]
-
-        print(f"[INCOMING MAP] Geometry result: deny=({bottom_row[0][0]},{bottom_row[0][1]}), accept=({bottom_row[1][0]},{bottom_row[1][1]}), no_cam={'yes' if no_cam_btn else 'no'}, hint={hint}")
-        return deny_btn, accept_btn, no_cam_btn
 
     def _map_incoming_controls_by_geometry(self, controls, root=None, allow_extra_no_cam: bool = False):
         """Map incoming popup controls by fixed Zalo UI indices, without text scanning."""
@@ -2788,119 +2672,9 @@ try {{
             print(f"[FIND BUTTONS] Index map: checkboxes={len(checkboxes)} buttons={len(buttons)} deny={'yes' if deny_btn else 'no'} accept={'yes' if accept_btn else 'no'} no_cam={'yes' if no_cam_btn else 'no'}")
             self._set_incoming_controls(deny_btn, accept_btn, no_cam_btn)
             return deny_btn, accept_btn, no_cam_btn
-                        
-            try:
-                checkboxes.sort(key=lambda cb: (
-                    self._get_el_rect(cb).top,
-                    self._get_el_rect(cb).left
-                ))
-            except:
-                pass
-                
-            deny_btn = None
-            accept_btn = None
-            if len(checkboxes) >= 2:
-                for cb in checkboxes:
-                    try:
-                        name = self._get_el_name(cb).lower()
-                        auto_id = self._get_el_auto_id(cb).lower()
-                        combined = f"{name} {auto_id}"
-                        if any(kw in combined for kw in ["deny", "reject", "từ chối", "tu choi"]):
-                            deny_btn = cb
-                        elif any(kw in combined for kw in ["accept", "answer", "chấp nhận", "chap nhan", "trả lời", "tra loi"]):
-                            if not any(kw in combined for kw in ["without", "không", "khong"]):
-                                accept_btn = cb
-                    except:
-                        pass
-                
-                if not deny_btn:
-                    deny_btn = checkboxes[0]
-                if not accept_btn:
-                    accept_btn = checkboxes[1]
-            elif len(checkboxes) == 1:
-                cb = checkboxes[0]
-                try:
-                    name = self._get_el_name(cb).lower()
-                    if any(kw in name for kw in ["deny", "reject", "từ chối"]):
-                        deny_btn = cb
-                    else:
-                        accept_btn = cb
-                except:
-                    accept_btn = cb
-                    
-            no_cam_btn = None
-            
-            call_buttons = []
-            if buttons:
-                try:
-                    root_rect = root.CurrentBoundingRectangle
-                    for btn in buttons:
-                        try:
-                            name = self._get_el_name(btn).lower()
-                            auto_id = self._get_el_auto_id(btn).lower()
-                            combined = f"{name} {auto_id}"
-                            if any(kw in combined for kw in ["minimize", "maximize", "close", "restore", "thu nhỏ", "phóng to", "đóng"]):
-                                continue
-                            
-                            rect = self._get_el_rect(btn)
-                            if rect.top - root_rect.top < 60:
-                                continue
-                                
-                            # Filter out large layout panels / background elements
-                            width = rect.right - rect.left
-                            height = rect.bottom - rect.top
-                            if width > 150 or height > 150:
-                                continue
-                                
-                            call_buttons.append(btn)
-                        except:
-                            pass
-                except Exception as filter_err:
-                    print(f"[FILTER] Error filtering buttons: {filter_err}")
-                    call_buttons = buttons
- 
-            if call_buttons:
-                if self.call_type != "video":
-                    self.call_type = "video"
-                    print("[DETECT] Set call_type to video due to button presence in incoming call")
-                try:
-                    if len(call_buttons) >= 2:
-                        no_cam_btn = call_buttons[1]
-                        print(f"[DETECT] Mapped call_buttons[1] as 'Accept without camera' button: '{self._get_el_name(no_cam_btn) or 'button'}'")
-                    else:
-                        no_cam_btn = call_buttons[0]
-                        print(f"[DETECT] Mapped call_buttons[0] as 'Accept without camera' button: '{self._get_el_name(no_cam_btn) or 'button'}'")
-                except Exception as map_err:
-                    no_cam_btn = None
-                    print(f"[DETECT] ERROR mapping call button: {map_err}")
-            elif len(checkboxes) >= 3:
-                other_cbs = [cb for cb in checkboxes if cb not in [deny_btn, accept_btn]]
-                if other_cbs:
-                    no_cam_btn = other_cbs[0]
-                    if self.call_type != "video":
-                        self.call_type = "video"
-                        print("[DETECT] Set call_type to video due to >= 3 checkboxes in incoming call")
-                    print(f"[DETECT] Instantly mapped third checkbox as 'Accept without camera' button")
-
-            geo_deny, geo_accept, geo_no_cam = self._map_incoming_controls_by_geometry(checkboxes + call_buttons, root)
-            if geo_deny and geo_accept:
-                deny_btn = geo_deny
-                accept_btn = geo_accept
-            if geo_no_cam:
-                no_cam_btn = geo_no_cam
-                if self.call_type != "video":
-                    self.call_type = "video"
-                    print("[DETECT] Set call_type to video due to geometric no-camera control")
-            type_hint = self._incoming_call_type_hint_from_root(root)
-            if type_hint == "audio" and no_cam_btn and not self.is_accept_without_camera_button(no_cam_btn):
-                no_cam_btn = None
-                self.call_type = "audio"
-                print("[DETECT] Cleared anonymous no-camera candidate because popup says audio")
-
-            return deny_btn, accept_btn, no_cam_btn
         except Exception as e:
             print(f"[ERROR] Error finding incoming buttons: {e}")
-            raise e
+            return None, None, None
 
     def find_incoming_no_cam_button_by_index(self) -> Optional[UIA.IUIAutomationElement]:
         """Find incoming video accept-without-camera using raw Button[1] only."""
@@ -3108,49 +2882,6 @@ try {{
                 ))
             except:
                 pass
-            
-            return checkboxes
-
-            deny_checkbox = None
-            accept_checkbox = None
-            
-            if len(checkboxes) >= 2:
-                for cb in checkboxes:
-                    try:
-                        name = self._get_el_name(cb)
-                        name_lower = name.lower()
-                        automation_id = self._get_el_auto_id(cb)
-                        automation_id_lower = automation_id.lower()
-                        
-                        if any(kw in name_lower or kw in automation_id_lower for kw in ["deny", "reject", "từ chối", "tu choi"]):
-                            deny_checkbox = cb
-                            print(f"[IDENTIFY] Found Deny button by name/ID: '{name}' / '{automation_id}'")
-                            continue
-                        
-                        if any(kw in name_lower or kw in automation_id_lower for kw in ["accept", "answer", "chấp nhận", "chap nhan", "trả lời", "tra loi"]):
-                            if any(kw in name_lower or kw in automation_id_lower for kw in ["without", "không", "khong", "off", "cam"]):
-                                continue
-                            accept_checkbox = cb
-                            print(f"[IDENTIFY] Found Accept button by name/ID: '{name}' / '{automation_id}'")
-                            continue
-                    except:
-                        pass
-                
-                if not deny_checkbox or not accept_checkbox:
-                    print("[WARNING] Could not identify buttons by name/ID, using position-based assumption")
-                    print("[WARNING] Assuming: First checkbox = Deny, Second checkbox = Accept")
-                    try:
-                        deny_checkbox = checkboxes[0]
-                        accept_checkbox = checkboxes[1]
-                    except:
-                        pass
-                else:
-                    other_checkboxes = [cb for cb in checkboxes if cb not in [deny_checkbox, accept_checkbox]]
-                    checkboxes = [deny_checkbox, accept_checkbox] + other_checkboxes
-            elif len(checkboxes) == 1:
-                print("[WARNING] Only one checkbox found, cannot determine if Accept or Deny")
-            else:
-                checkboxes = []
             
             return checkboxes
         except Exception as e:
@@ -3626,6 +3357,13 @@ try {{
             y = int((rect.top + rect.bottom) / 2)
             
             print(f"[CLICK] Physical mouse click at position ({x}, {y})")
+            if self.zalocall_window_handle:
+                try:
+                    if win32gui.IsWindow(self.zalocall_window_handle):
+                        win32gui.ShowWindow(self.zalocall_window_handle, win32con.SW_RESTORE)
+                        win32gui.SetForegroundWindow(self.zalocall_window_handle)
+                except Exception:
+                    pass
             
             # Save current cursor position
             current_pos = win32gui.GetCursorPos()
@@ -3654,8 +3392,12 @@ try {{
             if self.last_action_type == "accept" and current_time - self.last_action_time < 0.35:
                 return
             if self.action_in_progress:
-                print("[SKIP] Another action is already in progress")
-                return
+                if current_time - self.last_action_time > 2.0:
+                    print("[WARN] Action was stuck in progress for >2s, forcing reset")
+                    self.action_in_progress = False
+                else:
+                    print("[SKIP] Another action is already in progress")
+                    return
             self.action_in_progress = True
             self.last_action_type = "accept"
             self.last_action_time = current_time
@@ -3714,6 +3456,8 @@ try {{
             
             if accept_btn or accept_point:
                 print(f"[ACCEPT] Clicking Accept button... (is_video={is_video})")
+                self.focus_zalocall_window()
+                time.sleep(0.03)
                 if not self.click_point(accept_point, "accept"):
                     self.click_checkbox(accept_btn)
                 
@@ -3785,8 +3529,12 @@ try {{
             if self.last_action_type == "accept_without_camera" and current_time - self.last_action_time < 0.35:
                 return
             if self.action_in_progress:
-                print("[SKIP] Another action is already in progress")
-                return
+                if current_time - self.last_action_time > 2.0:
+                    print("[WARN] Action was stuck in progress for >2s, forcing reset")
+                    self.action_in_progress = False
+                else:
+                    print("[SKIP] Another action is already in progress")
+                    return
             self.action_in_progress = True
             self.last_action_type = "accept_without_camera"
             self.last_action_time = current_time
@@ -3841,6 +3589,8 @@ try {{
              
             if no_cam_btn or no_cam_point:
                 print("[ACCEPT WITHOUT CAMERA] Clicking 'Accept without camera' button...")
+                self.focus_zalocall_window()
+                time.sleep(0.03)
                 if not self.click_point(no_cam_point, "accept without camera"):
                     self.click_checkbox(no_cam_btn)
                 
@@ -3915,8 +3665,12 @@ try {{
             if self.last_action_type == "deny" and current_time - self.last_action_time < 0.35:
                 return
             if self.action_in_progress:
-                print("[SKIP] Another action is already in progress")
-                return
+                if current_time - self.last_action_time > 2.0:
+                    print("[WARN] Action was stuck in progress for >2s, forcing reset")
+                    self.action_in_progress = False
+                else:
+                    print("[SKIP] Another action is already in progress")
+                    return
             self.action_in_progress = True
             self.last_action_type = "deny"
             self.last_action_time = current_time
@@ -3967,12 +3721,14 @@ try {{
             
             if deny_btn or deny_point:
                 print("[DENY] Clicking Deny button...")
+                self.focus_zalocall_window()
+                time.sleep(0.03)
                 old_pid = self.zalocall_pid
                 if not self.click_point(deny_point, "deny"):
                     self.click_checkbox(deny_btn)
                 self._clear_speech_queue()
                 self.speak("Đã từ chối cuộc gọi", language='vi')
-                self._reset_call_state(reset_process=True, clear_actions=True, reason="deny clicked")
+                self._reset_call_state(reset_process=False, clear_actions=True, reason="deny clicked")
                 self.start_ghost_window_reaper(old_pid)
             else:
                 # Fallback to checkboxes
@@ -4368,7 +4124,13 @@ try {{
             with self.call_lock:
                 active = self.call_active or self.incoming_call_detected
 
-
+            if not active:
+                if self.zalocall_window_handle and WIN32_AVAILABLE:
+                    try:
+                        if win32gui.IsWindow(self.zalocall_window_handle) and win32gui.IsWindowVisible(self.zalocall_window_handle):
+                            active = True
+                    except Exception:
+                        active = False
 
             if not active:
                 return
@@ -4701,17 +4463,13 @@ try {{
                             else:
                                 checkboxes = self.find_call_checkboxes()
                                 current_count = len(checkboxes)
-                                # If we have 2+ buttons, it could be an active call - use filtered checkboxes to remove extra UI elements
-                                if current_count >= 2:
+                                # If we have 3+ buttons and check_if_call_is_active is True, it is an active call
+                                if current_count >= 3 and self.check_if_call_is_active(checkboxes):
                                     filtered_checkboxes = self.find_active_call_checkboxes()
-                                    if filtered_checkboxes:
-                                        if len(filtered_checkboxes) >= 2:
-                                            # Filtered version found correct count - use it
-                                            checkboxes = filtered_checkboxes
-                                            current_count = len(checkboxes)
-                                            print(f"[FILTER] Using filtered checkboxes: {current_count} buttons")
-                                        else:
-                                            print(f"[FILTER] Filtered checkboxes count ({len(filtered_checkboxes)}) less than 2, keeping original ({current_count})")
+                                    if filtered_checkboxes and len(filtered_checkboxes) >= 2:
+                                        checkboxes = filtered_checkboxes
+                                        current_count = len(checkboxes)
+                                        print(f"[FILTER] Using filtered checkboxes for active call: {current_count} buttons")
                         else:
                             # Use cached checkboxes
                             checkboxes = self.active_call_checkboxes
@@ -5281,11 +5039,15 @@ def kill_zalo_processes():
 
 def find_zablind_assets():
     exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+    script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else None
     possible_dirs = [
         exe_dir,
         os.path.join(exe_dir, ".."),
         "c:/Projects/zablind",
     ]
+    if script_dir:
+        possible_dirs.insert(0, script_dir)
+        possible_dirs.insert(1, os.path.join(script_dir, ".."))
     
     for base in possible_dirs:
         zablind_dir = os.path.join(base, "zablind")
@@ -5297,8 +5059,14 @@ def find_zablind_assets():
     for base in possible_dirs:
         zablind_dir = os.path.join(base, "zablind_main", "zablind")
         preload = os.path.join(base, "zablind_main", "preload-wrapper.js")
-        popup = os.path.join(base, "extracted", "pc-dist", "popup-viewer.html")
-        if os.path.isdir(zablind_dir) and os.path.exists(preload) and os.path.exists(popup):
+        popup_candidates = [
+            os.path.join(base, "zablind_main", "html", "popup-viewer.html"),
+            os.path.join(base, "html", "popup-viewer.html"),
+            os.path.join(base, "popup-viewer.html"),
+            os.path.join(base, "extracted", "pc-dist", "popup-viewer.html"),
+        ]
+        popup = next((p for p in popup_candidates if os.path.exists(p)), None)
+        if os.path.isdir(zablind_dir) and os.path.exists(preload) and popup:
             return {
                 'zablind': zablind_dir,
                 'preload-wrapper.js': preload,
@@ -5971,7 +5739,7 @@ def check_for_updates_manually(handler):
 def start_watchdog_thread(handler):
     def watchdog_loop():
         zalo_was_running = False
-        zalo_exe_name = "zalo.exe"
+        zalo_exe_names = ("zalo.exe", "zaloexecutable.exe")
         zablind_dir = get_zablind_dir()
         heartbeat_file = os.path.join(zablind_dir, "zablind_heartbeat.json")
         crash_log_file = "C:/Projects/zablind/zablind_crash.log"
@@ -5988,27 +5756,35 @@ def start_watchdog_thread(handler):
                 if PSUTIL_AVAILABLE:
                     for proc in psutil.process_iter(['pid', 'name']):
                         try:
-                            if proc.info['name'] and proc.info['name'].lower() == zalo_exe_name:
+                            if proc.info['name'] and proc.info['name'].lower() in zalo_exe_names:
                                 zalo_is_running = True
                                 zalo_pids.append(proc.info['pid'])
                         except:
                             pass
                 else:
                     try:
-                        output = subprocess.check_output('tasklist /FI "IMAGENAME eq zalo.exe" /FO CSV /NH', shell=True).decode('utf-8', errors='ignore')
-                        zalo_is_running = "zalo.exe" in output.lower()
+                        output = subprocess.check_output('tasklist /FO CSV /NH', shell=True).decode('utf-8', errors='ignore').lower()
+                        zalo_is_running = any(name in output for name in zalo_exe_names)
                     except:
                         pass
                 
                 if zalo_is_running and not zalo_was_running:
-                    print(f"[WATCHDOG] Zalo process start detected. Starting handshake verification...")
-                    if os.path.exists(heartbeat_file):
-                        try: os.remove(heartbeat_file)
-                        except: pass
-                        
                     handshake_success = False
                     start_time = time.time()
                     error_details = None
+
+                    if os.path.exists(heartbeat_file):
+                        try:
+                            with open(heartbeat_file, 'r', encoding='utf-8') as f:
+                                hb_data = json.load(f)
+                            if hb_data.get('status') == 'ok' and (time.time() - (hb_data.get('timestamp', 0) / 1000.0)) < 60.0:
+                                handshake_success = True
+                                print("[WATCHDOG] Existing recent heartbeat found and valid! Handshake successful.")
+                        except:
+                            pass
+                        if not handshake_success:
+                            try: os.remove(heartbeat_file)
+                            except: pass
                     
                     # Build candidate paths to match the JS fallback chain
                     zablind_dir_candidates = [
@@ -6154,26 +5930,8 @@ def main():
         except Exception as patch_err:
             print(f"[PATCH-ONCE] Fatal error during patch: {patch_err}")
             sys.exit(1)
-    # Session privilege self-correction
-    # If our parent process name is another ZablindCallHandler, we were likely spawned by an old updater.
-    # We must restart ourselves via the Windows Shell 'start' command to gain full interactive desktop privileges.
-    if os.name == 'nt' and "--restart" not in sys.argv:
-        try:
-            if PSUTIL_AVAILABLE:
-                parent_pid = os.getppid()
-                if parent_pid > 0:
-                    parent_proc = psutil.Process(parent_pid)
-                    p_name = parent_proc.name().lower()
-                    if "zablindcallhandler" in p_name:
-                        print(f"[ROOT] Spawned by updater ({p_name}). Restarting via Windows Shell for interactive rights...")
-                        current_exe = os.path.abspath(sys.executable)
-                        exe_dir = os.path.dirname(current_exe)
-                        args_str = " ".join([f'"{arg}"' for arg in sys.argv[1:]]) + " --restart"
-                        cmd = f'start "" "{current_exe}" {args_str}'
-                        subprocess.Popen(cmd, shell=True, cwd=exe_dir, env=get_clean_env(), creationflags=subprocess.CREATE_NO_WINDOW)
-                        sys.exit(0)
-        except Exception as check_err:
-            print(f"[ROOT] Session correction check failed: {check_err}")
+    # Session privilege self-correction (Disabled: In PyInstaller, the bootloader is named zablindcallhandler, causing an unwanted infinite self-restart loop)
+    # if os.name == 'nt' and "--restart" not in sys.argv: ...
 
     # Named mutex for single-instance check (skip for patch-once utility)
     import ctypes
@@ -6219,7 +5977,7 @@ def main():
         print(f"ERROR: This script is Windows-only. Detected platform: {platform.system()}")
         print("This script requires Windows to access Windows UI Automation APIs.")
         print()
-        input("Press Enter to exit...")
+        safe_input("Press Enter to exit...")
         sys.exit(1)
     
     if 'tkinter' in sys.modules or 'tk' in sys.modules:
@@ -6240,7 +5998,7 @@ def main():
         print("ERROR: pywin32 is required.")
         print("Please install it with: pip install pywin32")
         print()
-        input("Press Enter to exit...")
+        safe_input("Press Enter to exit...")
         sys.exit(1)
     
     handler = ZaloCallHandler()
@@ -6257,7 +6015,7 @@ def main():
     if not handler.initialize_automation():
         print("ERROR: Failed to initialize UI Automation.")
         print()
-        input("Press Enter to exit...")
+        safe_input("Press Enter to exit...")
         sys.exit(1)
     
     # Using button count detection only (4 = audio, 5 = video)
@@ -6308,7 +6066,7 @@ def main():
         monitor_thread.start()
         
         # Keep main thread alive
-        zalo_exe_name = "zalo.exe"
+        zalo_exe_names = ("zalo.exe", "zaloexecutable.exe")
         while True:
             time.sleep(1)
             try:
@@ -6344,31 +6102,33 @@ def main():
                 print(f"[ROOT] Error checking quit file: {quit_err}")
                 
             zalo_exists = False
-            try:
-                if PSUTIL_AVAILABLE:
-                    for proc in psutil.process_iter(['name']):
-                        try:
-                            if proc.info['name'] and proc.info['name'].lower() == zalo_exe_name:
-                                zalo_exists = True
-                                break
-                        except:
-                            pass
-                else:
-                    output = subprocess.check_output('tasklist /FI "IMAGENAME eq zalo.exe" /FO CSV /NH', shell=True, creationflags=subprocess.CREATE_NO_WINDOW).decode('utf-8', errors='ignore')
-                    zalo_exists = "zalo.exe" in output.lower()
-            except Exception as e:
-                print(f"[WATCHDOG] Error checking zalo status: {e}")
-                # Fallback to parent_exists if parent_pid is available, otherwise assume Zalo exists to avoid false-positive exit
-                if parent_pid:
-                    try:
-                        if PSUTIL_AVAILABLE:
-                            zalo_exists = psutil.pid_exists(parent_pid)
-                        else:
-                            output = subprocess.check_output(f'tasklist /FI "PID eq {parent_pid}" /FO CSV /NH', shell=True, creationflags=subprocess.CREATE_NO_WINDOW).decode('utf-8', errors='ignore')
-                            zalo_exists = str(parent_pid) in output
-                    except:
-                        zalo_exists = False
-                else:
+            # Check parent PID first if provided (most reliable indicator)
+            if parent_pid:
+                try:
+                    if PSUTIL_AVAILABLE:
+                        zalo_exists = psutil.pid_exists(parent_pid)
+                    else:
+                        output = subprocess.check_output(f'tasklist /FI "PID eq {parent_pid}" /FO CSV /NH', shell=True, creationflags=subprocess.CREATE_NO_WINDOW).decode('utf-8', errors='ignore')
+                        zalo_exists = str(parent_pid) in output
+                except Exception:
+                    zalo_exists = False
+
+            if not zalo_exists:
+                try:
+                    if PSUTIL_AVAILABLE:
+                        for proc in psutil.process_iter(['name']):
+                            try:
+                                if proc.info['name'] and proc.info['name'].lower() in zalo_exe_names:
+                                    zalo_exists = True
+                                    break
+                            except:
+                                pass
+                    else:
+                        output = subprocess.check_output('tasklist /FO CSV /NH', shell=True, creationflags=subprocess.CREATE_NO_WINDOW).decode('utf-8', errors='ignore').lower()
+                        zalo_exists = any(name in output for name in zalo_exe_names)
+                except Exception as e:
+                    print(f"[WATCHDOG] Error checking zalo status: {e}")
+                    # If error checking, assume Zalo exists to avoid false-positive exit
                     zalo_exists = True
                 
             if not zalo_exists and not PATCHING_IN_PROGRESS:
@@ -6387,7 +6147,7 @@ def main():
         handler.stop()
         print("\nPress Enter to exit...")
         try:
-            input()
+            safe_input()
         except:
             pass
         sys.exit(1)
@@ -6405,7 +6165,7 @@ if __name__ == "__main__":
         traceback.print_exc()
         print("\nPress Enter to exit...")
         try:
-            input()
+            safe_input()
         except:
             pass
         sys.exit(1)

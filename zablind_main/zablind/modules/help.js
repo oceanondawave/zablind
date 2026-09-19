@@ -151,9 +151,21 @@ const shortcutsData = [
     category: "General"
   },
   {
-    keys: ["ContextMenu"],
-    descVi: "Mở menu ngữ cảnh (chuột phải) của tin nhắn hoặc liên kết đang chọn",
-    descEn: "Open context menu (right-click) for focused message or link",
+    keys: ["Ctrl", "Shift", "J"],
+    descVi: "Bật hoặc tắt toàn bộ thông báo Windows của Zablind",
+    descEn: "Toggle all Zablind Windows notifications on or off",
+    category: "General"
+  },
+  {
+    keys: ["Ctrl", "Shift", "X"],
+    descVi: "Bật hoặc tắt chế độ điều hướng tự do bằng phím mũi tên (như khi chưa cài Zablind)",
+    descEn: "Toggle free arrow key navigation on or off (as if Zablind were not installed)",
+    category: "General"
+  },
+  {
+    keys: ["ContextMenu / Shift+F10"],
+    descVi: "Mở menu ngữ cảnh (chuột phải): Ghim hoặc Bật/Tắt thông báo cho hội thoại, hoặc các thao tác cho tin nhắn",
+    descEn: "Open context menu (right-click): Pin or Mute/Unmute conversation, or message actions",
     category: "Actions"
   },
   {

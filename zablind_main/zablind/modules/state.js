@@ -27,6 +27,8 @@ const state = {
   previousActiveElement: null,
   previousFocusContext: "conversations",
   updateInProgress: false,
+  windowsNotificationsEnabled: true,
+  freeArrowNavigation: false,
 };
 
 function updateMenuState(items, index) {

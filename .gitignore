@@ -51,6 +51,8 @@ zablind_call/dist/
 zablind_call/ZablindCallHandler.spec
 zablind_call/ZablindCallHandler_x86.spec
 zablind_release.zip
+temp/
+zablind_call/temp/
 
 # Ignore logs
 *.log

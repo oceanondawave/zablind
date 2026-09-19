@@ -77,8 +77,31 @@ function translateLegacyEmojiElements(root) {
 
 let prevUnreadStates = new Map();
 
+function isConversationMuted(title) {
+  if (!title) return false;
+  const convItems = document.querySelectorAll('.conv-item');
+  for (const item of convItems) {
+    const titleEl = item.querySelector('.conv-item-title__name, .conv-item-title, .chat-name');
+    const itemTitle = titleEl ? titleEl.innerText.trim() : "";
+    if (itemTitle && (itemTitle.toLowerCase() === title.toLowerCase() || itemTitle.includes(title) || title.includes(itemTitle))) {
+      const muteIcon = item.querySelector('.conv__mute, .fa-Notif_Off_24_Filled, [class*="Notif_Off"], [class*="conv__mute"]');
+      if (muteIcon) return true;
+    }
+  }
+  return false;
+}
+
 function triggerNativeNotification(title, body, prefix) {
   try {
+    const { state } = require('./state.js');
+    if (state && state.windowsNotificationsEnabled === false) {
+      return;
+    }
+    if (title && isConversationMuted(title)) {
+      console.log(`[NOTI-TRIGGER] Conversation "${title}" is muted. Suppressing notification.`);
+      return;
+    }
+
     const fs = require('fs');
     const path = require('path');
     const { getZablindDir } = require('./utils.js');
@@ -107,6 +130,8 @@ function checkConversationUnreads() {
     const titleEl = item.querySelector('.conv-item-title__name, .conv-item-title, .chat-name');
     const title = titleEl ? titleEl.innerText.trim() : "";
     if (!title) return;
+
+    const isMuted = item.querySelector('.conv__mute, .fa-Notif_Off_24_Filled, [class*="Notif_Off"], [class*="conv__mute"]') !== null;
     
     let unreadCount = 0;
     const unreadEl = item.querySelector('.z-noti-badge, .conv-action__unread-v2, .--unread, .conv-unread, .conv_unread_count');
@@ -128,7 +153,7 @@ function checkConversationUnreads() {
     
     const prevState = prevUnreadStates.get(title);
     
-    if (prevState) {
+    if (prevState && !isMuted) {
       const countIncreased = unreadCount > prevState.unreadCount;
       const msgChanged = lastMsg !== prevState.lastMessageText && unreadCount > 0;
       
@@ -148,8 +173,18 @@ function checkConversationUnreads() {
   });
 }
 
+function updateBodyApplicationRole() {
+  if (typeof document === "undefined" || !document.body) return;
+  const { state } = require("./state.js");
+  if (state.freeArrowNavigation) {
+    document.body.removeAttribute("role");
+  } else {
+    document.body.setAttribute("role", "application");
+  }
+}
+
 function initializeAccessibility() {
-  document.body.setAttribute("role", "application");
+  updateBodyApplicationRole();
   
   // Check if Zalo just restarted
   try {
@@ -697,4 +732,6 @@ module.exports = {
   initializeAccessibility,
   injectStyles,
   triggerNativeNotification,
+  isConversationMuted,
+  updateBodyApplicationRole,
 };

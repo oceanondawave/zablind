@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 # 1. Kill any active Zalo or Zablind processes
 echo "Stopping any running Zalo and Zablind Call Handler processes..."
-Stop-Process -Name Zalo, ZaloExecutable, ZablindCallHandler, python -Force -ErrorAction SilentlyContinue
+Stop-Process -Name Zalo, ZaloExecutable, ZablindCallHandler, ZablindCallHandler_x86, python -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
 
 # 2. Find the active Zalo installation directory
@@ -30,7 +30,10 @@ echo "Found active Zalo directory: $zaloActiveDir"
 $workspaceRoot = "c:\Projects\zablind"
 $zablindSource = Join-Path $workspaceRoot "zablind_main\zablind"
 $preloadWrapperSource = Join-Path $workspaceRoot "zablind_main\preload-wrapper.js"
-$popupViewerSource = Join-Path $workspaceRoot "extracted\pc-dist\popup-viewer.html"
+$popupViewerSource = Join-Path $workspaceRoot "zablind_main\html\popup-viewer.html"
+if (-not (Test-Path $popupViewerSource)) {
+    $popupViewerSource = Join-Path $workspaceRoot "extracted\pc-dist\popup-viewer.html"
+}
 $callHandlerExe = Join-Path $workspaceRoot "zablind_call\ZablindCallHandler.exe"
 
 # Verify source files exist

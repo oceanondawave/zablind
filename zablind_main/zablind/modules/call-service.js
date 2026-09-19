@@ -186,14 +186,18 @@ function startCallService() {
       console.log(`[CALL-SERVICE] Unknown architecture: ${arch}, trying generic executable`);
     }
     
-    // Try architecture-specific executable first, then generic
+    // Try architecture-specific executable first, then universal x86, then generic
     const exePaths = [
       // Architecture-specific in dist folder
       path.join(zablindCallPath, 'dist', `ZablindCallHandler${archSuffix}.exe`),
+      // Universal x86 in dist folder
+      path.join(zablindCallPath, 'dist', 'ZablindCallHandler_x86.exe'),
       // Generic in dist folder
       path.join(zablindCallPath, 'dist', 'ZablindCallHandler.exe'),
       // Architecture-specific in root
       path.join(zablindCallPath, `ZablindCallHandler${archSuffix}.exe`),
+      // Universal x86 in root
+      path.join(zablindCallPath, 'ZablindCallHandler_x86.exe'),
       // Generic in root
       path.join(zablindCallPath, 'ZablindCallHandler.exe'),
     ];
@@ -431,6 +435,19 @@ if (process.type === 'browser') {
             debugLog(`[NOTI-INTERCEPT] Intercepted noti-create: ${JSON.stringify(notiData)}`);
             const { getZablindDir } = require('./utils.js');
             const zablindDir = getZablindDir();
+            
+            // Check global windows notification setting
+            const settingsFile = path.join(zablindDir, "zablind_settings.json");
+            if (fs.existsSync(settingsFile)) {
+              try {
+                const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
+                if (settings && settings.windows_notifications === false) {
+                  debugLog("[NOTI-INTERCEPT] Windows notifications disabled in settings. Skipping.");
+                  return originalSend.apply(this, [channel, ...args]);
+                }
+              } catch(e) {}
+            }
+
             if (!fs.existsSync(zablindDir)) {
               fs.mkdirSync(zablindDir, { recursive: true });
             }
@@ -453,14 +470,42 @@ if (process.type === 'browser') {
     }
   };
 
-  app.on('browser-window-created', (event, win) => {
+  function setupWindowDevTools(win) {
+    if (!win || !win.webContents || win.webContents.__zablindDevToolsSetup) return;
+    win.webContents.__zablindDevToolsSetup = true;
+
+    // Do NOT open DevTools on devtools window itself or auxiliary windows
+    const url = win.webContents.getURL() || "";
+    if (url.startsWith("devtools://") || url.startsWith("chrome-devtools://")) return;
+
     if (CONFIG.enableDevTools) {
+      win.webContents.once('did-finish-load', () => {
+        try {
+          const loadedUrl = win.webContents.getURL() || "";
+          if (loadedUrl.includes("index.html") || loadedUrl.includes("login.html")) {
+            if (!win.webContents.isDevToolsOpened()) {
+              win.webContents.openDevTools({ mode: 'detach' });
+            }
+          }
+        } catch (e) {
+          debugLog(`Error opening DevTools: ${e.message}`);
+        }
+      });
+
       try {
-        win.webContents.openDevTools({ mode: 'detach' });
-      } catch (e) {
-        debugLog(`Error opening DevTools: ${e.message}`);
-      }
+        win.webContents.on('before-input-event', (event, input) => {
+          if (input.type === 'keyDown') {
+            if (input.key === 'F12' || (input.control && input.shift && input.key && input.key.toLowerCase() === 'i')) {
+              win.webContents.toggleDevTools();
+            }
+          }
+        });
+      } catch (e) {}
     }
+  }
+
+  app.on('browser-window-created', (event, win) => {
+    setupWindowDevTools(win);
     monkeypatchWindow(win);
   });
 
@@ -468,6 +513,7 @@ if (process.type === 'browser') {
   try {
     const { BrowserWindow } = require('electron');
     BrowserWindow.getAllWindows().forEach(win => {
+      setupWindowDevTools(win);
       monkeypatchWindow(win);
     });
   } catch (e) {}

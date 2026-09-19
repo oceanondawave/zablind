@@ -154,6 +154,11 @@ function updateConversationItems(isSearch = false) {
     if (!item.getAttribute("tabindex")) {
        item.setAttribute("tabindex", "0");
     }
+    const muteIcon = item.querySelector('.conv__mute, .fa-Notif_Off_24_Filled, [class*="Notif_Off"], [class*="conv__mute"]');
+    if (muteIcon && !muteIcon.hasAttribute("aria-label")) {
+       muteIcon.setAttribute("role", "img");
+       muteIcon.setAttribute("aria-label", loc("Đã tắt thông báo", "Notifications muted"));
+    }
     ids.push(id);
     map.set(id, item);
   });

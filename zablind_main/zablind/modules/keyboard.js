@@ -11,7 +11,7 @@ const { state, setFocusContext } = require("./state.js");
 const { isTyping, loc } = require("./utils.js");
 const { focusChatInput } = require("./input.js");
 const { navigateConversations, activateConversation, switchConversationTab } = require("./conversations.js");
-const { handleMenuNavigation, openContextMenu, openAttachmentMenu } = require("./menu.js");
+const { handleMenuNavigation, openContextMenu, openAttachmentMenu, openConversationContextMenu } = require("./menu.js");
 const { navigateMessages } = require("./messages.js");
 const { playMedia } = require("./media.js");
 const { announce } = require("./accessibility.js");
@@ -54,7 +54,7 @@ function loadZablindSettings() {
     } catch (e) {
         console.error("[SETTINGS] Error reading settings file:", e);
     }
-    return { auto_update: true };
+    return { auto_update: true, windows_notifications: true, free_arrow_navigation: false };
 }
 
 function saveZablindSettings(settings) {
@@ -67,6 +67,52 @@ function saveZablindSettings(settings) {
         fs.writeFileSync(filepath, JSON.stringify(settings, null, 2), 'utf8');
     } catch (e) {
         console.error("[SETTINGS] Error writing settings file:", e);
+    }
+}
+
+// Initialize settings in state
+try {
+    const _initSettings = loadZablindSettings();
+    state.windowsNotificationsEnabled = _initSettings.windows_notifications !== false;
+    state.freeArrowNavigation = _initSettings.free_arrow_navigation === true;
+    try {
+        const { updateBodyApplicationRole } = require("./accessibility.js");
+        updateBodyApplicationRole();
+    } catch(e) {}
+} catch(e) {}
+
+function toggleWindowsNotifications(liveRegion) {
+    const current = state.windowsNotificationsEnabled !== false;
+    const next = !current;
+    state.windowsNotificationsEnabled = next;
+    const settings = loadZablindSettings();
+    settings.windows_notifications = next;
+    saveZablindSettings(settings);
+
+    if (next) {
+        announce(loc("Đã bật thông báo Windows", "Windows notifications enabled"), liveRegion);
+    } else {
+        announce(loc("Đã tắt thông báo Windows", "Windows notifications disabled"), liveRegion);
+    }
+}
+
+function toggleFreeArrowNavigation(liveRegion) {
+    const current = state.freeArrowNavigation === true;
+    const next = !current;
+    state.freeArrowNavigation = next;
+    const settings = loadZablindSettings();
+    settings.free_arrow_navigation = next;
+    saveZablindSettings(settings);
+
+    try {
+        const { updateBodyApplicationRole } = require("./accessibility.js");
+        updateBodyApplicationRole();
+    } catch(e) {}
+
+    if (next) {
+        announce(loc("Đã bật điều hướng tự do bằng phím mũi tên", "Free arrow key navigation enabled"), liveRegion);
+    } else {
+        announce(loc("Đã bật điều hướng Zablind", "Zablind navigation enabled"), liveRegion);
     }
 }
 
@@ -165,6 +211,25 @@ function createKeyboardHandler(liveRegion) {
         try {
             fs.appendFileSync("C:/Projects/zablind/keyboard_keys.log", `Key: ${key}, lowerKey: ${lowerKey}, code: ${event.code}\n`, "utf8");
         } catch(e) {}
+    }
+    
+    // --- FREE ARROW KEY NAVIGATION TOGGLE (CTRL + SHIFT + X) ---
+    if (isCtrlShift && lowerKey === "x") {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        toggleFreeArrowNavigation(liveRegion);
+        return;
+    }
+
+    // When Free Arrow Navigation is active, completely bypass arrow and navigation keys
+    if (state.freeArrowNavigation && (
+        key === "ArrowUp" || key === "ArrowDown" || 
+        key === "ArrowLeft" || key === "ArrowRight" ||
+        key === "Home" || key === "End" ||
+        key === "PageUp" || key === "PageDown"
+    )) {
+        return;
     }
     
     let handled = false;
@@ -808,21 +873,25 @@ function createKeyboardHandler(liveRegion) {
 
     // (logout_modal handled at top of function)
     
-    else if (key === "ContextMenu") {
-        if (state.focusContext === "messages" && state.messages.currentId) {
+    else if (key === "ContextMenu" || (key === "F10" && isShift)) {
+        if (state.focusContext === "conversations" || state.focusContext === "search_results") {
+             handled = true;
+             openConversationContextMenu(event, liveRegion);
+        } else if (state.focusContext === "messages" && state.messages.currentId) {
              handled = true;
              openContextMenu(event, liveRegion);
         }
     }
     
     else if (state.menu.items.length > 0) {
-      if (key === "ArrowUp" || key === "ArrowDown" || key === "Enter" || key === "Escape") {
+      if (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowRight" || key === "ArrowLeft" || key === "Enter" || key === "Escape") {
           handleMenuNavigation(event, liveRegion);
           if (key !== "Escape") {
               handled = true;
           }
       }
     }
+
     
     else if (key === "Tab") {
         if (state.focusContext === "messages" && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
@@ -844,12 +913,20 @@ function createKeyboardHandler(liveRegion) {
         toggleLanguage(liveRegion);
     }
     
+    // --- WINDOWS NOTIFICATIONS TOGGLE ---
+    else if (isCtrlShift && lowerKey === "j") {
+        handled = true;
+        toggleWindowsNotifications(liveRegion);
+    }
+    
     // --- ACCESSIBLE FULLSCREEN QR CODE ---
     else if (isCtrlShift && lowerKey === "d") {
+        handled = true;
         const loginPage = document.querySelector('.login-qr-page');
         if (loginPage) {
-            handled = true;
             toggleFullscreenQR(liveRegion);
+        } else {
+            announce(loc("Tính năng xem mã QR chỉ khả dụng tại màn hình đăng nhập.", "QR code viewer is only available on the login screen."), liveRegion);
         }
     }
     

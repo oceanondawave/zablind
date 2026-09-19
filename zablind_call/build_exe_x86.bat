@@ -119,11 +119,14 @@ pyinstaller --onefile ^
     --hidden-import=gtts.gtts ^
     --hidden-import=pygame ^
     --hidden-import=pygame.mixer ^
+    --hidden-import=accessible_output2 ^
+    --hidden-import=accessible_output2.outputs.auto ^
     --collect-all=psutil ^
     --collect-all=comtypes ^
     --collect-all=keyboard ^
     --collect-all=gtts ^
     --collect-all=pygame ^
+    --collect-all=accessible_output2 ^
     main.py
 
 if errorlevel 1 (

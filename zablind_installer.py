@@ -515,19 +515,38 @@ def main():
     
     # Create beautiful modern Segoe UI system fonts
     try:
-        lf_normal = {
-            'Height': -13, # Segoe UI regular size
-            'Width': 0, 'Escapement': 0, 'Orientation': 0,
-            'Weight': 400, 'Italic': 0, 'Underline': 0, 'StrikeOut': 0,
-            'CharSet': 1, 'OutPrecision': 0, 'ClipPrecision': 0,
-            'Quality': 5, # CLEARTYPE_QUALITY
-            'PitchAndFamily': 0, 'FaceName': 'Segoe UI'
-        }
+        lf_normal = win32gui.LOGFONT()
+        lf_normal.lfHeight = -13  # Segoe UI regular size
+        lf_normal.lfWidth = 0
+        lf_normal.lfEscapement = 0
+        lf_normal.lfOrientation = 0
+        lf_normal.lfWeight = 400
+        lf_normal.lfItalic = 0
+        lf_normal.lfUnderline = 0
+        lf_normal.lfStrikeOut = 0
+        lf_normal.lfCharSet = 1
+        lf_normal.lfOutPrecision = 0
+        lf_normal.lfClipPrecision = 0
+        lf_normal.lfQuality = 5  # CLEARTYPE_QUALITY
+        lf_normal.lfPitchAndFamily = 0
+        lf_normal.lfFaceName = 'Segoe UI'
         hfont = win32gui.CreateFontIndirect(lf_normal)
-        
-        lf_title = lf_normal.copy()
-        lf_title['Height'] = -17
-        lf_title['Weight'] = 700
+
+        lf_title = win32gui.LOGFONT()
+        lf_title.lfHeight = -17
+        lf_title.lfWidth = 0
+        lf_title.lfEscapement = 0
+        lf_title.lfOrientation = 0
+        lf_title.lfWeight = 700
+        lf_title.lfItalic = 0
+        lf_title.lfUnderline = 0
+        lf_title.lfStrikeOut = 0
+        lf_title.lfCharSet = 1
+        lf_title.lfOutPrecision = 0
+        lf_title.lfClipPrecision = 0
+        lf_title.lfQuality = 5  # CLEARTYPE_QUALITY
+        lf_title.lfPitchAndFamily = 0
+        lf_title.lfFaceName = 'Segoe UI'
         hfont_title = win32gui.CreateFontIndirect(lf_title)
     except Exception as e:
         print(f"[FONT] Create font failed, falling back: {e}")
