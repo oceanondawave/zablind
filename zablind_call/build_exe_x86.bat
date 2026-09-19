@@ -106,6 +106,10 @@ REM Note: PyInstaller will build for the Python architecture you're using
 pyinstaller --onefile ^
     --name="ZablindCallHandler_x86" ^
     --add-data="README.md;." ^
+    --exclude-module=tkinter ^
+    --exclude-module=_tkinter ^
+    --exclude-module=tcl ^
+    --exclude-module=tk ^
     --hidden-import=psutil ^
     --hidden-import=comtypes ^
     --hidden-import=comtypes.client ^

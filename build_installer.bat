@@ -15,6 +15,10 @@ REM Build the installer
 pyinstaller --onefile ^
     --name="ZablindInstaller" ^
     --icon="docs/favicon.ico" ^
+    --exclude-module=tkinter ^
+    --exclude-module=_tkinter ^
+    --exclude-module=tcl ^
+    --exclude-module=tk ^
     --add-data="zablind_call/ZablindCallHandler.exe;." ^
     --add-data="zablind_main/preload-wrapper.js;." ^
     --add-data="zablind_main/html/popup-viewer.html;." ^
