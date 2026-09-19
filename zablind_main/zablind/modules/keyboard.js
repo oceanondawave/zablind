@@ -74,7 +74,12 @@ function saveZablindSettings(settings) {
 try {
     const _initSettings = loadZablindSettings();
     state.windowsNotificationsEnabled = _initSettings.windows_notifications !== false;
-    state.freeArrowNavigation = _initSettings.free_arrow_navigation === true;
+    // Safety: Always turn off Free Arrow Navigation on Zalo startup/restart
+    state.freeArrowNavigation = false;
+    if (_initSettings.free_arrow_navigation) {
+        _initSettings.free_arrow_navigation = false;
+        saveZablindSettings(_initSettings);
+    }
     try {
         const { updateBodyApplicationRole } = require("./accessibility.js");
         updateBodyApplicationRole();
@@ -100,8 +105,9 @@ function toggleFreeArrowNavigation(liveRegion) {
     const current = state.freeArrowNavigation === true;
     const next = !current;
     state.freeArrowNavigation = next;
+    // Do not persist true across restarts so Zalo always restarts in safe mode
     const settings = loadZablindSettings();
-    settings.free_arrow_navigation = next;
+    settings.free_arrow_navigation = false;
     saveZablindSettings(settings);
 
     try {
@@ -110,7 +116,7 @@ function toggleFreeArrowNavigation(liveRegion) {
     } catch(e) {}
 
     if (next) {
-        announce(loc("Đã bật điều hướng tự do bằng phím mũi tên", "Free arrow key navigation enabled"), liveRegion);
+        announce(loc("Đã bật điều hướng tự do bằng phím mũi tên. Tự động tắt khi khởi động lại Zalo.", "Free arrow key navigation enabled. Automatically turns off when Zalo restarts."), liveRegion);
     } else {
         announce(loc("Đã bật điều hướng Zablind", "Zablind navigation enabled"), liveRegion);
     }
@@ -222,8 +228,19 @@ function createKeyboardHandler(liveRegion) {
         return;
     }
 
-    // When Free Arrow Navigation is active, completely bypass arrow and navigation keys
-    if (state.freeArrowNavigation && (
+    // When Free Arrow Navigation is active, bypass arrow and navigation keys ONLY in main view
+    // NEVER bypass arrow keys when inside a modal, dialog, context menu, or call buttons!
+    const isModalOrMenuOpen = state.menu.isOpen || 
+                              (state.menu.items && state.menu.items.length > 0) ||
+                              state.focusContext === "sync_modal" ||
+                              state.focusContext === "share_modal" ||
+                              state.focusContext === "find_friend_modal" ||
+                              state.focusContext === "help_modal" ||
+                              state.focusContext === "update_modal" ||
+                              state.focusContext === "call_buttons" ||
+                              Boolean(document.querySelector('.zl-modal__dialog, .zablind-modal-overlay, .count-down-screen'));
+
+    if (state.freeArrowNavigation && !isModalOrMenuOpen && (
         key === "ArrowUp" || key === "ArrowDown" || 
         key === "ArrowLeft" || key === "ArrowRight" ||
         key === "Home" || key === "End" ||
