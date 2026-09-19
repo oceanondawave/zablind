@@ -10,6 +10,8 @@ _A lightweight accessibility tool designed to assist visually impaired users in 
 
 ### 🧭 General & Help
 - **Shortcut Help**: Press `Ctrl + Shift + H` to toggle the keyboard shortcuts help panel.
+- **Free Navigation Mode**: Press `Ctrl + Shift + X` to toggle free arrow key navigation (NVDA Browse mode) as if Zablind were not installed (automatically resets to OFF on Zalo restart for safety).
+- **Toggle Windows Notifications**: Press `Ctrl + Shift + J` to dynamically toggle all Zablind Windows toast notifications on or off.
 - **Language Selection**: Press `Ctrl + Shift + G` to automatically toggle the Zalo app interface language between Vietnamese and English.
 - **Check for Updates**: Press `Ctrl + Shift + U` to manually trigger an update check for Zablind.
 - **Dismiss/Close**: Press `Escape` to close active menus, dialogs, or media viewers.

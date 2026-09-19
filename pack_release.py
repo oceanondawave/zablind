@@ -110,7 +110,8 @@ def main():
     try:
         subprocess.run(installer_args, cwd=root_dir, check=True)
         shutil.copy2(os.path.join(root_dir, "dist", f"{installer_name}.exe"), os.path.join(root_dir, f"{installer_name}.exe"))
-        print(f"[PACKER] Successfully built {installer_name}.exe")
+        shutil.copy2(os.path.join(root_dir, "dist", f"{installer_name}.exe"), os.path.join(root_dir, "ZablindInstaller.exe"))
+        print(f"[PACKER] Successfully built {installer_name}.exe and ZablindInstaller.exe")
     except Exception as e:
         print(f"[ERROR] Failed to build {installer_name}.exe: {e}")
         speak("Packaging failed. Could not compile installer.")
