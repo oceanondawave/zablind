@@ -1537,20 +1537,19 @@ class ZaloCallHandler:
 
     def send_native_notification(self, title: str, message: str, app_id: str = "com.vng.zalo"):
         """Show native Windows 10/11 toast notification using PowerShell WinRT API."""
-        import subprocess
-        safe_title = (title or "").replace('"', '`"').replace('$', '`$')
-        safe_message = (message or "").replace('"', '`"').replace('$', '`$')
-        ps_command = f"""
-$title = "{safe_title}"
-$message = "{safe_message}"
+        import subprocess, base64, html
+        safe_title = html.escape(title or "")
+        safe_message = html.escape(message or "")
+        ps_script = f"""
 $xml = @"
-<toast duration="short">
+<toast scenario="reminder">
   <visual>
     <binding template="ToastGeneric">
-      <text>$title</text>
-      <text>$message</text>
+      <text>{safe_title}</text>
+      <text>{safe_message}</text>
     </binding>
   </visual>
+  <audio src="ms-winsoundevent:Notification.Default" />
 </toast>
 "@
 try {{
@@ -1559,18 +1558,16 @@ try {{
     $XmlDocument = [Activator]::CreateInstance($XmlDocType)
     $XmlDocument.LoadXml($xml)
     $Toast = [Activator]::CreateInstance($ToastNotifType, $XmlDocument)
-    $tag = if ($title) {{ if ($title.Length -gt 64) {{ $title.Substring(0, 64) }} else {{ $title }} }} else {{ "zablind_msg" }}
-    $Toast.Tag = $tag
-    $Toast.Group = "zablind"
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("{app_id}").Show($Toast)
 }} catch {{}}
 """
         try:
+            encoded_cmd = base64.b64encode(ps_script.encode("utf-16le")).decode("ascii")
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = subprocess.SW_HIDE
             subprocess.Popen(
-                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded_cmd],
                 startupinfo=startupinfo,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -4114,10 +4111,11 @@ try {{
     #   - Is part of the Win32 API (no extra install)
     # ------------------------------------------------------------------
 
-    def _native_hook_dispatch(self, vk: int, ctrl: bool, shift: bool, alt: bool, win_: bool):
+    def _native_hook_dispatch(self, vk: int, ctrl: bool, shift: bool, alt: bool, win_: bool) -> bool:
         """Called from the native WH_KEYBOARD_LL hook thread for every key-down event.
         Dispatches to _enqueue_action based on current call state and modifier state.
         Must be fast (no blocking) - hook proc has a Windows-enforced timeout.
+        Returns True if the key was handled and should be consumed/suppressed, False otherwise.
         """
         try:
             # Only act while there is a live call situation
@@ -4133,22 +4131,23 @@ try {{
                         active = False
 
             if not active:
-                return
+                return False
 
             # Modifier combos first (ctrl+a / ctrl+shift+a = accept without camera)
             if ctrl and not alt and not win_ and vk == 0x41:  # ctrl+a or ctrl+shift+a
                 self._enqueue_action("accept_without_camera")
-                return
+                return True
 
             # Bare letter keys - only when no ctrl/alt/win held
             if not ctrl and not alt and not win_:
-                if   vk == 0x41: self._enqueue_action("accept")           # A
-                elif vk == 0x44: self._enqueue_action("deny")             # D
-                elif vk == 0x43: self._enqueue_action("camera")           # C
-                elif vk == 0x45: self._enqueue_action("end_call")         # E
-                elif vk == 0x4D: self._enqueue_action("microphone")       # M
+                if   vk == 0x41: self._enqueue_action("accept"); return True           # A
+                elif vk == 0x44: self._enqueue_action("deny"); return True             # D
+                elif vk == 0x43: self._enqueue_action("camera"); return True           # C
+                elif vk == 0x45: self._enqueue_action("end_call"); return True         # E
+                elif vk == 0x4D: self._enqueue_action("microphone"); return True       # M
         except Exception:
             pass
+        return False
 
     def install_key_dispatcher(self):
         """Install a native WH_KEYBOARD_LL keyboard hook via ctypes.
@@ -4171,7 +4170,9 @@ try {{
 
         WH_KEYBOARD_LL = 13
         WM_KEYDOWN    = 0x0100
+        WM_KEYUP      = 0x0101
         WM_SYSKEYDOWN = 0x0104
+        WM_SYSKEYUP   = 0x0105
         WM_QUIT       = 0x0012
         VK_CONTROL    = 0x11
         VK_SHIFT      = 0x10
@@ -4198,19 +4199,30 @@ try {{
         hook_id_box   = [None]   # mutable cell shared with thread
         thread_id_box = [None]
         handler_ref   = self     # captured reference
+        suppressed_vks = set()   # track key-downs consumed to also suppress their key-up
 
         def _hook_proc(nCode, wParam, lParam):
-            if nCode >= 0 and wParam in (WM_KEYDOWN, WM_SYSKEYDOWN):
+            if nCode >= 0:
                 try:
                     kb  = ctypes.cast(lParam, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
                     vk  = kb.vkCode
-                    # Read modifier state synchronously from kernel
-                    gks = user32.GetAsyncKeyState
-                    ctrl  = bool(gks(VK_CONTROL) & 0x8000)
-                    shift = bool(gks(VK_SHIFT)   & 0x8000)
-                    alt   = bool(gks(VK_MENU)    & 0x8000)
-                    win_  = bool(gks(VK_LWIN) & 0x8000 or gks(VK_RWIN) & 0x8000)
-                    handler_ref._native_hook_dispatch(vk, ctrl, shift, alt, win_)
+
+                    if wParam in (WM_KEYDOWN, WM_SYSKEYDOWN):
+                        # Read modifier state synchronously from kernel
+                        gks = user32.GetAsyncKeyState
+                        ctrl  = bool(gks(VK_CONTROL) & 0x8000)
+                        shift = bool(gks(VK_SHIFT)   & 0x8000)
+                        alt   = bool(gks(VK_MENU)    & 0x8000)
+                        win_  = bool(gks(VK_LWIN) & 0x8000 or gks(VK_RWIN) & 0x8000)
+                        handled = handler_ref._native_hook_dispatch(vk, ctrl, shift, alt, win_)
+                        if handled:
+                            suppressed_vks.add(vk)
+                            return 1  # Suppress key event: prevents NVDA/apps from receiving bare letters like A or D!
+
+                    elif wParam in (WM_KEYUP, WM_SYSKEYUP):
+                        if vk in suppressed_vks:
+                            suppressed_vks.discard(vk)
+                            return 1  # Suppress matching key-up event
                 except Exception:
                     pass
             return user32.CallNextHookEx(hook_id_box[0], nCode, wParam, lParam)

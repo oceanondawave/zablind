@@ -102,6 +102,20 @@ function triggerNativeNotification(title, body, prefix) {
       return;
     }
 
+    const fullTitle = prefix ? `${title} (${prefix})` : (title || "Zalo");
+
+    // 1. Trigger native Windows toast notification via Electron main process
+    try {
+      const { ipcRenderer } = require('electron');
+      if (ipcRenderer) {
+        ipcRenderer.send('zablind-show-notification', {
+          title: fullTitle,
+          body: body || ""
+        });
+      }
+    } catch (ipcErr) {}
+
+    // 2. Also write notification file for Python Call Handler (NVDA screen reader speech & fallback)
     const fs = require('fs');
     const path = require('path');
     const { getZablindDir } = require('./utils.js');

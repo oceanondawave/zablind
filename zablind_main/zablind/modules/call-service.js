@@ -566,6 +566,24 @@ if (process.type === 'browser') {
       }
     });
     debugLog('[IPC] Registered zablind-outgoing-call listener in main process');
+
+    const { Notification } = require('electron');
+    ipcMain.on('zablind-show-notification', (event, data) => {
+      try {
+        if (Notification && Notification.isSupported()) {
+          const notif = new Notification({
+            title: data.title || "Zalo",
+            body: data.body || "",
+            silent: false
+          });
+          notif.show();
+          debugLog(`[NOTI] Shown native Electron notification for: ${data.title}`);
+        }
+      } catch (notiErr) {
+        debugLog(`[NOTI] Error showing native notification: ${notiErr.message}`);
+      }
+    });
+    debugLog('[IPC] Registered zablind-show-notification listener in main process');
   } catch (ipcError) {
     debugLog(`[IPC] Error registering ipcMain listener: ${ipcError.message}`);
   }
