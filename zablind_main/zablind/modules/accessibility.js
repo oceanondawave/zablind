@@ -189,9 +189,12 @@ function checkConversationUnreads() {
 
 function updateBodyApplicationRole() {
   if (typeof document === "undefined" || !document.body) return;
-  // Always keep role="application" so NVDA remains in application focus mode
-  // and does not hijack keys with virtual buffer browse mode.
-  document.body.setAttribute("role", "application");
+  const { state } = require("./state.js");
+  if (state.freeArrowNavigation) {
+    document.body.removeAttribute("role");
+  } else {
+    document.body.setAttribute("role", "application");
+  }
 }
 
 function initializeAccessibility() {

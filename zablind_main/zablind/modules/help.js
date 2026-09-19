@@ -158,8 +158,8 @@ const shortcutsData = [
   },
   {
     keys: ["Ctrl", "Shift", "X"],
-    descVi: "Bật hoặc tắt chế độ điều hướng tự do bằng phím mũi tên (Lưu ý: Tự động tắt khi khởi động lại Zalo để đảm bảo an toàn)",
-    descEn: "Toggle free arrow key navigation on or off (Note: Automatically turns off when Zalo restarts for safety)",
+    descVi: "Bật hoặc tắt chế độ điều hướng tự do bằng phím mũi tên (như khi chưa cài Zablind - Tự động tắt khi khởi động lại Zalo để an toàn)",
+    descEn: "Toggle free arrow key navigation on or off (as if Zablind were not installed - Automatically turns off on Zalo restart for safety)",
     category: "General"
   },
   {
