@@ -1,25 +1,59 @@
-Zablind Open-Source License (Non-Commercial & Attribution)
+ZABLIND PROPRIETARY COMMUNITY LICENSE (ALL RIGHTS RESERVED)
 
-Copyright (c) 2026 Minh Tri Nguyen (Ocean Kid). All rights reserved.
+Copyright (c) 2026 Minh Tri Nguyen (Ocean Kid). All Rights Reserved.
+Author Contact (Reports Only): minh.ngntri@gmail.com
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to use,
-copy, modify, merge, and distribute the Software for personal, educational, 
-and non-commercial accessibility purposes, subject to the following conditions:
+================================================================================
+IMPORTANT NOTICE:
+This Software is developed strictly for community accessibility purposes and is 
+delivered to the visually impaired community 100% free of charge.
+================================================================================
 
-1. Attribution: The above copyright notice and this permission notice must be
-   included in all copies or substantial portions of the Software, and prominent
-   credit must be given to the original author, Minh Tri Nguyen.
+1. OWNERSHIP & INTELLECTUAL PROPERTY
+The Software, including its source code, compiled binaries, documentation, 
+scripts, graphic assets, and the name "Zablind", is the exclusive intellectual 
+property of Minh Tri Nguyen. All rights, title, and interest not expressly 
+granted herein are strictly reserved worldwide.
 
-2. Non-Commercial Use: The Software, or any derivative works thereof, may NOT
-   be sold, leased, licensed, or otherwise used for commercial profit, monetary
-   gain, or financial exploitation under any circumstances. Any distribution must
-   be provided completely free of charge.
+2. STRICT PROHIBITION OF FORKING, REDISTRIBUTION, AND RE-UPLOADING
+No individual, group, or legal entity may fork, clone, mirror, re-host, re-upload, 
+republish, package, or distribute the source code or binary files of this project, 
+in whole or in part, on GitHub, GitLab, Bitbucket, personal websites, cloud storage, 
+forums, social media, or any other digital platform without explicit, prior written 
+permission from the Author.
 
-3. Disclaimer of Liability: THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY
-   OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-   NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-   OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-   USE OR OTHER DEALINGS IN THE SOFTWARE.
+3. STRICT PROHIBITION OF COMMERCIALIZATION AND MONETIZATION
+The Software may NEVER be sold, resold, rented, leased, licensed, sublicensed, 
+monetized, bundled with commercial products, or placed behind any paywall or 
+monetary barrier. Any attempt to sell, charge fees, solicit payments, or profit 
+financially from this Software or derivative works is strictly prohibited and 
+constitutes copyright infringement, theft, and fraud under applicable law.
+
+4. STRICT PROHIBITION OF MODIFICATION, DERIVATIVES, AND CLAIMING OWNERSHIP
+You may NOT create derivative works, modify, reverse-engineer, decompile (except 
+to the minimum extent permitted by mandatory applicable law for accessibility 
+interoperability), rebrand, remove author attribution, alter copyright headers, 
+or falsely claim authorship, credit, or ownership of this Software.
+
+5. PERMITTED END-USER USE
+Visually impaired individuals and their direct assistants are granted a personal, 
+non-exclusive, non-transferable, revocable license to download and run the 
+compiled Software free of charge solely for personal, non-commercial accessibility 
+use on their personal computers.
+
+6. ABSOLUTE NO-SUPPORT & REJECTION OF COMMUNICATION POLICY
+The Author provides this Software purely as a charitable contribution to the 
+community and DOES NOT provide any user support, technical assistance, bug 
+resolution, or custom feature development. 
+The Author explicitly rejects and will refuse all messages, emails, or communication 
+requesting technical support, usage guidance, or feature implementation. 
+The ONLY communication accepted by the Author is the reporting of software theft, 
+scams, or unauthorized monetization of Zablind, sent to: minh.ngntri@gmail.com.
+
+7. DISCLAIMER OF WARRANTY AND LIMITATION OF LIABILITY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN 
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION 
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

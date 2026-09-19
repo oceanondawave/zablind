@@ -2,7 +2,7 @@
 
 _A lightweight accessibility tool designed to assist visually impaired users in navigating Zalo PC on Windows._
 
-> ⚠️ **Disclaimer**: This tool modifies internal files of the Zalo desktop app. Use at your own risk. Zablind is fully open-source and does not collect or transmit any user data.
+> ⚠️ **Disclaimer**: This tool modifies internal files of the Zalo desktop app. Use at your own risk. Zablind is delivered completely free for community accessibility use and does not collect or transmit any user data.
 
 ---
 
@@ -94,8 +94,18 @@ To publish an update that will auto-update on all user machines:
 - **GitHub Updater**: The background thread checks your repository's latest release tag on startup. If a new version is found, it downloads the zip, renames the running executable to bypass Windows locks, extracts the new assets, and restarts the service.
 - **Compatibility Watchdog**: Monitors Zalo processes. If Zalo launches but Zablind fails to start or encounters a critical JS crash, the watchdog logs telemetry to `zablind_crash.log` and alerts the user via TTS: *"Cảnh báo: Zablind không tương thích với phiên bản Zalo này. Đang ghi lại nhật ký lỗi."*
 
+## 🛑 Community Purpose & Communication Policy
+
+> **For community purposes, delivered to community for free.**
+> Please report if someone steals, copies, or monetizes this project via author's email: **minh.ngntri@gmail.com**.
+> 
+> **Important Note**: The author does not and will never support any feedback, assist in using the software, or develop requested features. Please understand that the author will reject all methods of communication, messages, or emails regarding usage, support, or feature requests, and **only accepts reports of scamming or unauthorized monetization of the project**.
+
 ---
 
-## 🛑 Disclaimer
+## 📄 License
 
-This project is developed for the benefit of the visually impaired Zalo community. Contributions, improvements, and feedback are welcome. Feel free to contact the author at: minh.ngntri@gmail.com.
+This software is governed by the **Zablind Proprietary Community License (All Rights Reserved)**.
+- **Strictly prohibited**: Forking, cloning, mirroring, re-uploading, redistributing, modifying, commercializing, or claiming ownership of this project.
+- **Permitted**: Free personal end-user use strictly by visually impaired individuals.
+- See the full terms in [LICENSE](file:///c:/Projects/zablind/LICENSE).
