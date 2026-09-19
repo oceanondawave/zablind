@@ -10,6 +10,8 @@ const CONFIG = require('../config.js');
 
 let callServiceProcess = null;
 let callServiceStarted = false;
+let isAppQuitting = false;
+let restartTimeout = null;
 
 const debugLog = (msg) => {
   try {
@@ -294,6 +296,17 @@ function startCallService() {
         debugLog(`[EXE-EXIT] Process exited with code ${code}, signal ${signal}`);
         callServiceStarted = false;
         callServiceProcess = null;
+
+        if (!isAppQuitting) {
+          debugLog('[CALL-SERVICE] Scheduling automatic service restart in 3 seconds...');
+          if (restartTimeout) clearTimeout(restartTimeout);
+          restartTimeout = setTimeout(() => {
+            if (!callServiceStarted && !isAppQuitting) {
+              debugLog('[CALL-SERVICE] Auto-restarting Call Handler service now...');
+              startCallService();
+            }
+          }, 3000);
+        }
       });
 
       callServiceProcess.on('error', (err) => {
@@ -401,9 +414,16 @@ function startCallService() {
  * Stop the call service
  */
 function stopCallService() {
+  isAppQuitting = true;
+  if (restartTimeout) {
+    clearTimeout(restartTimeout);
+    restartTimeout = null;
+  }
   if (callServiceProcess) {
     console.log('[CALL-SERVICE] Stopping call service...');
-    callServiceProcess.kill();
+    try {
+      callServiceProcess.kill();
+    } catch (e) {}
     callServiceProcess = null;
     callServiceStarted = false;
   }

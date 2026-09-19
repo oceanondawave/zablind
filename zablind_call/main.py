@@ -4394,7 +4394,7 @@ try {{
                         self.find_zalocall_process()
                         if not self.zalocall_pid:
                             # Process is not running and we couldn't find a new one
-                            time.sleep(0.05)
+                            time.sleep(0.35)
                             continue
                     
                     # Check if window exists
@@ -4706,8 +4706,13 @@ try {{
                     
                     last_checkbox_count = current_count
                     
-                    # Keep the button cache hot for low-latency hotkeys.
-                    time.sleep(0.03)
+                    # Adaptive sleep: ultra-responsive (30ms) during incoming/active calls,
+                    # but relaxed (350ms) when completely idle with no buttons to prevent
+                    # COM handle exhaustion, CPU consumption, and memory leaks over long sessions.
+                    if self.incoming_call_detected or self.call_active or current_count > 0:
+                        time.sleep(0.03)
+                    else:
+                        time.sleep(0.35)
                     
                 except Exception as e:
                     print(f"[ERROR] Error in monitoring loop: {e}")
