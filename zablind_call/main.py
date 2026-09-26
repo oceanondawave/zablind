@@ -5151,10 +5151,10 @@ def get_local_version(assets_source):
 
 
 def get_latest_github_release():
-    # 1. Try fetching docs/version.json via ghproxy.net proxy first to accelerate in Vietnam
+    # 1. Try fetching docs/version.json via ghfast.top proxy first to accelerate in Vietnam
     import time
     cache_buster = f"?cb={int(time.time())}"
-    proxy_url = f"https://ghproxy.net/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json{cache_buster}"
+    proxy_url = f"https://ghfast.top/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json{cache_buster}"
     req_proxy = urllib.request.Request(
         proxy_url,
         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZablindUpdater'}
@@ -5265,10 +5265,10 @@ def perform_self_update(zip_url, handler):
     try:
         handler.speak("Zablind đang tải bản cập nhật mới...", language="vi", clear_pending=True)
         
-        # Route through ghproxy.net proxy to accelerate download in Vietnam
+        # Route through ghfast.top proxy to accelerate download in Vietnam
         import time
         cache_buster = f"?cb={int(time.time())}"
-        proxy_zip_url = f"https://ghproxy.net/{zip_url}{cache_buster}"
+        proxy_zip_url = f"https://ghfast.top/{zip_url}{cache_buster}"
         print(f"[UPDATER] Downloading update from accelerated proxy: {proxy_zip_url}")
         
         try:

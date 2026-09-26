@@ -494,34 +494,48 @@ if (process.type === 'browser') {
     if (!win || !win.webContents || win.webContents.__zablindDevToolsSetup) return;
     win.webContents.__zablindDevToolsSetup = true;
 
-    // Do NOT open DevTools on devtools window itself or auxiliary windows
-    const url = win.webContents.getURL() || "";
-    if (url.startsWith("devtools://") || url.startsWith("chrome-devtools://")) return;
+    const openDevTools = () => {
+      try {
+        const loadedUrl = win.webContents.getURL() || "";
+        debugLog(`[DEVTOOLS] openDevTools check: url=${loadedUrl}, enableDevTools=${CONFIG.enableDevTools}`);
+        if (loadedUrl.startsWith("devtools://") || loadedUrl.startsWith("chrome-devtools://") || loadedUrl.includes("popup-viewer.html") || loadedUrl.includes("shared-worker.html") || loadedUrl.includes("znotification.html")) return;
+        if (!win.webContents.isDevToolsOpened()) {
+          win.webContents.openDevTools({ mode: 'detach' });
+          debugLog(`[DEVTOOLS] Detached DevTools opened for: ${loadedUrl}`);
+        }
+      } catch (e) {
+        debugLog(`[DEVTOOLS] Error opening DevTools: ${e.message}`);
+      }
+    };
 
     if (CONFIG.enableDevTools) {
-      win.webContents.once('did-finish-load', () => {
-        try {
-          const loadedUrl = win.webContents.getURL() || "";
-          if (loadedUrl.includes("index.html") || loadedUrl.includes("login.html")) {
-            if (!win.webContents.isDevToolsOpened()) {
-              win.webContents.openDevTools({ mode: 'detach' });
-            }
+      if (!win.webContents.isLoading() && win.webContents.getURL()) {
+        openDevTools();
+      }
+      win.webContents.on('dom-ready', openDevTools);
+      win.webContents.on('did-finish-load', openDevTools);
+    }
+
+    try {
+      win.webContents.on('before-input-event', (event, input) => {
+        if (input.type === 'keyDown') {
+          if (input.key === 'F12' || (input.control && input.shift && input.key && input.key.toLowerCase() === 'i')) {
+            win.webContents.toggleDevTools();
+            debugLog('[DEVTOOLS] Hotkey toggled devtools from before-input-event');
           }
-        } catch (e) {
-          debugLog(`Error opening DevTools: ${e.message}`);
         }
       });
+    } catch (e) {}
 
-      try {
-        win.webContents.on('before-input-event', (event, input) => {
-          if (input.type === 'keyDown') {
-            if (input.key === 'F12' || (input.control && input.shift && input.key && input.key.toLowerCase() === 'i')) {
-              win.webContents.toggleDevTools();
-            }
+    try {
+      win.webContents.on('context-menu', (e, params) => {
+        try {
+          if (win.webContents.isDevToolsOpened()) {
+            win.webContents.inspectElement(params.x, params.y);
           }
-        });
-      } catch (e) {}
-    }
+        } catch (err) {}
+      });
+    } catch (e) {}
   }
 
   app.on('browser-window-created', (event, win) => {
@@ -603,7 +617,18 @@ if (process.type === 'browser') {
         debugLog(`[BROWSE] Error in zablind-activate-browse-mode: ${browseErr.message}`);
       }
     });
-    debugLog('[IPC] Registered zablind-activate-browse-mode listener in main process');
+    ipcMain.on('zablind-toggle-devtools', (event) => {
+      try {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && win.webContents) {
+          win.webContents.toggleDevTools();
+          debugLog('[DEVTOOLS] Toggled devtools via IPC');
+        }
+      } catch (e) {
+        debugLog(`[DEVTOOLS] Error toggling devtools via IPC: ${e.message}`);
+      }
+    });
+    debugLog('[IPC] Registered zablind-toggle-devtools listener in main process');
   } catch (ipcError) {
     debugLog(`[IPC] Error registering ipcMain listener: ${ipcError.message}`);
   }

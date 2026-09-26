@@ -185,6 +185,17 @@ function activateMenuItem(liveRegion) {
   const customLabel = item.getAttribute("data-zablind-label");
   const label = customLabel || item.innerText.replace(/\s+/g, " ").trim();
 
+  // Try React onClick handler first if available
+  try {
+    const key = Object.keys(item).find(k => k.startsWith('__reactProps$') || k.startsWith('__reactEventHandlers$'));
+    if (key && item[key]) {
+      const props = item[key];
+      if (typeof props.onClick === 'function') {
+        props.onClick(new MouseEvent('click', { bubbles: true }));
+      }
+    }
+  } catch (err) {}
+
   ["mousedown", "mouseup", "click"].forEach((evt) =>
     item.dispatchEvent(new MouseEvent(evt, { bubbles: true }))
   );
@@ -199,7 +210,16 @@ function activateMenuItem(liveRegion) {
     resetMenuState();
     // Return focus to conversation or message
     if (state.focusContext === "conversations" || state.focusContext === "search_results") {
-      const conv = state.conversations.map.get(state.conversations.currentId);
+      const { updateConversationItems } = require("./conversations.js");
+      updateConversationItems(state.focusContext === "search_results");
+      let conv = state.conversations.map.get(state.conversations.currentId);
+      if (!conv || !document.contains(conv)) {
+        if (state.conversations.items.length > 0) {
+          const nextId = state.conversations.items[0];
+          state.conversations.currentId = nextId;
+          conv = state.conversations.map.get(nextId);
+        }
+      }
       if (conv) conv.focus();
     } else if (state.focusContext === "messages") {
       const msg = state.messages.map.get(state.messages.currentId);
@@ -409,7 +429,7 @@ async function openConversationContextMenu(event, liveRegion) {
 
   let rawItems = [];
   while (rawItems.length === 0 && Date.now() - start < 1000) {
-    rawItems = Array.from(popup.querySelectorAll('.zmenu-item, div-14.zmenu-item'));
+    rawItems = Array.from(popup.querySelectorAll('.zmenu-item, [class*="zmenu-item"]'));
     if (rawItems.length > 0) break;
     await sleep(30);
   }
@@ -424,13 +444,20 @@ async function openConversationContextMenu(event, liveRegion) {
     return (text.includes("ghim") || text.includes("pin")) && !text.includes("phân loại");
   });
 
-  // 2. Find Unmute item ("Bật thông báo")
+  // 2. Find Move Tab item ("Chuyển sang mục Khác" / "Chuyển sang mục Ưu tiên" / "Chuyển về mục Ưu tiên")
+  const moveTabItem = rawItems.find(item => {
+    const text = item.innerText.toLowerCase();
+    return (text.includes("chuyển") && (text.includes("khác") || text.includes("ưu tiên"))) ||
+           (text.includes("move") && (text.includes("other") || text.includes("focus") || text.includes("priority")));
+  });
+
+  // 3. Find Unmute item ("Bật thông báo")
   const unmuteItem = rawItems.find(item => {
     const text = item.innerText.toLowerCase();
     return text.includes("bật thông báo") || text.includes("unmute") || text.includes("turn on notification");
   });
 
-  // 3. Find Mute item ("Tắt thông báo")
+  // 4. Find Mute item ("Tắt thông báo")
   const muteItem = rawItems.find(item => {
     const text = item.innerText.toLowerCase();
     return (text.includes("tắt thông báo") || text.includes("mute") || text.includes("turn off notification")) && !text.includes("bật");
@@ -442,14 +469,27 @@ async function openConversationContextMenu(event, liveRegion) {
     pinItem.tabIndex = 0;
     pinItem.setAttribute('aria-hidden', 'false');
     pinItem.style.pointerEvents = 'auto';
+    const pinText = pinItem.innerText.replace(/\s+/g, ' ').trim();
+    pinItem.setAttribute('data-zablind-label', pinText);
     allowedItems.push(pinItem);
+  }
+
+  if (moveTabItem) {
+    moveTabItem.style.display = '';
+    moveTabItem.setAttribute('role', 'menuitem');
+    moveTabItem.tabIndex = allowedItems.length === 0 ? 0 : -1;
+    moveTabItem.setAttribute('aria-hidden', 'false');
+    moveTabItem.style.pointerEvents = 'auto';
+    const moveText = moveTabItem.innerText.replace(/\s+/g, ' ').trim();
+    moveTabItem.setAttribute('data-zablind-label', moveText);
+    allowedItems.push(moveTabItem);
   }
 
   const notifItem = unmuteItem || muteItem;
   if (notifItem) {
     notifItem.style.display = '';
     notifItem.setAttribute('role', 'menuitem');
-    notifItem.tabIndex = -1;
+    notifItem.tabIndex = allowedItems.length === 0 ? 0 : -1;
     notifItem.setAttribute('aria-hidden', 'false');
     notifItem.style.pointerEvents = 'auto';
 
@@ -457,7 +497,7 @@ async function openConversationContextMenu(event, liveRegion) {
       notifItem.setAttribute('data-zablind-label', loc("Tắt thông báo, menu con. Bấm Enter hoặc Mũi tên phải để chọn thời gian.", "Mute notifications, submenu. Press Enter or Right Arrow to choose duration."));
 
       // Ensure all sub-items inside .zmenu-sub are enabled and labeled
-      const subItems = Array.from(muteItem.querySelectorAll('.zmenu-sub .zmenu-item, .sub-menu .zmenu-item, .zmenu-sub div-14.zmenu-item, .sub-menu div-14.zmenu-item'));
+      const subItems = Array.from(muteItem.querySelectorAll('.zmenu-sub .zmenu-item, .sub-menu .zmenu-item, .zmenu-sub [class*="zmenu-item"], .sub-menu [class*="zmenu-item"]'));
       subItems.forEach((sub) => {
         sub.style.display = '';
         sub.setAttribute('role', 'menuitem');
@@ -472,6 +512,10 @@ async function openConversationContextMenu(event, liveRegion) {
     }
 
     allowedItems.push(notifItem);
+  }
+
+  if (allowedItems.length > 0) {
+    allowedItems[0].tabIndex = 0;
   }
 
   // Lock and hide all other children in popup

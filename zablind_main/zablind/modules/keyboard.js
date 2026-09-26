@@ -192,7 +192,7 @@ async function getLatestReleaseInfo() {
         return cached;
     }
     try {
-        const response = await fetch("https://ghproxy.net/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json");
+        const response = await fetch("https://ghfast.top/https://raw.githubusercontent.com/oceanondawave/zablind/main/docs/version.json");
         if (response.ok) {
             const data = await response.json();
             return {
@@ -201,7 +201,7 @@ async function getLatestReleaseInfo() {
             };
         }
     } catch (e) {
-        console.error("Failed to check updates via ghproxy version.json:", e);
+        console.error("Failed to check updates via ghfast version.json:", e);
     }
     try {
         const response = await fetch("https://api.github.com/repos/oceanondawave/zablind/releases/latest");
@@ -301,12 +301,176 @@ function createKeyboardHandler(liveRegion) {
     
     let handled = false;
 
-    // --- SYNC MODAL CONTEXT TRAP ---
+    // --- SYNC / BACKUP MODAL CONTEXT TRAP ---
     if (state.focusContext === "sync_modal") {
+        const backupPopup = document.querySelector('.backup-msg-popup');
+        const methodPopup = document.querySelector('.sync-msg-setting-popup, .sync-msg-setting-popup__wrapper');
         const syncModal = document.querySelector('.count-down-screen');
-        if (!syncModal) {
+        
+        if (!backupPopup && !methodPopup && !syncModal) {
             setFocusContext("conversations");
-        } else {
+        } else if (backupPopup) {
+            const k = event.key;
+            const isNavKey = k === 'Tab' || k === 'ArrowDown' || k === 'ArrowUp' || k === 'ArrowRight' || k === 'ArrowLeft';
+            const isActionKey = k === 'Enter' || k === ' ' || k === 'Escape';
+            
+            if (!event.ctrlKey && !event.metaKey && (isNavKey || isActionKey)) {
+                handled = true;
+                
+                if (event.type === 'keydown') {
+                    const actionBtns = Array.from(backupPopup.querySelectorAll('.backup-msg-popup__actions .z--btn--v2, .backup-msg-popup__actions div[class*="btn"], .backup-msg-popup__actions button'));
+                    const closeBtn = backupPopup.querySelector('.close-btn, .setting__close, [icon="close f16"], .fa-close')?.closest('.z--btn--v2, button, div');
+                    const items = [...actionBtns, closeBtn].filter(Boolean);
+                    
+                    if (k === 'Escape') {
+                        if (previousActiveElement && document.body.contains(previousActiveElement)) {
+                            previousActiveElement.focus();
+                        }
+                        setFocusContext(previousFocusContext || "conversations");
+                        
+                        const laterBtn = actionBtns.find(b => {
+                            const t = (b.innerText || '').trim().toLowerCase();
+                            return t.includes('để sau') || t.includes('later') || t.includes('hủy') || t.includes('cancel');
+                        }) || closeBtn;
+                        
+                        if (laterBtn) {
+                            fireClick(laterBtn);
+                        } else {
+                            document.body.click();
+                        }
+                        announce(loc("Đã đóng cửa sổ sao lưu", "Closed backup window"), liveRegion);
+                    }
+                    else if (k === 'Enter' || k === ' ') {
+                        const active = document.activeElement;
+                        const targetBtn = items.find(b => b === active || b.contains(active)) || actionBtns[0];
+                        if (targetBtn) {
+                            const btnText = targetBtn.innerText.replace(/\s+/g, ' ').trim();
+                            announce(loc(`Đã chọn: ${btnText}`, `Selected: ${btnText}`), liveRegion);
+                            fireClick(targetBtn);
+                            try { targetBtn.click(); } catch(e) {}
+                        }
+                    }
+                    else if (isNavKey) {
+                        const isPrev = event.shiftKey || k === 'ArrowUp' || k === 'ArrowLeft';
+                        const active = document.activeElement;
+                        let idx = items.findIndex(el => el === active || el.contains(active));
+                        if (idx === -1) {
+                            idx = isPrev ? items.length - 1 : 0;
+                        } else {
+                            const step = isPrev ? -1 : 1;
+                            idx = (idx + step + items.length) % items.length;
+                        }
+                        const next = items[idx];
+                        
+                        items.forEach(el => { if(el) el.style.outline = 'none'; });
+                        next.setAttribute("tabindex", "0");
+                        next.focus();
+                        next.style.outline = '2px solid #0068ff';
+                        next.style.outlineOffset = '2px';
+                        
+                        const btnText = next.innerText.replace(/\s+/g, ' ').trim();
+                        announce(loc(`${btnText}, nút`, `${btnText}, button`), liveRegion);
+                    }
+                }
+            } else {
+                handled = true;
+            }
+        } else if (methodPopup) {
+            const k = event.key;
+            const isNavKey = k === 'Tab' || k === 'ArrowDown' || k === 'ArrowUp' || k === 'ArrowRight' || k === 'ArrowLeft';
+            const isActionKey = k === 'Enter' || k === ' ' || k === 'Escape';
+            
+            if (!event.ctrlKey && !event.metaKey && (isNavKey || isActionKey)) {
+                handled = true;
+                
+                if (event.type === 'keydown') {
+                    const cards = Array.from(methodPopup.querySelectorAll('.sync-msg-setting-popup__card.clickable'));
+                    const closeBtn = document.querySelector('.setting__close, [icon="close f16"], .modal-header-icon:not(.zl-modal__dialog__back), .fa-close')?.closest('.z--btn--v2, button, div');
+                    const items = [...cards, closeBtn].filter(Boolean);
+                    
+                    if (k === 'Escape') {
+                        if (previousActiveElement && document.body.contains(previousActiveElement)) {
+                            previousActiveElement.focus();
+                        }
+                        setFocusContext(previousFocusContext || "conversations");
+                        if (closeBtn) {
+                            fireClick(closeBtn);
+                        } else {
+                            document.body.click();
+                        }
+                        announce(loc("Đã đóng cửa sổ cài đặt", "Closed settings window"), liveRegion);
+                    }
+                    else if (k === 'Enter' || k === ' ') {
+                        const active = document.activeElement;
+                        const targetCard = cards.find(c => c === active || c.contains(active));
+                        if (targetCard) {
+                            const title = targetCard.querySelector('.sync-msg-setting-popup__card-title')?.innerText.trim() || "";
+                            announce(loc(`Đã chọn: ${title}`, `Selected: ${title}`), liveRegion);
+                            fireClick(targetCard);
+                            try { targetCard.click(); } catch(e) {}
+                            
+                            // Check if .backup-msg-popup appears
+                            setTimeout(async () => {
+                                for (let i = 0; i < 25; i++) {
+                                    await sleep(100);
+                                    const bp = document.querySelector('.backup-msg-popup');
+                                    if (bp) {
+                                        setupBackupPopupFocus(bp, liveRegion);
+                                        break;
+                                    }
+                                }
+                            }, 50);
+                        } else if (active && (active === closeBtn || closeBtn?.contains(active))) {
+                            if (previousActiveElement && document.body.contains(previousActiveElement)) {
+                                previousActiveElement.focus();
+                            }
+                            setFocusContext(previousFocusContext || "conversations");
+                            if (closeBtn) fireClick(closeBtn);
+                            announce(loc("Đã đóng cửa sổ cài đặt", "Closed settings window"), liveRegion);
+                        } else {
+                            const defaultCard = cards[0];
+                            if (defaultCard) {
+                                const title = defaultCard.querySelector('.sync-msg-setting-popup__card-title')?.innerText.trim() || "";
+                                announce(loc(`Đã chọn: ${title}`, `Selected: ${title}`), liveRegion);
+                                fireClick(defaultCard);
+                                try { defaultCard.click(); } catch(e) {}
+                            }
+                        }
+                    }
+                    else if (isNavKey) {
+                        const isPrev = event.shiftKey || k === 'ArrowUp' || k === 'ArrowLeft';
+                        const active = document.activeElement;
+                        let idx = items.findIndex(el => el === active || el.contains(active));
+                        if (idx === -1) {
+                            idx = isPrev ? items.length - 1 : 0;
+                        } else {
+                            const step = isPrev ? -1 : 1;
+                            idx = (idx + step + items.length) % items.length;
+                        }
+                        const next = items[idx];
+                        
+                        items.forEach(el => { if(el) el.style.outline = 'none'; });
+                        next.setAttribute("tabindex", "0");
+                        next.focus();
+                        next.style.outline = '2px solid #0068ff';
+                        next.style.outlineOffset = '2px';
+                        
+                        if (cards.includes(next)) {
+                            const titleEl = next.querySelector('.sync-msg-setting-popup__card-title');
+                            const descEl = next.querySelector('.sync-msg-setting-popup__card-desc');
+                            const title = titleEl ? titleEl.innerText.trim() : "";
+                            const desc = descEl ? descEl.innerText.trim() : "";
+                            const msg = title && desc ? `${title}. ${desc}` : (title || desc);
+                            announce(msg, liveRegion);
+                        } else if (next === closeBtn || closeBtn?.contains(next)) {
+                            announce(loc("Nút đóng cửa sổ", "Close window button"), liveRegion);
+                        }
+                    }
+                }
+            } else {
+                handled = true;
+            }
+        } else if (syncModal) {
             const k = event.key;
             if (!event.ctrlKey && !event.metaKey && (k === 'Tab' || k === 'Enter' || k === 'Escape' || k === ' ')) {
                 handled = true;
@@ -1863,7 +2027,32 @@ function fireClick(btn, skipNativeClick = false) {
     } catch(e) {
         writeDebugLog(`fireClick error: ${e.message}`);
     }
-};
+}
+
+function setupBackupPopupFocus(backupPopup, liveRegion) {
+    if (!backupPopup) return;
+    const { announce } = require("./accessibility.js");
+    const { loc } = require("./utils.js");
+    
+    const title = backupPopup.querySelector('.backup-msg-popup__title')?.innerText.trim() || "";
+    const descItems = Array.from(backupPopup.querySelectorAll('.backup-msg-popup__desc-list-item')).map(el => el.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const descText = descItems.join('. ');
+    
+    const btns = Array.from(backupPopup.querySelectorAll('.backup-msg-popup__actions .z--btn--v2, .backup-msg-popup__actions div[class*="btn"], .backup-msg-popup__actions button'));
+    const startBtn = btns[0];
+    
+    if (startBtn) {
+        btns.forEach(b => { if (b) b.style.outline = 'none'; });
+        startBtn.setAttribute('tabindex', '0');
+        startBtn.focus();
+        startBtn.style.outline = '2px solid #0068ff';
+        startBtn.style.outlineOffset = '2px';
+    }
+    
+    const btnText = startBtn ? (startBtn.innerText || '').trim() : "";
+    const fullMsg = [title, descText, btnText ? `${btnText}, nút` : "", loc("Dùng phím Tab để chuyển nút, Enter để chọn, Escape để đóng.", "Use Tab to switch buttons, Enter to select, Escape to close.")].filter(Boolean).join('. ');
+    announce(fullMsg, liveRegion);
+}
 
 async function syncData(liveRegion) {
     setFocusContext("sync_modal");
@@ -1909,9 +2098,19 @@ async function syncData(liveRegion) {
         dataMenuItem.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
         await sleep(400);
         
-        // Step 4: Find "Đồng bộ và sao lưu" (STR_SYNC_CONFIGURATION) WITHIN the Dữ liệu submenu
-        const syncSpan = dataMenuItem.querySelector('[data-translate-inner="STR_SYNC_CONFIGURATION"]');
-        const syncBtn = syncSpan ? (syncSpan.closest('div-14, .zmenu-item') || syncSpan) : null;
+        // Step 4: Find "Đồng bộ và sao lưu" (STR_SYNC_AND_BACKUP_CONFIGURATION / STR_SYNC_CONFIGURATION)
+        let syncSpan = dataMenuItem ? dataMenuItem.querySelector('[data-translate-inner="STR_SYNC_AND_BACKUP_CONFIGURATION"], [data-translate-inner="STR_SYNC_CONFIGURATION"]') : null;
+        if (!syncSpan) {
+            syncSpan = document.querySelector('[data-translate-inner="STR_SYNC_AND_BACKUP_CONFIGURATION"], [data-translate-inner="STR_SYNC_CONFIGURATION"]');
+        }
+        if (!syncSpan) {
+            const allSpans = Array.from(document.querySelectorAll('.zmenu-body.sub-menu span, .zmenu-item span, [class*="zmenu-item"] span'));
+            syncSpan = allSpans.find(el => {
+                const txt = (el.innerText || '').trim().toLowerCase();
+                return txt === 'đồng bộ và sao lưu' || txt.includes('đồng bộ') || txt.includes('sync and backup');
+            });
+        }
+        const syncBtn = syncSpan ? (syncSpan.closest('.zmenu-item, [class*="zmenu-item"], div-14') || syncSpan) : null;
         
         if (!syncBtn || !syncSpan) {
             announce(loc("Không tìm thấy tùy chọn Đồng bộ và sao lưu", "Sync and backup option not found"), liveRegion);
@@ -1926,7 +2125,7 @@ async function syncData(liveRegion) {
         // so the browser computes real, non-zero coordinates for syncBtn.
         const forcedElements = [];
         let curr = syncBtn.parentElement;
-        while (curr && curr !== dataMenuItem) {
+        while (curr && curr !== dataMenuItem && curr !== document.body && curr !== document.documentElement) {
             const origDisplay = curr.style.display;
             const origOpacity = curr.style.opacity;
             const origVisibility = curr.style.visibility;
@@ -1948,6 +2147,7 @@ async function syncData(liveRegion) {
         try {
             // fireClick will get the correct screen coordinates of syncBtn and dispatch events.
             fireClick(syncBtn);
+            try { syncBtn.click(); } catch(e) {}
         } finally {
             // Restore original styles
             for (const item of forcedElements) {
@@ -1971,29 +2171,43 @@ async function syncData(liveRegion) {
             }
         }
         
-        // Step 6: Zalo's UI update requires clicking the sync card in the middle popup
-        // or falling back to the old "Đồng bộ ngay" (Sync Now) button.
-        let clicked = false;
+        // Step 6: Wait for the sync & backup popup window to appear and focus the first card
+        let methodPopup = null;
+        let cards = [];
         for (let i = 0; i < 20; i++) {
             await sleep(100);
-            
-            // Check for the middle popup card
-            const syncCard = document.querySelector('.sync-msg-setting-popup__card.clickable') || 
-                             document.querySelector('[data-translate-inner="STR_PROFILE_SYNC_MESSAGES"]')?.closest('.clickable');
-            if (syncCard) {
-                fireClick(syncCard);
-                clicked = true;
-                break;
+            methodPopup = document.querySelector('.sync-msg-setting-popup, .sync-msg-setting-popup__wrapper');
+            if (methodPopup) {
+                cards = Array.from(methodPopup.querySelectorAll('.sync-msg-setting-popup__card.clickable'));
+                if (cards.length > 0) break;
             }
+        }
+        
+        if (cards.length > 0) {
+            setFocusContext("sync_modal");
             
-            // Fallback to old "Đồng bộ ngay" button
-            const span = document.querySelector('[data-translate-inner="STR_SYNC_DB_MSG_SYNC_NOW"]');
-            if (span) {
-                const syncNowBtn = span.closest('.z--btn--v2, button, div') || span;
-                fireClick(syncNowBtn);
-                clicked = true;
-                break;
-            }
+            // Focus on the first card ("Đồng bộ tin nhắn")
+            const firstCard = cards[0];
+            firstCard.setAttribute("tabindex", "0");
+            firstCard.focus();
+            firstCard.style.outline = '2px solid #0068ff';
+            firstCard.style.outlineOffset = '2px';
+            
+            const titleEl = firstCard.querySelector('.sync-msg-setting-popup__card-title');
+            const descEl = firstCard.querySelector('.sync-msg-setting-popup__card-desc');
+            const title = titleEl ? titleEl.innerText.trim() : "";
+            const desc = descEl ? descEl.innerText.trim() : "";
+            const cardMsg = title && desc ? `${title}. ${desc}` : (title || desc);
+            
+            announce(loc(`${cardMsg}. Dùng phím Tab để chuyển chế độ, Enter để chọn, Escape để đóng.`, `${cardMsg}. Use Tab to switch mode, Enter to select, Escape to close.`), liveRegion);
+            return;
+        }
+        
+        // Fallback for older Zalo versions: click directly if old button exists
+        const span = document.querySelector('[data-translate-inner="STR_SYNC_DB_MSG_SYNC_NOW"]');
+        if (span) {
+            const syncNowBtn = span.closest('.z--btn--v2, button, div') || span;
+            fireClick(syncNowBtn);
         }
         
         // Wait for the sync dialog/modal to appear (up to 2 seconds)
