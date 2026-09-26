@@ -839,7 +839,7 @@
         }
 
         // Fetch latest release details from GitHub
-        fetch(API_URL)
+        fetch(API_URL, { cache: 'no-cache' })
             .then(res => {
                 if (!res.ok) throw new Error("Could not fetch the latest release from GitHub.");
                 return res.json();
@@ -903,7 +903,7 @@
         const API_VERSIONS_URL = "https://api.github.com/repos/oceanondawave/zablind/releases";
         const versions = document.getElementById("versions");
 
-        fetch(API_VERSIONS_URL)
+        fetch(API_VERSIONS_URL, { cache: 'no-cache' })
             .then(res => res.json())
             .then(releases => {
                 versions.innerHTML = "";
