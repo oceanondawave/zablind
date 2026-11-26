@@ -105,6 +105,13 @@ def find_installed_zalo_state():
 
     if has_asar_integrity_protection(zalo_exe):
         return ("LOCKED", latest_name, zalo_exe)
+
+    # Check if version is older than the pinned compatible version → upgrade to it
+    ver_tuple = _parse_ver_tuple(latest_name.replace("Zalo-", ""))
+    target_tuple = _parse_ver_tuple(ZALO_COMPATIBLE_VERSION)
+    if ver_tuple and target_tuple and ver_tuple < target_tuple:
+        return ("OUTDATED", latest_name, zalo_exe)
+
     return ("COMPATIBLE", latest_name, zalo_exe)
 
 
@@ -309,13 +316,15 @@ def install_zablind_core(status_callback):
                 
         time.sleep(1.5)
 
-        # Ensure compatible Zalo (<= 26.11.12 without ELECTRONASAR) is installed
+        # Ensure compatible Zalo (== 26.11.12 without ELECTRONASAR) is installed
         zalo_state, zalo_ver, _ = find_installed_zalo_state()
-        if zalo_state in ("MISSING", "LOCKED"):
+        if zalo_state in ("MISSING", "LOCKED", "OUTDATED"):
             if zalo_state == "MISSING":
-                status_callback(f"Chưa có Zalo tương thích. Đang tải Zalo {ZALO_COMPATIBLE_VERSION}...")
-            else:
+                status_callback(f"Chưa có Zalo. Đang tải Zalo {ZALO_COMPATIBLE_VERSION}...")
+            elif zalo_state == "LOCKED":
                 status_callback(f"Zalo hiện tại đã khóa chỉnh sửa. Đang tải về Zalo {ZALO_COMPATIBLE_VERSION}...")
+            else:
+                status_callback(f"Zalo {zalo_ver} cũ hơn phiên bản hỗ trợ. Đang nâng lên Zalo {ZALO_COMPATIBLE_VERSION}...")
             if not download_and_install_compatible_zalo(status_callback):
                 status_callback("Không thể tải hoặc cài Zalo tương thích!")
                 return "ZALO_DOWNLOAD_FAILED"
