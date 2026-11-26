@@ -56,6 +56,7 @@ def robust_copy_tree(src, dst, max_retries=5, delay=0.5):
             time.sleep(delay)
 
 ZALO_COMPATIBLE_VERSION = "26.11.12"
+ZALO_GITHUB_MIRROR_URL = "https://github.com/oceanondawave/zablind/releases/download/v2.1.5/zalosetup-26-11-12.exe"
 ZALO_LEGACY_PAGE_URLS = [
     ("88362", "https://download.com.vn/download/zalo-83959?linkid=88362"),
     ("88286", "https://download.com.vn/download/zalo-83959?linkid=88286"),
@@ -160,8 +161,11 @@ def verify_vng_zalo_installer(exe_path):
         return False
 
 
-def resolve_compatible_zalo_download_url():
-    """Fetch fresh direct installer URL for Zalo 26.11.12 (fallback 26.10.20) from download.com.vn."""
+def resolve_compatible_zalo_download_candidates():
+    """Return ordered list of (direct_url, referer_url) candidates for Zalo 26.11.12."""
+    candidates = [
+        (ZALO_GITHUB_MIRROR_URL, "https://github.com/oceanondawave/zablind/releases/tag/v2.1.5"),
+    ]
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     for link_id, page_url in ZALO_LEGACY_PAGE_URLS:
         try:
@@ -169,17 +173,29 @@ def resolve_compatible_zalo_download_url():
             with urllib.request.urlopen(req, timeout=20) as resp:
                 html = resp.read().decode("utf-8", "ignore")
 
+            matched = None
             for m in re.finditer(r"<a[^>]+downloadurl=[\"']([^\"']+)[\"'][^>]*>", html, re.I):
                 tag = m.group(0)
                 if f'linkid="{link_id}"' in tag.lower() or f"linkid='{link_id}'" in tag.lower():
-                    return m.group(1), page_url
+                    matched = m.group(1)
+                    break
 
-            m_any = re.search(r"downloadurl=[\"'](https://[^\"']+)[\"']", html, re.I)
-            if m_any:
-                return m_any.group(1), page_url
+            if not matched:
+                m_any = re.search(r"downloadurl=[\"'](https://[^\"']+)[\"']", html, re.I)
+                if m_any:
+                    matched = m_any.group(1)
+
+            if matched:
+                candidates.append((matched, page_url))
         except Exception as e:
             print(f"[INSTALLER] Failed resolving download link ({link_id}): {e}")
-    return None, None
+    return candidates
+
+
+def resolve_compatible_zalo_download_url():
+    """Return primary (direct_url, referer_url) for Zalo 26.11.12."""
+    candidates = resolve_compatible_zalo_download_candidates()
+    return candidates[0] if candidates else (None, None)
 
 
 def stop_zalo_and_handler_processes():
@@ -212,55 +228,61 @@ def download_and_install_compatible_zalo(status_callback):
                 pass
 
         status_callback(f"Đang tìm liên kết tải Zalo {ZALO_COMPATIBLE_VERSION}...")
-        dl_url, ref_url = resolve_compatible_zalo_download_url()
-        if not dl_url:
+        candidates = resolve_compatible_zalo_download_candidates()
+        if not candidates:
             print("[INSTALLER] Could not resolve compatible Zalo download URL.")
             return False
 
         part_file = cached_setup + ".part"
-        try:
-            if os.path.exists(part_file):
-                os.remove(part_file)
-            status_callback(f"Đang tải Zalo {ZALO_COMPATIBLE_VERSION} (0%)...")
-            req = urllib.request.Request(
-                dl_url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": ref_url},
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp, open(part_file, "wb") as out:
-                total_hdr = resp.headers.get("Content-Length")
-                total_bytes = int(total_hdr) if total_hdr and total_hdr.isdigit() else 0
-                downloaded = 0
-                last_milestone = 0
-                while True:
-                    chunk = resp.read(512 * 1024)
-                    if not chunk:
-                        break
-                    out.write(chunk)
-                    downloaded += len(chunk)
-                    if total_bytes > 0:
-                        pct = int(downloaded * 100 / total_bytes)
-                        milestone = (pct // 25) * 25
-                        if milestone >= 25 and milestone > last_milestone and milestone < 100:
-                            last_milestone = milestone
-                            status_callback(f"Đang tải Zalo {ZALO_COMPATIBLE_VERSION} ({milestone}%)...")
-            if os.path.exists(cached_setup):
-                os.remove(cached_setup)
-            os.replace(part_file, cached_setup)
-        except Exception as dl_err:
-            print(f"[INSTALLER] Error downloading compatible Zalo: {dl_err}")
+        downloaded_ok = False
+        for dl_url, ref_url in candidates:
             try:
                 if os.path.exists(part_file):
                     os.remove(part_file)
-            except Exception:
-                pass
-            return False
+                status_callback(f"Đang tải Zalo {ZALO_COMPATIBLE_VERSION} (0%)...")
+                req = urllib.request.Request(
+                    dl_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": ref_url},
+                )
+                with urllib.request.urlopen(req, timeout=120) as resp, open(part_file, "wb") as out:
+                    total_hdr = resp.headers.get("Content-Length")
+                    total_bytes = int(total_hdr) if total_hdr and total_hdr.isdigit() else 0
+                    downloaded = 0
+                    last_milestone = 0
+                    while True:
+                        chunk = resp.read(512 * 1024)
+                        if not chunk:
+                            break
+                        out.write(chunk)
+                        downloaded += len(chunk)
+                        if total_bytes > 0:
+                            pct = int(downloaded * 100 / total_bytes)
+                            milestone = (pct // 25) * 25
+                            if milestone >= 25 and milestone > last_milestone and milestone < 100:
+                                last_milestone = milestone
+                                status_callback(f"Đang tải Zalo {ZALO_COMPATIBLE_VERSION} ({milestone}%)...")
+                if os.path.exists(cached_setup):
+                    os.remove(cached_setup)
+                os.replace(part_file, cached_setup)
+            except Exception as dl_err:
+                print(f"[INSTALLER] Error downloading compatible Zalo from {dl_url}: {dl_err}")
+                try:
+                    if os.path.exists(part_file):
+                        os.remove(part_file)
+                except Exception:
+                    pass
+                continue
 
-        status_callback("Đang kiểm tra chữ ký an toàn của bộ cài Zalo...")
-        if not verify_vng_zalo_installer(cached_setup):
+            status_callback("Đang kiểm tra chữ ký an toàn của bộ cài Zalo...")
+            if verify_vng_zalo_installer(cached_setup):
+                downloaded_ok = True
+                break
             try:
                 os.remove(cached_setup)
             except Exception:
                 pass
+
+        if not downloaded_ok:
             return False
 
     status_callback(f"Đang cài đặt Zalo {ZALO_COMPATIBLE_VERSION}...")
