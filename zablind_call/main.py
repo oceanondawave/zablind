@@ -5581,13 +5581,15 @@ def is_updater_running(zalo_dir=None, latest_version_dir=None) -> bool:
                     cmd = " ".join(p.info.get('cmdline') or []).lower()
                     if name.startswith("zalosetup"):
                         return True
-                    if name in ("update.exe", "squirrel.exe") and ("zalo" in exe or "zalo" in cmd):
+                    if name in ("update.exe", "squirrel.exe") and ("zalo" in exe or ("--meta-file" in cmd and "update_meta.json" in cmd and "zalo" in cmd)):
                         return True
-                    if "zalo-updater" in exe or "zalo-updater" in cmd:
-                        return True
-                    if name in ("installer.exe", "__installer.exe") and ("zalo" in exe or "zalo" in cmd):
-                        return True
-                    if "--meta-file" in cmd and "update_meta.json" in cmd and ("zalo" in exe or "zalo" in cmd):
+                    if name in ("installer.exe", "__installer.exe", "elevate.exe") and (
+                        "zalo-updater" in exe
+                        or "zalo" in exe
+                        or ("zalo-updater" in cmd)
+                        or ("--updated" in cmd and "zalo" in cmd)
+                        or ("--meta-file" in cmd and "update_meta.json" in cmd and "zalo" in cmd)
+                    ):
                         return True
                 except Exception:
                     pass
@@ -5655,14 +5657,37 @@ def is_valid_clean_asar(asar_path: str) -> bool:
         return False
 
 
+def has_asar_integrity_protection(zalo_exe_path: str) -> bool:
+    """Return True if Zalo.exe embeds Electron PE resource ELECTRONASAR (ASAR integrity lock)."""
+    marker = "ELECTRONASAR".encode("utf-16le")
+    try:
+        chunk_size = 4 * 1024 * 1024
+        overlap = len(marker) + 16
+        prev = b""
+        with open(zalo_exe_path, "rb") as f:
+            while True:
+                buf = f.read(chunk_size)
+                if not buf:
+                    break
+                window = prev + buf
+                if marker in window:
+                    return True
+                prev = buf[-overlap:] if len(buf) > overlap else buf
+        return False
+    except Exception:
+        return False
+
+
 _PATCH_LOCK = threading.Lock()
+_LAST_PATCH_BLOCKED_BY_INTEGRITY = False
 
 
 def run_zalo_patch(handler=None, is_patch_once=False):
-    global PATCHING_IN_PROGRESS
+    global PATCHING_IN_PROGRESS, _LAST_PATCH_BLOCKED_BY_INTEGRITY
     if not _PATCH_LOCK.acquire(blocking=is_patch_once):
         print("[PATCHER] Another patch run is already in progress. Skipping duplicate call.")
         return False
+    _LAST_PATCH_BLOCKED_BY_INTEGRITY = False
     try:
         local_appdata = os.environ.get('LOCALAPPDATA')
         if not local_appdata:
@@ -5706,6 +5731,33 @@ def run_zalo_patch(handler=None, is_patch_once=False):
         resources_dir = os.path.join(latest_version_dir, "resources")
         active_asar = os.path.join(resources_dir, "app.asar")
         backup_asar = os.path.join(resources_dir, "app.asar.bak")
+
+        # Abort cleanly if this Zalo build enforces Electron ASAR Integrity Validation (>= 26.11.20)
+        if has_asar_integrity_protection(zalo_binary):
+            _LAST_PATCH_BLOCKED_BY_INTEGRITY = True
+            print("[PATCHER] Detected ELECTRONASAR integrity protection in Zalo.exe. Cannot patch this version safely.")
+            if os.path.exists(backup_asar) and is_valid_clean_asar(backup_asar):
+                try:
+                    kill_zalo_processes()
+                    if os.path.exists(active_asar):
+                        os.remove(active_asar)
+                    shutil.copy2(backup_asar, active_asar)
+                    backup_unpacked = backup_asar + ".unpacked"
+                    active_unpacked = active_asar + ".unpacked"
+                    if os.path.isdir(backup_unpacked):
+                        if os.path.exists(active_unpacked):
+                            shutil.rmtree(active_unpacked)
+                        shutil.copytree(backup_unpacked, active_unpacked)
+                    print("[PATCHER] Restored original clean app.asar so Zalo can launch normally.")
+                except Exception as restore_err:
+                    print(f"[PATCHER] Failed to restore clean app.asar: {restore_err}")
+            if handler:
+                handler.speak(
+                    "Phiên bản Zalo mới đã khóa kiểm tra toàn vẹn nên Zablind không thể cài đè. Vui lòng hạ về bản Zalo cũ hơn để sử dụng.",
+                    language="vi",
+                    clear_pending=True,
+                )
+            return False
 
         if not os.path.exists(active_asar):
             print("[PATCHER] app.asar does not exist yet. Postponing patch.")
@@ -5884,6 +5936,20 @@ def run_zalo_patch(handler=None, is_patch_once=False):
 
             if handler:
                 handler.speak("Đã vá Zalo thành công. Đang khởi động lại Zalo.", language="vi", clear_pending=True)
+
+            # Clear any pre-downloaded newer Zalo installer from zalo-updater so pinned Zalo stays on this version
+            try:
+                updater_cache_dir = os.path.join(local_appdata, "zalo-updater")
+                if os.path.isdir(updater_cache_dir):
+                    for fn in os.listdir(updater_cache_dir):
+                        if fn.lower().endswith(".exe"):
+                            try:
+                                os.remove(os.path.join(updater_cache_dir, fn))
+                                print(f"[PATCHER] Cleaned cached Zalo updater: {fn}")
+                            except Exception:
+                                pass
+            except Exception:
+                pass
 
             root_dir = os.path.dirname(latest_version_dir)
             root_zalo = os.path.join(root_dir, "Zalo.exe")
@@ -6223,6 +6289,9 @@ def main():
             if success:
                 print("[PATCH-ONCE] Patch applied successfully.")
                 sys.exit(0)
+            elif _LAST_PATCH_BLOCKED_BY_INTEGRITY:
+                print("[PATCH-ONCE] Patch skipped: Zalo version has ELECTRONASAR integrity lock.")
+                sys.exit(2)
             else:
                 print("[PATCH-ONCE] Patching failed or not needed.")
                 sys.exit(1)

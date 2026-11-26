@@ -443,8 +443,145 @@ function stopCallService(forceKill = false) {
   }
 }
 
+function isBlockedZaloUpdaterCommand(command, args = []) {
+  try {
+    const cmdStr = String(command || '').toLowerCase();
+    const argStr = Array.isArray(args) ? args.join(' ').toLowerCase() : String(args || '').toLowerCase();
+    const combined = `${cmdStr} ${argStr}`;
+    const base = path.basename(cmdStr);
+
+    if (base === 'update.exe' && combined.includes('update_meta.json')) return true;
+    if (combined.includes('zalo-updater') && combined.includes('installer.exe')) return true;
+    if (combined.includes('zalosetup') && combined.includes('.exe')) return true;
+  } catch (e) {}
+  return false;
+}
+
+function setupZaloUpdateBlocker(electronMod, childProcessMod = require('child_process')) {
+  if (!CONFIG || CONFIG.blockZaloAutoUpdate === false) return false;
+
+  const { EventEmitter } = require('events');
+
+  // 1. Intercept electron.net.request to answer /api/login/chkUpdate with error_code 1001 ("no new version")
+  try {
+    const netMod = electronMod && electronMod.net;
+    if (netMod && typeof netMod.request === 'function' && !netMod.__zablindUpdateBlocked) {
+      const origNetRequest = netMod.request.bind(netMod);
+      netMod.__zablindUpdateBlocked = true;
+
+      netMod.request = function patchedNetRequest(options, callback) {
+        const reqUrl = typeof options === 'string'
+          ? options
+          : (options && (options.url || `${options.protocol || 'https:'}//${options.hostname || options.host || ''}${options.path || ''}`)) || '';
+
+        if (typeof reqUrl === 'string' && reqUrl.includes('/api/login/chkUpdate')) {
+          debugLog(`[UPDATE-BLOCK] Intercepted chkUpdate request: ${reqUrl}`);
+          const fakeReq = new EventEmitter();
+          fakeReq.setHeader = () => {};
+          fakeReq.getHeader = () => undefined;
+          fakeReq.removeHeader = () => {};
+          fakeReq.write = () => true;
+          fakeReq.abort = () => {};
+          fakeReq.end = () => {
+            process.nextTick(() => {
+              const fakeRes = new EventEmitter();
+              fakeRes.statusCode = 200;
+              fakeRes.statusMessage = 'OK';
+              fakeRes.headers = { 'content-type': 'application/json' };
+              fakeRes.setEncoding = () => {};
+              if (typeof callback === 'function') callback(fakeRes);
+              fakeReq.emit('response', fakeRes);
+              process.nextTick(() => {
+                fakeRes.emit('data', '{"error_code":1001,"error_message":"Update blocked by Zablind"}');
+                fakeRes.emit('end');
+              });
+            });
+          };
+          return fakeReq;
+        }
+        return origNetRequest(options, callback);
+      };
+      debugLog('[UPDATE-BLOCK] electron.net.request chkUpdate blocker active');
+    }
+  } catch (e) {
+    debugLog(`[UPDATE-BLOCK] Failed to patch electron.net.request: ${e.message}`);
+  }
+
+  // 2. Intercept child_process.spawn / execFile if Zalo tries to execute Update.exe or zalo-updater installer.exe
+  try {
+    if (childProcessMod && !childProcessMod.__zablindUpdateBlocked) {
+      childProcessMod.__zablindUpdateBlocked = true;
+      const origSpawn = childProcessMod.spawn;
+      const origExecFile = childProcessMod.execFile;
+
+      childProcessMod.spawn = function patchedSpawn(command, args, options) {
+        if (isBlockedZaloUpdaterCommand(command, args)) {
+          debugLog(`[UPDATE-BLOCK] Blocked updater spawn: ${command} ${(Array.isArray(args) ? args.join(' ') : '')}`);
+          const fakeProc = new EventEmitter();
+          fakeProc.pid = 0;
+          fakeProc.killed = true;
+          fakeProc.stdout = null;
+          fakeProc.stderr = null;
+          fakeProc.stdin = null;
+          fakeProc.unref = () => fakeProc;
+          fakeProc.kill = () => true;
+          process.nextTick(() => fakeProc.emit('exit', 0, null));
+          return fakeProc;
+        }
+        return origSpawn.apply(this, arguments);
+      };
+
+      if (typeof origExecFile === 'function') {
+        childProcessMod.execFile = function patchedExecFile(file, args, options, callback) {
+          const argList = Array.isArray(args) ? args : [];
+          if (isBlockedZaloUpdaterCommand(file, argList)) {
+            debugLog(`[UPDATE-BLOCK] Blocked updater execFile: ${file}`);
+            const cb = typeof args === 'function' ? args : (typeof options === 'function' ? options : callback);
+            const fakeProc = new EventEmitter();
+            fakeProc.pid = 0;
+            fakeProc.kill = () => true;
+            process.nextTick(() => {
+              if (typeof cb === 'function') cb(new Error('Blocked by Zablind'), '', '');
+              fakeProc.emit('exit', 1, null);
+            });
+            return fakeProc;
+          }
+          return origExecFile.apply(this, arguments);
+        };
+      }
+      debugLog('[UPDATE-BLOCK] child_process updater blocker active');
+    }
+  } catch (e) {
+    debugLog(`[UPDATE-BLOCK] Failed to patch child_process: ${e.message}`);
+  }
+
+  // 3. Cancel any renderer/session chkUpdate request on defaultSession when ready
+  try {
+    if (electronMod && electronMod.app && typeof electronMod.app.whenReady === 'function') {
+      electronMod.app.whenReady().then(() => {
+        try {
+          if (electronMod.session && electronMod.session.defaultSession && electronMod.session.defaultSession.webRequest) {
+            electronMod.session.defaultSession.webRequest.onBeforeRequest(
+              { urls: ['*://*/api/login/chkUpdate*'] },
+              (details, cb) => {
+                debugLog(`[UPDATE-BLOCK] Cancelled session webRequest: ${details.url}`);
+                cb({ cancel: true });
+              }
+            );
+          }
+        } catch (e) {}
+      }).catch(() => {});
+    }
+  } catch (e) {}
+
+  return true;
+}
+
 // Auto-start when module is loaded (ONLY in Electron main process)
 if (process.type === 'browser') {
+  const electronMod = require('electron');
+  setupZaloUpdateBlocker(electronMod, require('child_process'));
+
   // Add a small delay to ensure Zalo is fully initialized
   setTimeout(() => {
     startCallService();
@@ -455,7 +592,7 @@ if (process.type === 'browser') {
     stopCallService();
   });
 
-  const { app } = require('electron');
+  const { app } = electronMod;
 
   const monkeypatchWindow = (win) => {
     // Window monkeypatching placeholder if needed in the future
@@ -591,10 +728,12 @@ if (process.type === 'browser') {
 
 
 
-// Export functions for manual control if needed
+// Export functions for manual control and tests
 module.exports = {
   startCallService,
   stopCallService,
+  setupZaloUpdateBlocker,
+  isBlockedZaloUpdaterCommand,
   isRunning: () => callServiceStarted
 };
 

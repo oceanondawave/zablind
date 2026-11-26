@@ -4,10 +4,12 @@ Bản cập nhật v2.1.5 tập trung sửa triệt để các lỗi ảnh hư�
 
 ---
 
-## 1. Zalo tự cập nhật không còn làm hỏng hoặc mất Zablind
+## 1. Tự động cài đặt Zalo tương thích & chặn tự cập nhật
 
-* **Chờ Zalo cập nhật xong hẳn mới hỗ trợ lại**: Khi Zalo đang tải hoặc cài đặt phiên bản mới, Zablind tự động tạm dừng thao tác để tránh xung đột khiến Zalo bị lỗi không mở lên được.
-* **Tự động cập nhật hỗ trợ ngay sau khi Zalo lên bản mới**: Zablind giữ tiến trình hỗ trợ chạy xuyên suốt lúc Zalo khởi động lại để hoàn tất cập nhật, tự tạo bản sao lưu sạch từ phiên bản mới và đưa các phím tắt trở lại ngay lập tức.
+* **Tự động tải và cài Zalo 26.11.12**: Khi cài Zablind, nếu máy chưa có Zalo hoặc đang cài bản Zalo mới từ `26.11.20` trở lên (đã bị khóa chỉnh sửa giao diện), bộ cài sẽ tự động tải về bản **Zalo 26.11.12** có chữ ký số chính thức để cài đặt.
+* **Ngăn Zalo tự cập nhật lên bản bị khóa**: Zablind v2.1.5 tự động giữ Zalo ở phiên bản **26.11.12** tương thích, chặn kiểm tra và tải ngầm các bản cập nhật mới — vì nếu cập nhật lên bản Zalo mới hơn thì Zablind sẽ không hoạt động.
+* **Lưu ý dành cho người dùng**: Hiện chưa có cách cài Zablind lên Zalo mới và tác giả vẫn đang nghiên cứu giải pháp, nên dùng **Zalo 26.11.12** hiện là cách duy nhất để sử dụng Zablind. Bản Zalo cũ này không có các tính năng mới hay bản vá bảo mật mới nhất từ Zalo; người dùng cân nhắc và tự chịu trách nhiệm khi sử dụng. Nếu muốn tự cài thủ công trước, bạn có thể tải tại https://download.com.vn/download/zalo-83959?linkid=88362.
+* **Nhận biết an toàn & ổn định**: Bảo vệ không cài đè nhầm lên bản Zalo bị khóa, tự khôi phục bản gốc nếu gặp xung đột, và giữ tiến trình hỗ trợ xuyên suốt khi Zalo khởi động lại.
 
 ---
 

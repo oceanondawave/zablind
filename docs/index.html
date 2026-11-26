@@ -234,6 +234,23 @@
                 </a>
             </div>
 
+            <!-- Compatibility & Responsibility Notice -->
+            <div role="region" aria-label="Lưu ý về phiên bản Zalo tương thích" class="rounded-xl border border-sky-500/35 bg-sky-500/10 p-4 text-xs sm:text-sm text-foreground/90 space-y-2 leading-relaxed">
+                <h3 class="font-bold text-sky-300 text-sm">
+                    Lưu ý quan trọng: Zablind hiện sử dụng Zalo phiên bản 26.11.12
+                </h3>
+                <p>
+                    Các phiên bản Zalo mới hơn (từ <strong>26.11.20</strong> trở lên) đã được nhà phát hành khóa tệp hệ thống không cho phần mềm hỗ trợ can thiệp giao diện. Hiện tại chưa có giải pháp hỗ trợ bản Zalo mới và tác giả vẫn đang tiếp tục nghiên cứu, nên việc sử dụng <strong>Zalo 26.11.12</strong> hiện là cách duy nhất để Zablind hoạt động.
+                </p>
+                <p class="text-amber-200/95">
+                    <strong>Trách nhiệm người dùng:</strong> Do không phải bản Zalo mới nhất, phiên bản này sẽ <strong>không có các tính năng mới</strong> và <strong>không nhận được các bản cập nhật bảo mật mới nhất từ Zalo</strong>. Bạn vui lòng cân nhắc và <strong>tự chịu trách nhiệm</strong> khi lựa chọn cài đặt và sử dụng.
+                </p>
+                <p>
+                    <strong>Cơ chế cài đặt tự động:</strong> Bộ cài Zablind sẽ <strong>tự động tải và cài đặt sẵn Zalo 26.11.12</strong> cho bạn, đồng thời <strong>tự chặn Zalo nâng cấp</strong> lên bản mới (nếu nâng cấp lên bản mới thì Zablind sẽ ngừng hoạt động). Nếu muốn tự tải và cài thủ công trước, bạn có thể tải tại đây:
+                    <a href="https://download.com.vn/download/zalo-83959?linkid=88362" target="_blank" rel="noopener noreferrer" class="font-semibold underline text-sky-300 hover:text-white transition-colors">Tải Zalo 26.11.12 thủ công</a>.
+                </p>
+            </div>
+
             <!-- Compact Features Preview -->
             <div class="pt-1 space-y-2.5">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -245,8 +262,8 @@
                         <span class="text-xs text-muted-foreground">Bấm A, D, C, M, E dễ dàng khi đang ở cửa sổ cuộc gọi. Trình đọc màn hình không còn đọc nhầm hay nhảy sai khi bấm phím.</span>
                     </li>
                     <li class="p-3 rounded-lg bg-muted/25 border border-border/40 space-y-0.5">
-                        <strong class="text-foreground block">Zalo cập nhật vẫn chạy ổn định</strong>
-                        <span class="text-xs text-muted-foreground">Tự động nhận biết khi Zalo lên phiên bản mới một cách an toàn, tránh gián đoạn khi khởi động Zalo.</span>
+                        <strong class="text-foreground block">Giữ Zalo ổn định, chặn tự cập nhật</strong>
+                        <span class="text-xs text-muted-foreground">Tự động ngăn Zalo nâng cấp lên bản mới bị khóa tệp hỗ trợ, giúp Zablind luôn chạy bền bỉ không gián đoạn.</span>
                     </li>
                     <li class="p-3 rounded-lg bg-muted/25 border border-border/40 space-y-0.5">
                         <strong class="text-foreground block">Đồng bộ &amp; Sao lưu tin nhắn</strong>
@@ -461,8 +478,8 @@
                 </summary>
                 <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-4 text-sm text-muted-foreground">
                     <ul class="list-disc pl-5 space-y-2 leading-relaxed">
-                        <li><strong>Bước 1:</strong> Cài đặt sẵn <a href="https://zalo.me/pc" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline font-medium">Zalo chính thức cho máy tính</a>.</li>
-                        <li><strong>Bước 2:</strong> Mở tệp cài đặt Zablind vừa tải về rồi chọn nút <kbd>Cài đặt / Cài đặt lại</kbd>. Quá trình cài đặt không cần mạng.</li>
+                        <li><strong>Bước 1:</strong> Tải bộ cài Zablind ở trên rồi mở lên, chọn nút <kbd>Cài đặt / Cài đặt lại</kbd>. Nếu máy chưa có Zalo tương thích hoặc đang dùng bản Zalo mới bị khóa (từ 26.11.20 trở lên), bộ cài sẽ cần kết nối mạng để <strong>tự động tải và cài Zalo 26.11.12</strong>.</li>
+                        <li><strong>Cài Zalo thủ công (tùy chọn):</strong> Nếu bạn muốn tự tải và cài sẵn trước khi chạy bộ cài Zablind, hãy tải <a href="https://download.com.vn/download/zalo-83959?linkid=88362" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline font-medium">Zalo 26.11.12 tại đây</a>. Sau khi cài xong, Zablind sẽ tự chặn Zalo tự cập nhật lên bản mới.</li>
                         <li><strong>Gỡ cài đặt:</strong> Mở lại tệp cài đặt rồi chọn nút <kbd>Gỡ cài đặt Zablind</kbd> để đưa Zalo về trạng thái ban đầu.</li>
                         <li><strong>Tự động cập nhật:</strong> Zablind tự kiểm tra bản mới định kỳ. Bạn cũng có thể bấm <kbd>Ctrl + Shift + U</kbd> trong Zalo để kiểm tra bất cứ lúc nào.</li>
                         <li><strong>Trình đọc màn hình:</strong> Khuyên dùng với <strong>NVDA</strong>. Nếu bạn sử dụng <strong>JAWS</strong>, hãy bấm <kbd>Insert + Z</kbd> trước khi thao tác.</li>

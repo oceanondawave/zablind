@@ -4,6 +4,10 @@ import shutil
 import winreg
 import subprocess
 import time
+import re
+import json
+import tempfile
+import urllib.request
 import win32gui
 import win32con
 import win32api
@@ -51,6 +55,243 @@ def robust_copy_tree(src, dst, max_retries=5, delay=0.5):
                 raise e
             time.sleep(delay)
 
+ZALO_COMPATIBLE_VERSION = "26.11.12"
+ZALO_LEGACY_PAGE_URLS = [
+    ("88362", "https://download.com.vn/download/zalo-83959?linkid=88362"),
+    ("88286", "https://download.com.vn/download/zalo-83959?linkid=88286"),
+]
+
+
+def _parse_ver_tuple(ver_str):
+    return tuple(int(x) for x in re.findall(r"\d+", str(ver_str or "")))
+
+
+def has_asar_integrity_protection(zalo_exe_path):
+    """Return True if Zalo.exe embeds Electron PE resource ELECTRONASAR (ASAR integrity lock)."""
+    marker = "ELECTRONASAR".encode("utf-16le")
+    try:
+        chunk_size = 4 * 1024 * 1024
+        overlap = len(marker) + 16
+        prev = b""
+        with open(zalo_exe_path, "rb") as f:
+            while True:
+                buf = f.read(chunk_size)
+                if not buf:
+                    break
+                if marker in (prev + buf):
+                    return True
+                prev = buf[-overlap:] if len(buf) > overlap else buf
+        return False
+    except Exception:
+        return False
+
+
+def find_installed_zalo_state():
+    """Inspect %LOCALAPPDATA%\\Programs\\Zalo and return (state, version_dir_name, exe_path)."""
+    local_appdata = os.environ.get("LOCALAPPDATA") or os.path.join(os.environ.get("USERPROFILE", ""), "AppData", "Local")
+    zalo_base = os.path.join(local_appdata, "Programs", "Zalo")
+    if not os.path.isdir(zalo_base):
+        return ("MISSING", None, None)
+
+    subdirs = [d for d in os.listdir(zalo_base) if d.startswith("Zalo-") and os.path.isdir(os.path.join(zalo_base, d))]
+    if not subdirs:
+        return ("MISSING", None, None)
+
+    subdirs.sort(key=lambda s: _parse_ver_tuple(s.replace("Zalo-", "")))
+    latest_name = subdirs[-1]
+    zalo_exe = os.path.join(zalo_base, latest_name, "Zalo.exe")
+    if not os.path.exists(zalo_exe) or os.path.getsize(zalo_exe) == 0:
+        return ("MISSING", None, None)
+
+    if has_asar_integrity_protection(zalo_exe):
+        return ("LOCKED", latest_name, zalo_exe)
+    return ("COMPATIBLE", latest_name, zalo_exe)
+
+
+def verify_vng_zalo_installer(exe_path):
+    """Verify downloaded installer is large, VNG-signed (Authenticode Valid), and <= 26.11.12."""
+    try:
+        if not os.path.exists(exe_path) or os.path.getsize(exe_path) < 50 * 1024 * 1024:
+            print("[INSTALLER] Downloaded Zalo setup size check failed.")
+            return False
+
+        env = os.environ.copy()
+        env["ZB_CHECK_EXE"] = exe_path
+        ps_cmd = (
+            "$sig = Get-AuthenticodeSignature -LiteralPath $env:ZB_CHECK_EXE; "
+            "$vi = (Get-Item -LiteralPath $env:ZB_CHECK_EXE).VersionInfo; "
+            "@{ status = [string]$sig.Status; "
+            "   subject = [string]($sig.SignerCertificate.Subject); "
+            "   productVersion = [string]$vi.ProductVersion } | ConvertTo-Json -Compress"
+        )
+        res = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_cmd],
+            capture_output=True,
+            text=True,
+            timeout=25,
+            creationflags=0x08000000,
+            env=env,
+        )
+        if res.returncode != 0 or not res.stdout.strip():
+            print(f"[INSTALLER] Signature verification command failed: {res.stderr}")
+            return False
+
+        info = json.loads(res.stdout.strip())
+        if info.get("status") != "Valid" or "VNG GROUP JSC" not in info.get("subject", ""):
+            print(f"[INSTALLER] Invalid VNG signature: {info}")
+            return False
+
+        ver_tuple = _parse_ver_tuple(info.get("productVersion", ""))
+        if not ver_tuple or ver_tuple[:3] > (26, 11, 12):
+            print(f"[INSTALLER] Downloaded installer version unsupported: {info.get('productVersion')}")
+            return False
+
+        print(f"[INSTALLER] Verified VNG-signed Zalo setup v{info.get('productVersion')}")
+        return True
+    except Exception as e:
+        print(f"[INSTALLER] Error verifying downloaded Zalo setup: {e}")
+        return False
+
+
+def resolve_compatible_zalo_download_url():
+    """Fetch fresh direct installer URL for Zalo 26.11.12 (fallback 26.10.20) from download.com.vn."""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    for link_id, page_url in ZALO_LEGACY_PAGE_URLS:
+        try:
+            req = urllib.request.Request(page_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                html = resp.read().decode("utf-8", "ignore")
+
+            for m in re.finditer(r"<a[^>]+downloadurl=[\"']([^\"']+)[\"'][^>]*>", html, re.I):
+                tag = m.group(0)
+                if f'linkid="{link_id}"' in tag.lower() or f"linkid='{link_id}'" in tag.lower():
+                    return m.group(1), page_url
+
+            m_any = re.search(r"downloadurl=[\"'](https://[^\"']+)[\"']", html, re.I)
+            if m_any:
+                return m_any.group(1), page_url
+        except Exception as e:
+            print(f"[INSTALLER] Failed resolving download link ({link_id}): {e}")
+    return None, None
+
+
+def stop_zalo_and_handler_processes():
+    zalo_names = ["zalo.exe", "zaloexecutable.exe", "zalocall.exe", "zalocap.exe", "zablindcallhandler.exe", "zablindcallhandler_x86.exe"]
+    try:
+        import psutil
+        for proc in psutil.process_iter(["pid", "name"]):
+            try:
+                if proc.info["name"] and proc.info["name"].lower() in zalo_names:
+                    proc.kill()
+            except Exception:
+                pass
+    except Exception:
+        for name in zalo_names:
+            try:
+                subprocess.run(f"taskkill /F /IM {name}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+
+def download_and_install_compatible_zalo(status_callback):
+    """Download VNG-signed Zalo 26.11.12 and silently install it into %LOCALAPPDATA%\\Programs\\Zalo."""
+    cached_setup = os.path.join(tempfile.gettempdir(), f"ZaloSetup-{ZALO_COMPATIBLE_VERSION}-zablind.exe")
+
+    if not verify_vng_zalo_installer(cached_setup):
+        if os.path.exists(cached_setup):
+            try:
+                os.remove(cached_setup)
+            except Exception:
+                pass
+
+        status_callback(f"Đang tìm liên kết tải Zalo {ZALO_COMPATIBLE_VERSION}...")
+        dl_url, ref_url = resolve_compatible_zalo_download_url()
+        if not dl_url:
+            print("[INSTALLER] Could not resolve compatible Zalo download URL.")
+            return False
+
+        part_file = cached_setup + ".part"
+        try:
+            if os.path.exists(part_file):
+                os.remove(part_file)
+            status_callback(f"Đang tải Zalo {ZALO_COMPATIBLE_VERSION} (0%)...")
+            req = urllib.request.Request(
+                dl_url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": ref_url},
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp, open(part_file, "wb") as out:
+                total_hdr = resp.headers.get("Content-Length")
+                total_bytes = int(total_hdr) if total_hdr and total_hdr.isdigit() else 0
+                downloaded = 0
+                last_milestone = 0
+                while True:
+                    chunk = resp.read(512 * 1024)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    downloaded += len(chunk)
+                    if total_bytes > 0:
+                        pct = int(downloaded * 100 / total_bytes)
+                        milestone = (pct // 25) * 25
+                        if milestone >= 25 and milestone > last_milestone and milestone < 100:
+                            last_milestone = milestone
+                            status_callback(f"Đang tải Zalo {ZALO_COMPATIBLE_VERSION} ({milestone}%)...")
+            if os.path.exists(cached_setup):
+                os.remove(cached_setup)
+            os.replace(part_file, cached_setup)
+        except Exception as dl_err:
+            print(f"[INSTALLER] Error downloading compatible Zalo: {dl_err}")
+            try:
+                if os.path.exists(part_file):
+                    os.remove(part_file)
+            except Exception:
+                pass
+            return False
+
+        status_callback("Đang kiểm tra chữ ký an toàn của bộ cài Zalo...")
+        if not verify_vng_zalo_installer(cached_setup):
+            try:
+                os.remove(cached_setup)
+            except Exception:
+                pass
+            return False
+
+    status_callback(f"Đang cài đặt Zalo {ZALO_COMPATIBLE_VERSION}...")
+    stop_zalo_and_handler_processes()
+    time.sleep(1.0)
+
+    local_appdata = os.environ.get("LOCALAPPDATA") or os.path.join(os.environ.get("USERPROFILE", ""), "AppData", "Local")
+    zalo_base = os.path.join(local_appdata, "Programs", "Zalo")
+    updater_cache = os.path.join(local_appdata, "zalo-updater")
+
+    # Remove incompatible/locked Zalo binary folder and cached updater while preserving user chat data
+    for folder in (zalo_base, updater_cache):
+        if os.path.exists(folder):
+            try:
+                shutil.rmtree(folder)
+            except Exception as rm_err:
+                print(f"[INSTALLER] Warning removing {folder}: {rm_err}")
+
+    try:
+        res = subprocess.run(
+            [cached_setup, "/S"],
+            creationflags=0x08000000,
+            timeout=180,
+        )
+        print(f"[INSTALLER] Zalo setup finished with code {res.returncode}")
+    except Exception as setup_err:
+        print(f"[INSTALLER] Error running Zalo setup: {setup_err}")
+        return False
+
+    time.sleep(2.0)
+    stop_zalo_and_handler_processes()
+    time.sleep(1.0)
+
+    state_after, ver_after, _ = find_installed_zalo_state()
+    print(f"[INSTALLER] Zalo state after setup: {state_after}, version={ver_after}")
+    return state_after == "COMPATIBLE"
+
+
 def install_zablind_core(status_callback):
     status_callback("Bắt đầu cài đặt...")
     try:
@@ -64,22 +305,20 @@ def install_zablind_core(status_callback):
         
         # Kill running processes
         status_callback("Đang dừng các ứng dụng liên quan...")
-        zalo_names = ["zalo.exe", "zaloexecutable.exe", "zalocall.exe", "zablindcallhandler.exe", "zablindcallhandler_x86.exe"]
-        try:
-            import psutil
-            for proc in psutil.process_iter(['pid', 'name']):
-                try:
-                    if proc.info['name'] and proc.info['name'].lower() in zalo_names:
-                        proc.kill()
-                except:
-                    pass
-        except:
-            # Fallback to taskkill
-            for name in zalo_names:
-                try: subprocess.run(f"taskkill /F /IM {name}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except: pass
+        stop_zalo_and_handler_processes()
                 
         time.sleep(1.5)
+
+        # Ensure compatible Zalo (<= 26.11.12 without ELECTRONASAR) is installed
+        zalo_state, zalo_ver, _ = find_installed_zalo_state()
+        if zalo_state in ("MISSING", "LOCKED"):
+            if zalo_state == "MISSING":
+                status_callback(f"Chưa có Zalo tương thích. Đang tải Zalo {ZALO_COMPATIBLE_VERSION}...")
+            else:
+                status_callback(f"Zalo hiện tại đã khóa chỉnh sửa. Đang tải về Zalo {ZALO_COMPATIBLE_VERSION}...")
+            if not download_and_install_compatible_zalo(status_callback):
+                status_callback("Không thể tải hoặc cài Zalo tương thích!")
+                return "ZALO_DOWNLOAD_FAILED"
         
         # Recreate target folder
         status_callback("Đang chuẩn bị thư mục cài đặt...")
@@ -143,6 +382,10 @@ def install_zablind_core(status_callback):
                 env=clean_env
             )
             print(f"[INSTALLER] Patcher stdout: {res.stdout}")
+            if res.returncode == 2:
+                print(f"[INSTALLER] Zalo version has ELECTRONASAR integrity protection. stderr: {res.stderr}")
+                status_callback("Phiên bản Zalo mới chưa hỗ trợ!")
+                return "INTEGRITY_LOCKED"
             if res.returncode != 0:
                 print(f"[INSTALLER] Patcher failed with returncode {res.returncode}. stderr: {res.stderr}")
                 status_callback("Lỗi vá Zalo!")
@@ -342,7 +585,23 @@ def run_install():
     disable_ui()
     success = install_zablind_core(set_status)
     enable_ui()
-    if success:
+    if success == "ZALO_DOWNLOAD_FAILED":
+        set_status("Không thể tải tự động Zalo 26.11.12!")
+        win32api.MessageBox(
+            hwnd_main,
+            "Không thể tự động tải hoặc cài đặt Zalo 26.11.12 tương thích.\n\nVui lòng kiểm tra kết nối mạng hoặc tải thủ công Zalo 26.11.12 theo liên kết trên trang chủ Zablind, cài đặt xong rồi mở lại bộ cài Zablind.",
+            "Lỗi tải Zalo tương thích",
+            win32con.MB_OK | win32con.MB_ICONERROR,
+        )
+    elif success == "INTEGRITY_LOCKED":
+        set_status("Zalo phiên bản mới chưa hỗ trợ!")
+        win32api.MessageBox(
+            hwnd_main,
+            "Phiên bản Zalo này (từ 26.11.20 trở lên) đã khóa tệp hệ thống nên Zablind chưa hỗ trợ trực tiếp.\n\nVui lòng cài bản Zalo cũ hơn (26.11.12 trở xuống) rồi cài lại Zablind.",
+            "Không tương thích phiên bản Zalo",
+            win32con.MB_OK | win32con.MB_ICONWARNING,
+        )
+    elif success:
         set_status("Cài đặt thành công!")
         win32api.MessageBox(hwnd_main, "Cài đặt Zablind thành công!", "Thông báo", win32con.MB_OK | win32con.MB_ICONINFORMATION)
     else:
