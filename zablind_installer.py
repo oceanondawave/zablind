@@ -162,10 +162,10 @@ def verify_vng_zalo_installer(exe_path):
 
 
 def resolve_compatible_zalo_download_candidates():
-    """Return ordered list of (direct_url, referer_url) candidates for Zalo 26.11.12."""
-    candidates = [
-        (ZALO_GITHUB_MIRROR_URL, "https://github.com/oceanondawave/zablind/releases/tag/v2.1.5"),
-    ]
+    """Return ordered list of (direct_url, referer_url) candidates for Zalo 26.11.12.
+    Tries download.com.vn first, then falls back to the GitHub Release mirror.
+    """
+    candidates = []
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     for link_id, page_url in ZALO_LEGACY_PAGE_URLS:
         try:
@@ -189,6 +189,10 @@ def resolve_compatible_zalo_download_candidates():
                 candidates.append((matched, page_url))
         except Exception as e:
             print(f"[INSTALLER] Failed resolving download link ({link_id}): {e}")
+
+    candidates.append(
+        (ZALO_GITHUB_MIRROR_URL, "https://github.com/oceanondawave/zablind/releases/tag/v2.1.5")
+    )
     return candidates
 
 
