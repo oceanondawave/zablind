@@ -319,10 +319,33 @@ def download_and_install_compatible_zalo(status_callback):
     time.sleep(2.0)
     stop_zalo_and_handler_processes()
     time.sleep(1.0)
+    reset_zalo_downgrade_version_markers()
 
     state_after, ver_after, _ = find_installed_zalo_state()
     print(f"[INSTALLER] Zalo state after setup: {state_after}, version={ver_after}")
     return state_after == "COMPATIBLE"
+
+
+def reset_zalo_downgrade_version_markers():
+    """Clear major_version (> 6) and db_version from ZaloData\\config.json so Zalo 26.11.12 does not show 'old app' screen after downgrade."""
+    appdata = os.environ.get("APPDATA") or os.path.join(os.environ.get("USERPROFILE", ""), "AppData", "Roaming")
+    local_appdata = os.environ.get("LOCALAPPDATA") or os.path.join(os.environ.get("USERPROFILE", ""), "AppData", "Local")
+    for base in (appdata, local_appdata):
+        cfg_path = os.path.join(base, "ZaloData", "config.json")
+        if not os.path.exists(cfg_path):
+            continue
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            major = data.get("major_version")
+            if isinstance(major, (int, float)) and major > 6:
+                data.pop("major_version", None)
+                data.pop("db_version", None)
+                with open(cfg_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent="\t")
+                print(f"[INSTALLER] Cleared downgrade version markers (was major_version={major}) in {cfg_path}")
+        except Exception as e:
+            print(f"[INSTALLER] Warning resetting ZaloData version markers in {cfg_path}: {e}")
 
 
 def install_zablind_core(status_callback):
@@ -354,6 +377,8 @@ def install_zablind_core(status_callback):
             if not download_and_install_compatible_zalo(status_callback):
                 status_callback("Không thể tải hoặc cài Zalo tương thích!")
                 return "ZALO_DOWNLOAD_FAILED"
+
+        reset_zalo_downgrade_version_markers()
         
         # Recreate target folder
         status_callback("Đang chuẩn bị thư mục cài đặt...")
