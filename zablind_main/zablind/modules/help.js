@@ -8,212 +8,206 @@ const { loc, sleep } = require("./utils.js");
 const shortcutsData = [
   {
     keys: ["Ctrl", "Shift", "H"],
-    descVi: "Mở hoặc đóng bảng trợ giúp phím tắt này",
-    descEn: "Open or close this keyboard shortcuts help panel",
+    descVi: "Mở hoặc đóng bảng danh sách phím tắt này",
+    descEn: "Open or close this shortcuts list",
     category: "General"
   },
   {
     keys: ["Ctrl", "Shift", "F"],
-    descVi: "Tập trung vào ô tìm kiếm danh bạ (hoặc ô tìm kiếm liên hệ khi trong cửa sổ Chia sẻ)",
-    descEn: "Focus the contact search input box (or the search input inside the Share/Forward dialog)",
+    descVi: "Chuyển đến ô tìm kiếm bạn bè, tin nhắn (hoặc ô tìm người nhận khi chia sẻ)",
+    descEn: "Go to the search box (or recipient search in the Share dialog)",
     category: "Navigation"
   },
   {
     keys: ["Ctrl", "Shift", "M"],
-    descVi: "Di chuyển xuống hội thoại hoặc kết quả tìm kiếm tiếp theo",
-    descEn: "Move down in conversation list or search results",
+    descVi: "Chuyển xuống cuộc trò chuyện hoặc kết quả tìm kiếm tiếp theo",
+    descEn: "Move down to the next chat or search result",
     category: "Navigation"
   },
   {
     keys: ["Ctrl", "Shift", "N"],
-    descVi: "Di chuyển lên hội thoại hoặc kết quả tìm kiếm phía trước",
-    descEn: "Move up in conversation list or search results",
+    descVi: "Chuyển lên cuộc trò chuyện hoặc kết quả tìm kiếm phía trên",
+    descEn: "Move up to the previous chat or search result",
     category: "Navigation"
   },
   {
     keys: ["Ctrl", "Shift", "1"],
-    descVi: "Chọn hội thoại đầu tiên trong danh sách",
-    descEn: "Select the first conversation in the list",
+    descVi: "Chọn nhanh cuộc trò chuyện đầu tiên trong danh sách",
+    descEn: "Select the first chat in the list",
     category: "Navigation"
   },
   {
     keys: ["Ctrl", "Shift", "K"],
-    descVi: "Di chuyển lên tin nhắn phía trước trong cuộc trò chuyện",
-    descEn: "Move up to the previous message in the chat",
+    descVi: "Đọc tin nhắn cũ hơn (lên trên)",
+    descEn: "Move up to read an older message",
     category: "Messages"
   },
   {
     keys: ["Ctrl", "Shift", "L"],
-    descVi: "Di chuyển xuống tin nhắn tiếp theo trong cuộc trò chuyện",
-    descEn: "Move down to the next message in the chat",
+    descVi: "Đọc tin nhắn mới hơn (xuống dưới)",
+    descEn: "Move down to read a newer message",
     category: "Messages"
   },
   {
     keys: ["Ctrl", "Shift", "R"],
-    descVi: "Di chuyển nhanh xuống tin nhắn mới nhất trong cuộc trò chuyện",
-    descEn: "Jump quickly to the latest message in the chat",
+    descVi: "Chuyển nhanh đến tin nhắn mới nhất vừa nhận",
+    descEn: "Jump to the latest message",
     category: "Messages"
   },
   {
     keys: ["Ctrl", "Shift", "E"],
-    descVi: "Tập trung vào ô nhập tin nhắn chat",
-    descEn: "Focus the chat message input field",
+    descVi: "Chuyển đến ô soạn tin nhắn để gõ chữ",
+    descEn: "Go to the message typing box",
     category: "Navigation"
   },
   {
     keys: ["Ctrl", "Shift", "O"],
-    descVi: "Mở menu đính kèm tệp tin hoặc thư mục",
-    descEn: "Open the attachment file or folder menu",
+    descVi: "Mở danh sách chọn gửi tệp hoặc thư mục",
+    descEn: "Open the menu to send a file or folder",
     category: "Actions"
   },
   {
     keys: ["Ctrl", "Shift", "T"],
-    descVi: "Chuyển đổi giữa tab hội thoại Ưu tiên và Khác",
-    descEn: "Switch between Focus and Other conversation tabs",
+    descVi: "Chuyển qua lại giữa mục Ưu tiên và mục Khác",
+    descEn: "Switch between Focus and Other chat tabs",
     category: "Navigation"
   },
   {
     keys: ["Ctrl", "Shift", "C"],
-    descVi: "Tập trung vào nút gọi thoại. Nhấn Enter để gọi, hoặc Tab để chuyển sang gọi video, và Enter để gọi",
-    descEn: "Focus the audio call button. Press Enter to call, Tab to switch to video call, and Enter to call",
+    descVi: "Chọn nút gọi thoại (nhấn Enter để gọi ngay, hoặc bấm Tab để chuyển sang gọi video rồi nhấn Enter)",
+    descEn: "Go to the call buttons (press Enter for audio call, or Tab then Enter for video call)",
     category: "Calls"
   },
   {
     keys: ["A"],
-    descVi: "Chấp nhận cuộc gọi (khi cửa sổ cuộc gọi đến đang mở)",
-    descEn: "Accept incoming call (when incoming call window is active)",
+    descVi: "Nhận cuộc gọi đến (chỉ dùng khi đang mở cửa sổ cuộc gọi)",
+    descEn: "Answer incoming call (only when the call window is focused)",
     category: "Calls"
   },
   {
     keys: ["Ctrl", "A"],
-    descVi: "Chấp nhận cuộc gọi video không bật camera (khi cuộc gọi đến đang mở)",
-    descEn: "Accept video call without camera (when incoming call window is active)",
+    descVi: "Nhận cuộc gọi video nhưng tắt sẵn camera (chỉ dùng khi đang mở cửa sổ cuộc gọi)",
+    descEn: "Answer video call without camera (only when the call window is focused)",
     category: "Calls"
   },
   {
     keys: ["Ctrl", "Shift", "A"],
-    descVi: "Chấp nhận cuộc gọi video không bật camera (khi cuộc gọi đến đang mở)",
-    descEn: "Accept video call without camera (when incoming call window is active)",
+    descVi: "Nhận cuộc gọi video nhưng tắt sẵn camera (cách bấm thứ hai, khi đang ở cửa sổ cuộc gọi)",
+    descEn: "Answer video call without camera (alternate shortcut, when call window is focused)",
     category: "Calls"
   },
   {
     keys: ["D"],
-    descVi: "Từ chối cuộc gọi (khi cửa sổ cuộc gọi đến đang mở)",
-    descEn: "Deny/decline incoming call (when incoming call window is active)",
+    descVi: "Từ chối cuộc gọi đến (chỉ dùng khi đang mở cửa sổ cuộc gọi)",
+    descEn: "Decline incoming call (only when the call window is focused)",
     category: "Calls"
   },
   {
     keys: ["C"],
-    descVi: "Bật hoặc tắt camera/video (khi cuộc gọi đang diễn ra)",
-    descEn: "Toggle camera/video on or off (during active call)",
+    descVi: "Bật hoặc tắt camera khi đang gọi (chỉ dùng khi đang mở cửa sổ cuộc gọi)",
+    descEn: "Turn camera on or off during a call (only when the call window is focused)",
     category: "Calls"
   },
   {
     keys: ["M"],
-    descVi: "Bật hoặc tắt microphone/âm thanh (khi cuộc gọi đang diễn ra)",
-    descEn: "Toggle microphone/mute on or off (during active call)",
+    descVi: "Bật hoặc tắt micrô khi đang gọi (chỉ dùng khi đang mở cửa sổ cuộc gọi)",
+    descEn: "Mute or unmute microphone during a call (only when the call window is focused)",
     category: "Calls"
   },
   {
     keys: ["E"],
-    descVi: "Gác máy / kết thúc cuộc gọi (khi cuộc gọi đang diễn ra)",
-    descEn: "End/Hang up the call (during active call)",
+    descVi: "Kết thúc cuộc gọi (chỉ dùng khi đang mở cửa sổ cuộc gọi)",
+    descEn: "Hang up the call (only when the call window is focused)",
     category: "Calls"
   },
   {
     keys: ["Ctrl", "Shift", "G"],
-    descVi: "Chuyển đổi ngôn ngữ giao diện (Tiếng Việt / Tiếng Anh)",
-    descEn: "Toggle interface language (Automated)",
+    descVi: "Đổi ngôn ngữ sử dụng của Zalo (Tiếng Việt / Tiếng Anh)",
+    descEn: "Switch Zalo display language (Vietnamese / English)",
     category: "General"
   },
   {
     keys: ["Ctrl", "Shift", "B"],
-    descVi: "Mở hộp thoại kết bạn bằng số điện thoại",
-    descEn: "Open the Add Friend dialog using phone number",
+    descVi: "Mở cửa sổ tìm và kết bạn bằng số điện thoại",
+    descEn: "Open the Add Friend by phone number window",
     category: "Actions"
   },
   {
     keys: ["Ctrl", "Shift", "S"],
-    descVi: "Bắt đầu đồng bộ tin nhắn từ điện thoại",
-    descEn: "Synchronize messages from your mobile device",
+    descVi: "Mở cửa sổ Đồng bộ hoặc Sao lưu tin nhắn với điện thoại",
+    descEn: "Open the message Sync and Backup window",
     category: "Actions"
   },
   {
     keys: ["Ctrl", "Shift", "Q"],
-    descVi: "Mở hộp thoại Đăng xuất với lựa chọn Khởi động lại Zalo",
-    descEn: "Open the Log Out / Restart Zalo dialog",
+    descVi: "Mở cửa sổ Đăng xuất hoặc Khởi động lại Zalo",
+    descEn: "Open the Log Out / Restart Zalo window",
     category: "Actions"
   },
   {
     keys: ["Ctrl", "Shift", "D"],
-    descVi: "Xem mã QR đăng nhập toàn màn hình (ở trang đăng nhập)",
-    descEn: "View login QR code fullscreen in browser (on login page)",
-    category: "General"
-  },
-  {
-    keys: ["Ctrl", "Shift", "J"],
-    descVi: "Bật hoặc tắt toàn bộ thông báo Windows của Zablind",
-    descEn: "Toggle all Zablind Windows notifications on or off",
+    descVi: "Phóng to mã QR toàn màn hình để dễ quét (tại màn hình đăng nhập)",
+    descEn: "Open login QR code fullscreen in browser (on login screen)",
     category: "General"
   },
   {
     keys: ["Ctrl", "Shift", "X"],
-    descVi: "Bật hoặc tắt chế độ điều hướng tự do bằng phím mũi tên (như khi chưa cài Zablind - Tự động tắt khi khởi động lại Zalo để an toàn)",
-    descEn: "Toggle free arrow key navigation on or off (as if Zablind were not installed - Automatically turns off on Zalo restart for safety)",
+    descVi: "Bật hoặc tắt chế độ dùng phím mũi tên đọc tự do (như khi chưa cài Zablind; tự tắt lại khi mở lại Zalo)",
+    descEn: "Turn free arrow-key reading on or off (turns off automatically when Zalo restarts)",
     category: "General"
   },
   {
-    keys: ["ContextMenu / Shift+F10"],
-    descVi: "Mở menu ngữ cảnh (chuột phải): Ghim hoặc Bật/Tắt thông báo cho hội thoại, hoặc các thao tác cho tin nhắn",
-    descEn: "Open context menu (right-click): Pin or Mute/Unmute conversation, or message actions",
+    keys: ["Menu / Shift+F10"],
+    descVi: "Mở menu tùy chọn nhanh: Ghim, Tắt/Bật thông báo, Chuyển mục cho hội thoại hoặc thao tác trên tin nhắn",
+    descEn: "Open quick options menu for the selected chat or message (Pin, Mute, Move tab, Actions)",
     category: "Actions"
   },
   {
     keys: ["Tab"],
-    descVi: "Kích hoạt ảnh, video hoặc phát tin nhắn thoại của tin nhắn đang chọn",
-    descEn: "Activate photo, video or play voice message of focused message",
+    descVi: "Mở ảnh, xem video hoặc nghe tin nhắn thoại đang chọn",
+    descEn: "Open photo, video, or play the selected voice message",
     category: "Messages"
   },
   {
     keys: ["ArrowDown"],
-    descVi: "Trong tin nhắn liên kết: di chuyển tập trung vào liên kết cụ thể",
-    descEn: "Move focus from link message body into the specific link",
+    descVi: "Trong tin nhắn có đường dẫn web: đi xuống để chọn vào đường dẫn đó",
+    descEn: "On a link message: move down onto the web link",
     category: "Messages"
   },
   {
     keys: ["ArrowUp"],
-    descVi: "Trong tin nhắn liên kết: di chuyển ngược trở lại nội dung tin nhắn",
-    descEn: "Move focus from specific link back to link message body",
+    descVi: "Trong tin nhắn có đường dẫn web: quay lại đọc nội dung tin nhắn",
+    descEn: "On a link message: move back up to the message text",
     category: "Messages"
   },
   {
     keys: ["Enter"],
-    descVi: "Kích hoạt hoặc mở liên kết đang được tập trung",
-    descEn: "Activate/open the focused link",
+    descVi: "Mở trang web của đường dẫn đang chọn",
+    descEn: "Open the selected web link",
     category: "Messages"
   },
   {
     keys: ["Escape"],
-    descVi: "Đóng menu ngữ cảnh, hộp thoại hoặc trình xem phương tiện đang mở",
-    descEn: "Dismiss/close the active menu, dialog or viewer",
+    descVi: "Đóng cửa sổ, menu hoặc ảnh/video đang mở",
+    descEn: "Close the open dialog, menu, or photo/video viewer",
     category: "General"
   },
   {
     keys: ["Ctrl", "Shift", "U"],
-    descVi: "Mở hộp thoại quản lý cập nhật Zablind",
-    descEn: "Open Zablind update management dialog",
+    descVi: "Kiểm tra và cập nhật phiên bản mới cho Zablind",
+    descEn: "Check for Zablind updates",
     category: "General"
   },
   {
     keys: ["ArrowDown"],
-    descVi: "Di chuyển xuống liên hệ tiếp theo (khi trong cửa sổ Chia sẻ)",
-    descEn: "Move down to the next contact (inside the Share/Forward dialog)",
+    descVi: "Chuyển xuống người nhận tiếp theo (khi đang ở cửa sổ Chia sẻ tin nhắn)",
+    descEn: "Move down to the next person (inside the Share dialog)",
     category: "Navigation"
   },
   {
     keys: ["ArrowUp"],
-    descVi: "Di chuyển lên liên hệ phía trước (khi trong cửa sổ Chia sẻ)",
-    descEn: "Move up to the previous contact (inside the Share/Forward dialog)",
+    descVi: "Chuyển lên người nhận phía trên (khi đang ở cửa sổ Chia sẻ tin nhắn)",
+    descEn: "Move up to the previous person (inside the Share dialog)",
     category: "Navigation"
   }
 ];
@@ -556,8 +550,8 @@ function renderShortcuts(query = "") {
     const keyString = item.keys.join(" + ");
     const descString = loc(item.descVi, item.descEn);
     const labelString = loc(
-      `Phím tắt: ${keyString}. Chức năng: ${descString}.`,
-      `Shortcut: ${keyString}. Function: ${descString}.`
+      `Phím ${keyString}: ${descString}.`,
+      `Shortcut ${keyString}: ${descString}.`
     );
     row.setAttribute("aria-label", labelString);
     
@@ -638,11 +632,11 @@ function openHelpModal(liveRegion) {
   overlay.innerHTML = `
     <div id="zablind-help-modal" class="zablind-modal" role="dialog" aria-modal="true" tabindex="-1">
       <div class="zablind-modal-header">
-        <h2 class="zablind-modal-title">${loc("Trợ giúp phím tắt Zablind", "Zablind Keyboard Shortcuts")}</h2>
+        <h2 class="zablind-modal-title">${loc("Danh sách phím tắt Zablind", "Zablind Keyboard Shortcuts")}</h2>
         <div class="zablind-search-wrapper">
-          <input type="text" id="zablind-help-search" placeholder="${loc("Tìm phím tắt... (ví dụ: thoại, call, copy...)", "Search shortcuts... (e.g. call, voice, copy...)")}" tabindex="0" />
+          <input type="text" id="zablind-help-search" placeholder="${loc("Tìm nhanh phím tắt... (ví dụ: gọi, tin nhắn, tìm kiếm...)", "Search shortcuts... (e.g. call, message, search...)")}" tabindex="0" />
         </div>
-        <button id="zablind-help-close-btn" class="zablind-close-btn" aria-label="${loc("Đóng trợ giúp", "Close help panel")}" tabindex="0">
+        <button id="zablind-help-close-btn" class="zablind-close-btn" aria-label="${loc("Đóng danh sách phím tắt", "Close shortcuts panel")}" tabindex="0">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -655,7 +649,7 @@ function openHelpModal(liveRegion) {
         </div>
       </div>
       <div class="zablind-modal-footer">
-        <span id="zablind-help-version-span" tabindex="0" aria-label="${loc("Zablind bộ hỗ trợ tiếp cận, phiên bản " + require('../config.js').version, "Zablind Accessibility Suite, version " + require('../config.js').version)}">Zablind Accessibility Suite - v${require('../config.js').version}</span>
+        <span id="zablind-help-version-span" tabindex="0" aria-label="${loc("Zablind hỗ trợ Zalo cho người khiếm thị, phiên bản " + require('../config.js').version, "Zablind for visually impaired Zalo users, version " + require('../config.js').version)}">Zablind - v${require('../config.js').version}</span>
         <button id="zablind-help-footer-close" class="zablind-btn-primary" tabindex="0">${loc("Đóng", "Close")}</button>
       </div>
     </div>
@@ -702,8 +696,8 @@ function openHelpModal(liveRegion) {
   const { announce } = require("./accessibility.js");
   announce(
     loc(
-      `Hộp thoại Trợ giúp phím tắt đã mở. Có ${shortcutsData.length} phím tắt. Tập trung vào ô tìm kiếm.`,
-      `Keyboard Shortcuts Help dialog opened. ${shortcutsData.length} shortcuts available. Focused on search input.`
+      `Đã mở bảng phím tắt Zablind. Có ${shortcutsData.length} phím tắt. Đang ở ô tìm kiếm.`,
+      `Shortcuts list opened. ${shortcutsData.length} shortcuts available. Focused on search box.`
     ),
     liveRegion
   );
@@ -820,11 +814,11 @@ function handleHelpModalKeys(event, liveRegion) {
     // Announce focused element
     const { announce } = require("./accessibility.js");
     if (next === searchInput) {
-      announce(loc("Ô nhập tìm kiếm phím tắt", "Search shortcuts input field"), liveRegion);
+      announce(loc("Ô tìm kiếm phím tắt", "Search shortcuts box"), liveRegion);
     } else if (next === closeBtn) {
-      announce(loc("Nút đóng trợ giúp", "Close help button"), liveRegion);
+      announce(loc("Nút đóng", "Close button"), liveRegion);
     } else if (next === footerClose) {
-      announce(loc("Nút đóng ở chân trang", "Footer close button"), liveRegion);
+      announce(loc("Nút đóng", "Close button"), liveRegion);
     }
   }
   } catch (err) {

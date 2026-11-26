@@ -455,15 +455,8 @@ function initMessageObserver() {
                       if (contentText) {
                           const isCurrentChatMuted = document.querySelector('.conv-item.selected .conv__mute, .conv-item.selected .fa-Notif_Off_24_Filled, .conv-item.selected [class*="Notif_Off"], .chat-header [class*="Notif_Off"], [data-id="btn_ChatHeader_Mute"]') !== null;
                           if (!isCurrentChatMuted) {
-                              const headerNameEl = document.querySelector('.header-title, .chat-title, .chat-box-header__title, .header-name, .chat-header__name, .chat-header__title, [class*="header-title"], [class*="chat-title"], [class*="header-name"]');
-                              const chatPartnerName = headerNameEl ? headerNameEl.innerText.trim() : "Tin nhắn mới";
-                              
-                              const { triggerNativeNotification, announce } = require("./accessibility.js");
-                              if (state && state.windowsNotificationsEnabled === false) {
-                                  announce(contentText);
-                              } else {
-                                  triggerNativeNotification(chatPartnerName, contentText, "");
-                              }
+                              const { announce } = require("./accessibility.js");
+                              announce(contentText);
                           }
                       }
                   }

@@ -54,7 +54,7 @@ function loadZablindSettings() {
     } catch (e) {
         console.error("[SETTINGS] Error reading settings file:", e);
     }
-    return { auto_update: true, windows_notifications: true, free_arrow_navigation: false };
+    return { auto_update: true, free_arrow_navigation: false };
 }
 
 function saveZablindSettings(settings) {
@@ -73,7 +73,6 @@ function saveZablindSettings(settings) {
 // Initialize settings in state
 try {
     const _initSettings = loadZablindSettings();
-    state.windowsNotificationsEnabled = _initSettings.windows_notifications !== false;
     // Safety: Always turn off Free Arrow Navigation on Zalo startup/restart
     state.freeArrowNavigation = false;
     if (_initSettings.free_arrow_navigation) {
@@ -85,21 +84,6 @@ try {
         updateBodyApplicationRole();
     } catch(e) {}
 } catch(e) {}
-
-function toggleWindowsNotifications(liveRegion) {
-    const current = state.windowsNotificationsEnabled !== false;
-    const next = !current;
-    state.windowsNotificationsEnabled = next;
-    const settings = loadZablindSettings();
-    settings.windows_notifications = next;
-    saveZablindSettings(settings);
-
-    if (next) {
-        announce(loc("Đã bật thông báo Windows", "Windows notifications enabled"), liveRegion);
-    } else {
-        announce(loc("Đã tắt thông báo Windows", "Windows notifications disabled"), liveRegion);
-    }
-}
 
 function toggleFreeArrowNavigation(liveRegion) {
     const current = state.freeArrowNavigation === true;
@@ -1142,12 +1126,6 @@ function createKeyboardHandler(liveRegion) {
     else if (isCtrlShift && lowerKey === "g") {
         handled = true;
         toggleLanguage(liveRegion);
-    }
-    
-    // --- WINDOWS NOTIFICATIONS TOGGLE ---
-    else if (isCtrlShift && lowerKey === "j") {
-        handled = true;
-        toggleWindowsNotifications(liveRegion);
     }
     
     // --- ACCESSIBLE FULLSCREEN QR CODE ---

@@ -297,15 +297,20 @@ function startCallService() {
         callServiceStarted = false;
         callServiceProcess = null;
 
+        if (code === 0) {
+          debugLog('[CALL-SERVICE] Process exited cleanly (or another instance is already running). No auto-restart needed.');
+          return;
+        }
+
         if (!isAppQuitting) {
-          debugLog('[CALL-SERVICE] Scheduling automatic service restart in 3 seconds...');
+          debugLog('[CALL-SERVICE] Service crashed abnormally, scheduling single retry in 10 seconds...');
           if (restartTimeout) clearTimeout(restartTimeout);
           restartTimeout = setTimeout(() => {
             if (!callServiceStarted && !isAppQuitting) {
-              debugLog('[CALL-SERVICE] Auto-restarting Call Handler service now...');
+              debugLog('[CALL-SERVICE] Retrying Call Handler start...');
               startCallService();
             }
-          }, 3000);
+          }, 10000);
         }
       });
 
@@ -411,19 +416,28 @@ function startCallService() {
 }
 
 /**
- * Stop the call service
+ * Stop local call-service watcher state on app quit.
+ * Do NOT force-kill ZablindCallHandler.exe here: during Zalo self-updates
+ * (relaunch / NSIS quitAndInstall), the handler must remain alive so it can
+ * wait for the updater to finish and re-patch the newly installed Zalo version.
+ * When the user truly closes Zalo, ZablindCallHandler exits automatically after
+ * its 15s grace period (or immediately on explicit "Quit Zalo Completely").
  */
-function stopCallService() {
+function stopCallService(forceKill = false) {
   isAppQuitting = true;
   if (restartTimeout) {
     clearTimeout(restartTimeout);
     restartTimeout = null;
   }
   if (callServiceProcess) {
-    console.log('[CALL-SERVICE] Stopping call service...');
-    try {
-      callServiceProcess.kill();
-    } catch (e) {}
+    if (forceKill) {
+      console.log('[CALL-SERVICE] Force stopping call service...');
+      try {
+        callServiceProcess.kill();
+      } catch (e) {}
+    } else {
+      console.log('[CALL-SERVICE] Detaching call service on Zalo exit (allowing update auto-repatch)...');
+    }
     callServiceProcess = null;
     callServiceStarted = false;
   }
@@ -444,50 +458,7 @@ if (process.type === 'browser') {
   const { app } = require('electron');
 
   const monkeypatchWindow = (win) => {
-    if (!win || !win.webContents || win.webContents.__zablindPatched) return;
-    win.webContents.__zablindPatched = true;
-    try {
-      const originalSend = win.webContents.send;
-      win.webContents.send = function (channel, ...args) {
-        if (channel === "noti-create" && args && args[0]) {
-          try {
-            const notiData = args[0];
-            debugLog(`[NOTI-INTERCEPT] Intercepted noti-create: ${JSON.stringify(notiData)}`);
-            const { getZablindDir } = require('./utils.js');
-            const zablindDir = getZablindDir();
-            
-            // Check global windows notification setting
-            const settingsFile = path.join(zablindDir, "zablind_settings.json");
-            if (fs.existsSync(settingsFile)) {
-              try {
-                const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
-                if (settings && settings.windows_notifications === false) {
-                  debugLog("[NOTI-INTERCEPT] Windows notifications disabled in settings. Skipping.");
-                  return originalSend.apply(this, [channel, ...args]);
-                }
-              } catch(e) {}
-            }
-
-            if (!fs.existsSync(zablindDir)) {
-              fs.mkdirSync(zablindDir, { recursive: true });
-            }
-            const tempFile = path.join(zablindDir, "zablind_notification.json");
-            const data = {
-              title: notiData.title || "",
-              titlePrefix: notiData.titlePrefix || "",
-              body: notiData.body || "",
-              timestamp: Date.now()
-            };
-            fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), "utf8");
-          } catch (err) {
-            debugLog(`[NOTI-INTERCEPT] Error writing notification file: ${err.message}`);
-          }
-        }
-        return originalSend.apply(this, [channel, ...args]);
-      };
-    } catch (e) {
-      debugLog(`[NOTI-INTERCEPT] Error monkeypatching send: ${e.message}`);
-    }
+    // Window monkeypatching placeholder if needed in the future
   };
 
   function setupWindowDevTools(win) {
@@ -581,23 +552,7 @@ if (process.type === 'browser') {
     });
     debugLog('[IPC] Registered zablind-outgoing-call listener in main process');
 
-    const { Notification, BrowserWindow } = require('electron');
-    ipcMain.on('zablind-show-notification', (event, data) => {
-      try {
-        if (Notification && Notification.isSupported()) {
-          const notif = new Notification({
-            title: data.title || "Zalo",
-            body: data.body || "",
-            silent: false
-          });
-          notif.show();
-          debugLog(`[NOTI] Shown native Electron notification for: ${data.title}`);
-        }
-      } catch (notiErr) {
-        debugLog(`[NOTI] Error showing native notification: ${notiErr.message}`);
-      }
-    });
-    debugLog('[IPC] Registered zablind-show-notification listener in main process');
+    const { BrowserWindow } = require('electron');
 
     ipcMain.on('zablind-activate-browse-mode', (event) => {
       try {

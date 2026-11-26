@@ -157,153 +157,115 @@
 <body class="min-h-screen antialiased py-8 px-4 md:px-0">
     <!-- Skip to main content for screen reader & keyboard navigation -->
     <a href="#download-latest" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring font-medium">
-        Chuyển đến khu vực tải Zablind mới nhất
+        Chuyển nhanh đến phần tải về
     </a>
 
     <!-- Hidden live region for accessibility announcements -->
     <div id="accessibility-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
 
-    <main class="max-w-3xl mx-auto space-y-6">
+    <main class="max-w-3xl mx-auto space-y-5">
 
         <!-- Header -->
-        <header class="space-y-3 text-center sm:text-left">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-                <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl text-primary">
+        <header class="space-y-2">
+            <div class="flex items-center justify-between gap-3">
+                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
                     Zablind
                 </h1>
-                <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold border-primary/30 bg-primary/10 text-primary">
-                    Phiên bản v2.1.4
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                    <span class="h-1.5 w-1.5 rounded-full bg-green-400"></span>
+                    <span id="hero-version-text">v2.1.5</span>
                 </span>
             </div>
-            <p class="text-lg text-muted-foreground leading-relaxed">
-                Bộ công cụ hỗ trợ tiếp cận giúp người khiếm thị điều khiển và sử dụng Zalo PC trên Windows mượt mà bằng trình đọc màn hình.
+            <p class="text-base text-muted-foreground leading-relaxed">
+                Công cụ miễn phí giúp người khiếm thị sử dụng Zalo trên máy tính Windows dễ dàng qua trình đọc màn hình.
             </p>
         </header>
 
         <!-- AUTHOR'S COMMUNITY NOTICE & ANTI-SCAM BANNER -->
-        <div role="region" aria-label="Thông báo từ tác giả" class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 text-amber-200 shadow-sm space-y-3">
-            <div class="flex items-start gap-3">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div role="region" aria-label="Thông báo từ tác giả" class="rounded-xl border border-amber-500/35 bg-amber-500/10 p-4 sm:p-5 text-amber-100/90 space-y-2 text-sm leading-relaxed">
+            <h2 class="font-bold text-amber-300 text-sm tracking-wide uppercase flex items-center gap-2">
+                <svg aria-hidden="true" class="h-4 w-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                     <line x1="12" y1="9" x2="12" y2="13" />
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
-                <div class="space-y-2 text-sm leading-relaxed">
-                    <h2 class="font-bold text-base text-amber-300 tracking-wide uppercase">
-                        Thông báo quan trọng từ Tác giả
-                    </h2>
-                    <p class="font-medium">
-                        Dự án Zablind được phát triển vì mục đích cộng đồng và trao tặng cho cộng đồng hoàn toàn miễn phí. Vui lòng tố cáo nếu phát hiện bất kỳ ai đánh cắp hoặc thương mại hóa / bán phần mềm này qua email của tác giả: 
-                        <a href="mailto:minh.ngntri@gmail.com" class="font-bold underline text-amber-300 hover:text-white transition-colors">minh.ngntri@gmail.com</a>.
-                    </p>
-                    <p class="font-semibold text-amber-300">
-                        <svg aria-hidden="true" class="h-4 w-4 text-amber-400 shrink-0 inline-block mr-1 -mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Đây là nguồn tải chính thức và duy nhất đáng tin cậy của phần mềm. Bất kỳ nguồn nào khác đều là hành vi đánh cắp và lừa đảo.
-                    </p>
-                    <p class="text-xs text-amber-200/90 italic">
-                        Tác giả <strong>sẽ không và không bao giờ hỗ trợ bất kỳ phản hồi, hướng dẫn sử dụng phần mềm, sửa lỗi hay xử lý các vấn đề từ phía người dùng, hay phát triển tính năng theo yêu cầu</strong>, xin hãy thấu hiểu. Tác giả xin phép từ chối mọi phương thức liên hệ, tin nhắn hoặc email về các vấn đề trên, và <strong>chỉ tiếp nhận các báo cáo về hành vi lừa đảo, thương mại hóa dự án</strong>.
-                    </p>
-                </div>
-            </div>
+                Thông báo từ tác giả
+            </h2>
+            <p>
+                Zablind là phần mềm cộng đồng <strong>hoàn toàn miễn phí</strong> và đây là trang tải chính thức duy nhất. Mọi nơi rao bán hoặc tự xưng bản quyền đều là giả mạo — xin báo về email:
+                <a href="mailto:minh.ngntri@gmail.com" class="font-semibold underline text-amber-300 hover:text-white transition-colors">minh.ngntri@gmail.com</a>.
+            </p>
+            <p class="text-xs text-amber-200/80">
+                Lưu ý: Tác giả xin phép không tiếp nhận tin nhắn hỗ trợ sử dụng, sửa lỗi cá nhân hay thêm tính năng theo yêu cầu, mà chỉ tiếp nhận báo cáo hành vi trục lợi, bán lại phần mềm.
+            </p>
         </div>
 
         <!-- PRIMARY HERO: FOCUSED DOWNLOAD SECTION -->
-        <section id="download-latest" aria-labelledby="download-heading" class="rounded-2xl border-2 border-primary/40 bg-gradient-to-b from-primary/15 to-card p-6 sm:p-8 shadow-lg space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
+        <section id="download-latest" aria-labelledby="download-heading" class="rounded-2xl border border-primary/40 bg-gradient-to-b from-primary/10 to-card p-6 sm:p-7 shadow-lg space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/20 text-primary border border-primary/40 px-3 py-1 text-xs font-bold uppercase tracking-wider mb-2">
-                        <span class="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-                        Bản phát hành chính thức mới nhất
-                    </span>
-                    <h2 id="download-heading" class="text-2xl sm:text-3xl font-extrabold text-foreground">
-                        Tải Zablind cho Zalo PC
+                    <h2 id="download-heading" class="text-2xl font-extrabold text-foreground">
+                        Tải Zablind cho máy tính
                     </h2>
-                    <p class="text-sm text-muted-foreground mt-1">
-                        Tương thích hoàn hảo với Zalo PC trên Windows 10 &amp; Windows 11 (32-bit &amp; 64-bit).
+                    <p class="text-sm text-muted-foreground mt-0.5">
+                        Dành cho Zalo trên Windows 10 và Windows 11 &middot; Cập nhật ngày <span id="hero-date-text">26/11/2026</span>
                     </p>
                 </div>
-                <div class="text-right sm:text-right shrink-0">
-                    <div class="text-xl font-bold text-primary font-mono" id="hero-version-text">v2.1.4</div>
-                    <div class="text-xs text-muted-foreground" id="hero-date-text">26/09/2026</div>
-                </div>
             </div>
 
-            <!-- Highlights of Latest Version -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div class="flex items-start gap-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                    <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <div>
-                        <strong class="text-foreground">Đồng bộ &amp; Sao lưu (Ctrl+Shift+S)</strong>
-                        <p class="text-xs text-muted-foreground mt-0.5">Dùng Tab/Mũi tên chuyển giữa Đồng bộ và Sao lưu, đọc to mô tả chi tiết từng thẻ.</p>
-                    </div>
-                </div>
-                <div class="flex items-start gap-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                    <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
-                    <div>
-                        <strong class="text-foreground">Cửa sổ Sao lưu tin nhắn</strong>
-                        <p class="text-xs text-muted-foreground mt-0.5">Tự động đọc hướng dẫn; phím Tab/Enter chuyển chọn giữa Bắt đầu sao lưu và Để sau.</p>
-                    </div>
-                </div>
-                <div class="flex items-start gap-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                    <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                    <div>
-                        <strong class="text-foreground">Chuyển thư mục hội thoại</strong>
-                        <p class="text-xs text-muted-foreground mt-0.5">Mở khóa mục "Chuyển sang mục Khác" / "Ưu tiên" khi nhấn Shift+F10 trên hội thoại.</p>
-                    </div>
-                </div>
-                <div class="flex items-start gap-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                    <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    <div>
-                        <strong class="text-foreground">Gọi thoại &amp; Điều hướng tự do</strong>
-                        <p class="text-xs text-muted-foreground mt-0.5">Không phát âm "no next" của NVDA; duyệt tự do (Ctrl+Shift+X) an toàn tuyệt đối.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Download Action Buttons -->
-            <div class="pt-2 flex flex-col sm:flex-row items-stretch gap-3" id="hero-download-buttons">
-                <a id="btn-primary-download" href="https://github.com/oceanondawave/zablind/releases/download/v2.1.4/ZablindInstaller_v2.1.4.exe" 
-                   class="inline-flex items-center justify-center gap-2.5 rounded-xl bg-primary text-primary-foreground font-bold px-6 py-3.5 min-h-[54px] sm:flex-1 text-base shadow-lg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all transform active:scale-95"
-                   aria-label="Tải trực tiếp bộ cài đặt ZablindInstaller_v2.1.4.exe">
+            <!-- Download Action Buttons (First in Hero for instant UX) -->
+            <div class="flex flex-col sm:flex-row items-stretch gap-3" id="hero-download-buttons">
+                <a id="btn-primary-download" href="https://github.com/oceanondawave/zablind/releases/download/v2.1.5/ZablindInstaller_v2.1.5.exe" 
+                   class="inline-flex items-center justify-center gap-2.5 rounded-xl bg-primary text-primary-foreground font-bold px-6 py-3.5 min-h-[52px] sm:flex-1 text-base shadow-md hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all active:scale-[0.99]"
+                   aria-label="Tải bộ cài đặt Zablind bản mới nhất">
                     <svg aria-hidden="true" class="h-5 w-5 fill-current shrink-0" viewBox="0 0 24 24">
                         <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                     </svg>
-                    <span>Tải Bộ Cài Đặt (ZablindInstaller_v2.1.4.exe)</span>
+                    <span>Tải bộ cài đặt Zablind</span>
                 </a>
 
-                <a id="btn-mirror-download" href="https://ghfast.top/https://github.com/oceanondawave/zablind/releases/download/v2.1.4/ZablindInstaller_v2.1.4.exe" 
-                   class="inline-flex items-center justify-center gap-2.5 rounded-xl border border-input bg-background/80 hover:bg-accent hover:text-accent-foreground font-bold px-6 py-3.5 min-h-[54px] sm:flex-1 text-base shadow-sm transition-colors"
-                   aria-label="Tải qua link dự phòng siêu tốc tại Việt Nam">
-                    <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <a id="btn-mirror-download" href="https://ghfast.top/https://github.com/oceanondawave/zablind/releases/download/v2.1.5/ZablindInstaller_v2.1.5.exe" 
+                   class="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background/70 hover:bg-accent hover:text-accent-foreground font-semibold px-5 py-3.5 min-h-[52px] sm:flex-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                   aria-label="Tải qua đường truyền tốc độ cao tại Việt Nam">
+                    <svg aria-hidden="true" class="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                     </svg>
-                    <span>Tải Dự Phòng (Tốc Độ Cao VN)</span>
-                </a>
-
-                <a href="https://github.com/oceanondawave/zablind/releases" target="_blank" rel="noopener noreferrer"
-                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-transparent hover:border-border text-xs text-muted-foreground hover:text-foreground px-3 py-2 transition-colors sm:ml-auto text-center self-center shrink-0">
-                    <span>Xem trên GitHub Releases &rarr;</span>
+                    <span>Tải nhanh tại Việt Nam</span>
                 </a>
             </div>
 
-            <!-- GitHub Download Counts -->
-            <div class="flex items-center justify-between flex-wrap gap-2 pt-1 text-xs text-muted-foreground border-t border-border/40 mt-1">
-                <div class="inline-flex items-center gap-1.5">
-                    <svg aria-hidden="true" class="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    <span>Lượt tải bản mới nhất: <strong id="hero-release-downloads" class="text-foreground font-semibold">...</strong></span>
-                </div>
-                <div class="inline-flex items-center gap-1.5">
-                    <svg aria-hidden="true" class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    <span>Tổng lượt tải toàn dự án: <strong id="hero-total-downloads" class="text-foreground font-semibold">...</strong></span>
-                </div>
+            <!-- Compact Features Preview -->
+            <div class="pt-1 space-y-2.5">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Điểm nổi bật &amp; cải tiến mới
+                </h3>
+                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
+                    <li class="p-3 rounded-lg bg-muted/25 border border-border/40 space-y-0.5">
+                        <strong class="text-foreground block">Nghe gọi gọn nhẹ, không vướng phím</strong>
+                        <span class="text-xs text-muted-foreground">Bấm A, D, C, M, E dễ dàng khi đang ở cửa sổ cuộc gọi. Trình đọc màn hình không còn đọc nhầm hay nhảy sai khi bấm phím.</span>
+                    </li>
+                    <li class="p-3 rounded-lg bg-muted/25 border border-border/40 space-y-0.5">
+                        <strong class="text-foreground block">Zalo cập nhật vẫn chạy ổn định</strong>
+                        <span class="text-xs text-muted-foreground">Tự động nhận biết khi Zalo lên phiên bản mới một cách an toàn, tránh gián đoạn khi khởi động Zalo.</span>
+                    </li>
+                    <li class="p-3 rounded-lg bg-muted/25 border border-border/40 space-y-0.5">
+                        <strong class="text-foreground block">Đồng bộ &amp; Sao lưu tin nhắn</strong>
+                        <span class="text-xs text-muted-foreground">Dùng Tab hoặc mũi tên chuyển lựa chọn và nghe đọc rõ ràng khi mở mục Đồng bộ hoặc Sao lưu (Ctrl + Shift + S).</span>
+                    </li>
+                    <li class="p-3 rounded-lg bg-muted/25 border border-border/40 space-y-0.5">
+                        <strong class="text-foreground block">Phân loại nhóm trò chuyện</strong>
+                        <span class="text-xs text-muted-foreground">Mở menu tùy chọn nhanh (Shift + F10) để chuyển cuộc trò chuyện sang mục Ưu tiên hoặc mục Khác.</span>
+                    </li>
+                </ul>
             </div>
 
-            <!-- Dynamic GitHub Release Notes Preview (Collapsible inside hero) -->
+            <!-- Minimal Download Stats -->
+            <div class="flex items-center justify-between flex-wrap gap-2 pt-3 text-xs text-muted-foreground border-t border-border/40">
+                <span>Lượt tải bản mới: <strong id="hero-release-downloads" class="text-foreground font-semibold">...</strong></span>
+                <span>Tổng lượt tải dự án: <strong id="hero-total-downloads" class="text-foreground font-semibold">...</strong></span>
+            </div>
+
+            <!-- Dynamic Release Notes Preview (Collapsible inside hero) -->
             <div id="installer"></div>
         </section>
 
@@ -312,186 +274,169 @@
         <!-- NEAT COLLAPSIBLE SECTIONS -->
         <!-- ======================================================= -->
 
-        <div class="space-y-4 pt-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
-                Các mục thông tin &amp; Hướng dẫn chi tiết (Nhấn vào từng mục để mở)
-            </h3>
+        <div class="space-y-3 pt-1">
 
             <!-- 1. KEYBOARD SHORTCUTS FROM HELP DIALOG -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-shortcuts">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="10" y1="12" x2="10.01" y2="12"/><line x1="14" y1="12" x2="14.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="10" y1="12" x2="10.01" y2="12"/><line x1="14" y1="12" x2="14.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Bảng Tra Cứu Toàn Bộ Phím Tắt Zablind
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Bảng phím tắt Zablind
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Dữ liệu đầy đủ từ hộp thoại Trợ giúp (Ctrl + Shift + H) bên trong Zalo</p>
+                            <p class="text-xs text-muted-foreground">Bấm Ctrl + Shift + H ngay trong Zalo để mở bảng này bất cứ lúc nào</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-6 text-sm">
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-5 text-sm">
                     
                     <!-- General Shortcuts -->
-                    <div class="space-y-2.5">
-                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                            <span class="flex items-center gap-1.5"><svg aria-hidden="true" class="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg> Chung &amp; Quản lý</span>
-                        </h5>
+                    <div class="space-y-2">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary">Cài đặt &amp; Hệ thống</h5>
                         <div class="grid gap-2 sm:grid-cols-2">
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd></div>
-                                <span class="text-xs text-muted-foreground">Mở hoặc đóng bảng trợ giúp phím tắt</span>
+                                <p class="text-xs text-muted-foreground">Mở hoặc đóng danh sách phím tắt trong Zalo</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd></div>
-                                <span class="text-xs text-muted-foreground">Bật/tắt chế độ điều hướng tự do bằng phím mũi tên (Browse mode NVDA - tự tắt khi khởi động lại)</span>
+                                <p class="text-xs text-muted-foreground">Bật hoặc tắt chế độ dùng phím mũi tên đọc tự do (tự tắt lại khi mở lại Zalo)</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
-                                <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>J</kbd></div>
-                                <span class="text-xs text-muted-foreground">Bật hoặc tắt toàn bộ thông báo Windows của Zablind</span>
-                            </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd></div>
-                                <span class="text-xs text-muted-foreground">Chuyển đổi ngôn ngữ giao diện (Tiếng Việt / Tiếng Anh)</span>
+                                <p class="text-xs text-muted-foreground">Đổi ngôn ngữ sử dụng của Zalo (Tiếng Việt / Tiếng Anh)</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd></div>
-                                <span class="text-xs text-muted-foreground">Mở hộp thoại kiểm tra &amp; quản lý cập nhật Zablind</span>
+                                <p class="text-xs text-muted-foreground">Kiểm tra và cập nhật phiên bản mới cho Zablind</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
-                                <div><kbd>Escape</kbd></div>
-                                <span class="text-xs text-muted-foreground">Đóng menu ngữ cảnh, hộp thoại hoặc trình xem ảnh/video</span>
-                            </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1 sm:col-span-2">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd></div>
-                                <span class="text-xs text-muted-foreground">Xem mã QR đăng nhập toàn màn hình trong trình duyệt (ở trang đăng nhập)</span>
+                                <p class="text-xs text-muted-foreground">Phóng to mã QR toàn màn hình để dễ quét (tại màn hình đăng nhập)</p>
+                            </div>
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
+                                <div><kbd>Escape</kbd></div>
+                                <p class="text-xs text-muted-foreground">Đóng cửa sổ, menu hoặc ảnh/video đang mở</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Navigation Shortcuts -->
-                    <div class="space-y-2.5">
-                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                            <span class="flex items-center gap-1.5"><svg aria-hidden="true" class="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Điều hướng &amp; Tìm kiếm</span>
-                        </h5>
+                    <div class="space-y-2">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary">Di chuyển &amp; Tìm kiếm</h5>
                         <div class="grid gap-2 sm:grid-cols-2">
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd></div>
-                                <span class="text-xs text-muted-foreground">Tập trung vào ô tìm kiếm danh bạ (hoặc ô tìm bạn trong cửa sổ Chia sẻ)</span>
+                                <p class="text-xs text-muted-foreground">Chuyển đến ô tìm kiếm bạn bè, tin nhắn (hoặc ô tìm người nhận khi chia sẻ)</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd></div>
-                                <span class="text-xs text-muted-foreground">Chọn cuộc hội thoại đầu tiên trong danh sách</span>
+                                <p class="text-xs text-muted-foreground">Chọn nhanh cuộc trò chuyện đầu tiên trong danh sách</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd></div>
-                                <span class="text-xs text-muted-foreground">Di chuyển xuống hội thoại hoặc kết quả tìm kiếm tiếp theo</span>
+                                <p class="text-xs text-muted-foreground">Chuyển xuống cuộc trò chuyện hoặc kết quả tìm kiếm tiếp theo</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd></div>
-                                <span class="text-xs text-muted-foreground">Di chuyển lên hội thoại hoặc kết quả tìm kiếm phía trước</span>
+                                <p class="text-xs text-muted-foreground">Chuyển lên cuộc trò chuyện hoặc kết quả tìm kiếm phía trên</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></div>
-                                <span class="text-xs text-muted-foreground">Tập trung vào ô nhập tin nhắn chat</span>
+                                <p class="text-xs text-muted-foreground">Chuyển đến ô soạn tin nhắn để gõ chữ</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd></div>
-                                <span class="text-xs text-muted-foreground">Chuyển đổi giữa tab Ưu tiên (Focus) và Khác (Other)</span>
+                                <p class="text-xs text-muted-foreground">Chuyển qua lại giữa mục Ưu tiên và mục Khác</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Messages Shortcuts -->
-                    <div class="space-y-2.5">
-                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                            <span class="flex items-center gap-1.5"><svg aria-hidden="true" class="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Tin nhắn &amp; Đa phương tiện</span>
-                        </h5>
+                    <div class="space-y-2">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary">Đọc tin nhắn &amp; Ảnh, Giọng nói</h5>
                         <div class="grid gap-2 sm:grid-cols-2">
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd></div>
-                                <span class="text-xs text-muted-foreground">Di chuyển nhanh xuống tin nhắn mới nhất trong cuộc trò chuyện</span>
+                                <p class="text-xs text-muted-foreground">Chuyển nhanh đến tin nhắn mới nhất vừa nhận</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd> / <kbd>L</kbd></div>
-                                <span class="text-xs text-muted-foreground">Di chuyển lên tin nhắn trước / xuống tin nhắn tiếp theo</span>
+                                <p class="text-xs text-muted-foreground">Đọc tin nhắn cũ hơn (K) hoặc tin nhắn mới hơn (L)</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Tab</kbd> (khi chọn tin nhắn)</div>
-                                <span class="text-xs text-muted-foreground">Kích hoạt ảnh, video hoặc phát tin nhắn thoại của tin nhắn đang chọn</span>
+                                <p class="text-xs text-muted-foreground">Mở ảnh, xem video hoặc nghe tin nhắn thoại đang chọn</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
-                                <div><kbd>Mũi tên xuống</kbd> / <kbd>Mũi tên lên</kbd></div>
-                                <span class="text-xs text-muted-foreground">Trong tin nhắn liên kết: di chuyển vào liên kết cụ thể / quay lại nội dung</span>
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
+                                <div><kbd>Mũi tên lên</kbd> / <kbd>Xuống</kbd></div>
+                                <p class="text-xs text-muted-foreground">Trong tin nhắn có đường dẫn web: đi vào đường dẫn hoặc quay lại chữ; dùng để chọn người khi Chia sẻ</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1 sm:col-span-2">
-                                <div><kbd>Enter</kbd> (trong tin nhắn liên kết)</div>
-                                <span class="text-xs text-muted-foreground">Kích hoạt và mở liên kết đang được tập trung trong trình duyệt</span>
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1 sm:col-span-2">
+                                <div><kbd>Enter</kbd> (khi chọn đường dẫn)</div>
+                                <p class="text-xs text-muted-foreground">Mở trang web của đường dẫn đang chọn</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Call Shortcuts -->
-                    <div class="space-y-2.5">
-                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                            <span class="flex items-center gap-1.5"><svg aria-hidden="true" class="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Cuộc gọi thoại &amp; Video (Không bao giờ phát tiếng "no next")</span>
-                        </h5>
+                    <div class="space-y-2">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary">Nghe &amp; Gọi điện (Chỉ hoạt động khi đang ở cửa sổ cuộc gọi)</h5>
                         <div class="grid gap-2 sm:grid-cols-2">
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></div>
-                                <span class="text-xs text-muted-foreground">Tập trung vào nút gọi thoại (Nhấn Enter để gọi, hoặc Tab để chuyển sang video)</span>
+                                <p class="text-xs text-muted-foreground">Chọn nút gọi thoại (nhấn Enter để gọi, hoặc bấm Tab để chuyển sang gọi video)</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>A</kbd> (khi chuông reo)</div>
-                                <span class="text-xs text-muted-foreground">Chấp nhận / Bắt máy cuộc gọi đến</span>
+                                <p class="text-xs text-muted-foreground">Nhận cuộc gọi đến</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>A</kbd> hoặc <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd></div>
-                                <span class="text-xs text-muted-foreground">Chấp nhận cuộc gọi video mà KHÔNG bật camera</span>
+                                <p class="text-xs text-muted-foreground">Nhận cuộc gọi video nhưng tắt sẵn camera</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>D</kbd> (khi chuông reo)</div>
-                                <span class="text-xs text-muted-foreground">Từ chối / Hủy cuộc gọi đến</span>
+                                <p class="text-xs text-muted-foreground">Từ chối cuộc gọi đến</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
-                                <div><kbd>C</kbd> / <kbd>M</kbd> (trong cuộc gọi)</div>
-                                <span class="text-xs text-muted-foreground">Bật/tắt camera (C) hoặc Bật/tắt mic (M)</span>
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
+                                <div><kbd>C</kbd> / <kbd>M</kbd> (khi đang gọi)</div>
+                                <p class="text-xs text-muted-foreground">Bật hoặc tắt camera (C) / micrô (M)</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
-                                <div><kbd>E</kbd> (trong cuộc gọi)</div>
-                                <span class="text-xs text-muted-foreground">Gác máy / Kết thúc cuộc gọi</span>
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
+                                <div><kbd>E</kbd> (khi đang gọi)</div>
+                                <p class="text-xs text-muted-foreground">Kết thúc cuộc gọi</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Actions Shortcuts -->
-                    <div class="space-y-2.5">
-                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                            <span class="flex items-center gap-1.5"><svg aria-hidden="true" class="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Thao tác nhanh</span>
-                        </h5>
+                    <div class="space-y-2">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-primary">Thao tác khác</h5>
                         <div class="grid gap-2 sm:grid-cols-2">
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd></div>
-                                <span class="text-xs text-muted-foreground">Mở hộp thoại kết bạn bằng số điện thoại</span>
+                                <p class="text-xs text-muted-foreground">Mở cửa sổ tìm và kết bạn bằng số điện thoại</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></div>
-                                <span class="text-xs text-muted-foreground">Bắt đầu đồng bộ tin nhắn từ điện thoại</span>
+                                <p class="text-xs text-muted-foreground">Mở cửa sổ Đồng bộ hoặc Sao lưu tin nhắn với điện thoại</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd></div>
-                                <span class="text-xs text-muted-foreground">Mở hộp thoại Đăng xuất với lựa chọn Khởi động lại Zalo</span>
+                                <p class="text-xs text-muted-foreground">Mở cửa sổ Đăng xuất hoặc Khởi động lại Zalo</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1">
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1">
                                 <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>O</kbd></div>
-                                <span class="text-xs text-muted-foreground">Mở menu đính kèm tệp tin hoặc thư mục</span>
+                                <p class="text-xs text-muted-foreground">Mở danh sách chọn gửi tệp hoặc thư mục</p>
                             </div>
-                            <div class="p-3 rounded-lg border bg-card/60 flex flex-col justify-between space-y-1 sm:col-span-2">
-                                <div><kbd>ContextMenu</kbd> hoặc <kbd>Shift</kbd> + <kbd>F10</kbd></div>
-                                <span class="text-xs text-muted-foreground">Mở menu chuột phải: Ghim hoặc Bật/Tắt thông báo cho hội thoại, hoặc các thao tác tin nhắn</span>
+                            <div class="p-3 rounded-lg border bg-card/60 space-y-1 sm:col-span-2">
+                                <div><kbd>Phím Menu</kbd> hoặc <kbd>Shift</kbd> + <kbd>F10</kbd></div>
+                                <p class="text-xs text-muted-foreground">Mở menu tùy chọn nhanh: Ghim, Tắt/Bật thông báo, Chuyển mục cho hội thoại hoặc thao tác trên tin nhắn</p>
                             </div>
                         </div>
                     </div>
@@ -501,71 +446,64 @@
 
             <!-- 2. INSTALLATION INSTRUCTIONS & NOTES -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-installation">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Hướng Dẫn &amp; Lưu Ý Khi Cài Đặt
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Hướng dẫn cài đặt &amp; sử dụng
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Yêu cầu hệ thống, cách cài đặt, gỡ bỏ và xử lý phím bấm</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-4 text-sm text-muted-foreground">
-                    <ul class="list-disc pl-6 space-y-2">
-                        <li><strong>Kết nối Internet:</strong> Chỉ cần thiết khi tải bộ cài đặt Zablind lần đầu hoặc để tự động cập nhật phiên bản mới. Quá trình cài đặt diễn ra hoàn toàn ngoại tuyến (offline).</li>
-                        <li><strong>Phiên bản Zalo:</strong> Cần sử dụng phiên bản Zalo PC mới nhất (<a href="https://zalo.me/pc" target="_blank" class="text-primary hover:underline font-medium">Tải Zalo chính thức</a>).</li>
-                        <li><strong>Cài đặt / Cài đặt lại:</strong> Chạy tệp cài đặt và nhấn nút <kbd>1. Cài đặt / Cài đặt lại</kbd> trên cửa sổ giao diện của bộ cài đặt.</li>
-                        <li><strong>Gỡ cài đặt:</strong> Chạy tệp cài đặt và nhấn nút <kbd>2. Gỡ cài đặt Zablind</kbd> trên cửa sổ giao diện để khôi phục phiên bản Zalo gốc sạch sẽ.</li>
-                        <li><strong>Cập nhật tự động:</strong> Tự động kiểm tra và cập nhật sau mỗi 6 giờ. Bạn cũng có thể bấm <kbd>Ctrl + Shift + U</kbd> khi ở trong Zalo để kiểm tra cập nhật thủ công.</li>
-                        <li><strong>Hỗ trợ trình đọc màn hình:</strong> <strong>NVDA</strong> được hỗ trợ tối ưu nhất. Nếu dùng <strong>JAWS</strong>, bấm <kbd>Insert + Z</kbd> để tắt con trỏ ảo trước khi sử dụng.</li>
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-4 text-sm text-muted-foreground">
+                    <ul class="list-disc pl-5 space-y-2 leading-relaxed">
+                        <li><strong>Bước 1:</strong> Cài đặt sẵn <a href="https://zalo.me/pc" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline font-medium">Zalo chính thức cho máy tính</a>.</li>
+                        <li><strong>Bước 2:</strong> Mở tệp cài đặt Zablind vừa tải về rồi chọn nút <kbd>Cài đặt / Cài đặt lại</kbd>. Quá trình cài đặt không cần mạng.</li>
+                        <li><strong>Gỡ cài đặt:</strong> Mở lại tệp cài đặt rồi chọn nút <kbd>Gỡ cài đặt Zablind</kbd> để đưa Zalo về trạng thái ban đầu.</li>
+                        <li><strong>Tự động cập nhật:</strong> Zablind tự kiểm tra bản mới định kỳ. Bạn cũng có thể bấm <kbd>Ctrl + Shift + U</kbd> trong Zalo để kiểm tra bất cứ lúc nào.</li>
+                        <li><strong>Trình đọc màn hình:</strong> Khuyên dùng với <strong>NVDA</strong>. Nếu bạn sử dụng <strong>JAWS</strong>, hãy bấm <kbd>Insert + Z</kbd> trước khi thao tác.</li>
                     </ul>
 
-                    <div role="alert" class="rounded-lg border p-4 bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-xs leading-relaxed space-y-1">
-                        <div class="font-bold flex items-center gap-1.5 text-yellow-300">
-                            <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                            Mẹo xử lý phím Menu / Application
-                        </div>
-                        <p>Nếu phím <strong>Application/Menu</strong> của máy bạn không hoạt động, hãy thử bấm <kbd>Shift + F10</kbd>. Nếu bàn phím bị khuyết phím này, bạn có thể tải ứng dụng <a href="https://apps.microsoft.com/detail/xpffcg7m673d4f?hl=vi-VN&gl=US" target="_blank" class="underline font-semibold text-yellow-200">SharpKeys trên Microsoft Store</a> để gán lại phím một cách tiện lợi.</p>
+                    <div role="note" class="rounded-lg border p-3.5 bg-yellow-500/10 text-yellow-300 border-yellow-500/20 text-xs leading-relaxed">
+                        <strong>Mẹo khi bàn phím thiếu phím Menu (chuột phải):</strong> Bạn có thể bấm tổ hợp phím <kbd>Shift + F10</kbd> để thay thế, hoặc dùng ứng dụng <a href="https://apps.microsoft.com/detail/xpffcg7m673d4f?hl=vi-VN&gl=US" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-yellow-200">SharpKeys</a> để chuyển một phím ít dùng thành phím Menu.
                     </div>
                 </div>
             </details>
 
             <!-- 3. STORY, CERTIFICATES & LEGAL BASIS -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-story-legal">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Câu Chuyện Dự Án, Bằng Khen &amp; Cơ Sở Pháp Lý
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Câu chuyện dự án, Bằng khen &amp; Pháp lý
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Hành trình từ tình yêu đến giải thưởng và cơ sở bản quyền hợp pháp</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-6 text-sm">
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-6 text-sm">
                     
                     <div class="grid gap-6 md:grid-cols-2">
                         <!-- Backstory Card -->
                         <div class="space-y-3 text-muted-foreground">
                             <h5 class="text-base font-bold text-foreground">Hành trình từ tình yêu đến cộng đồng</h5>
                             <p class="leading-relaxed">
-                                Zablind bắt đầu từ tình yêu và mong muốn giúp người yêu khiếm thị của mình sử dụng Zalo trên máy tính Windows một cách hiệu quả hơn. Dù hành trình ban đầu vô cùng gian nan và đầy thách thức về mặt công nghệ, mình đã nỗ lực vượt qua để hoàn thiện nó. Giờ đây, Zablind đã trở thành một sản phẩm mã nguồn mở ý nghĩa dành cho toàn cộng đồng.
+                                Zablind bắt đầu từ mong muốn giúp người yêu khiếm thị của mình sử dụng Zalo trên máy tính Windows thuận tiện hơn. Sau nhiều nỗ lực hoàn thiện, phần mềm đã được chia sẻ miễn phí cho toàn cộng đồng.
                             </p>
                             <p class="leading-relaxed">
-                                Dự án cũng tự hào đạt <strong>Giải Nhất tại Hội thi Tin học dành cho người mù toàn quốc năm 2025</strong> và vinh dự được nhận <strong>Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ</strong> trao tặng.
+                                Dự án đạt <strong>Giải Nhất Hội thi Tin học dành cho người mù toàn quốc năm 2025</strong> và vinh dự nhận <strong>Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ</strong>.
                             </p>
                             <!-- Couple Photo -->
-                            <figure class="rounded-lg border overflow-hidden bg-muted/20 mt-4">
-                                <img src="couple.png" alt="Ocean (Nguyễn Trí Minh) và người yêu Ma Thị Phương" class="w-full h-auto object-cover max-h-[280px]" onerror="this.style.display='none';" />
+                            <figure class="rounded-lg border overflow-hidden bg-muted/20 mt-3">
+                                <img src="couple.png" alt="Ocean (Nguyễn Trí Minh) và người yêu Ma Thị Phương" class="w-full h-auto object-cover max-h-[260px]" onerror="this.style.display='none';" />
                                 <figcaption class="text-xs text-center text-muted-foreground py-2 px-3 bg-card">
                                     Ocean (Nguyễn Trí Minh) và người yêu Ma Thị Phương
                                 </figcaption>
@@ -574,18 +512,17 @@
 
                         <!-- Legal Card -->
                         <div class="space-y-3 text-muted-foreground">
-                            <h5 class="text-base font-bold text-foreground">Cơ sở pháp lý vững chắc</h5>
+                            <h5 class="text-base font-bold text-foreground">Cơ sở pháp lý &amp; Quyền riêng tư</h5>
                             <p class="leading-relaxed">
-                                Zablind là phần mềm trợ năng <strong>phi lợi nhuận</strong>, được phát triển và phân phối hoàn toàn miễn phí với mục tiêu duy nhất là hỗ trợ người khiếm thị tiếp cận ứng dụng Zalo PC thông qua trình đọc màn hình.
+                                Zablind là phần mềm phi lợi nhuận, được phát hành miễn phí để hỗ trợ người khiếm thị tiếp cận Zalo qua trình đọc màn hình.
                             </p>
                             <p class="leading-relaxed">
-                                Theo <strong>điểm m, khoản 1, Điều 25</strong> của <a href="https://quochoi.vn/tintuc/Pages/tin-hoat-dong-cua-quoc-hoi.aspx?ItemID=72721" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">Luật Sở hữu trí tuệ Việt Nam</a> (VBHN số 11/VBHN-VPQH), hành vi chuyển đổi tác phẩm sang định dạng tiếp cận được cho người khuyết tật về nhìn thuộc trường hợp <strong>ngoại lệ không xâm phạm quyền tác giả</strong> — <strong>không cần xin phép</strong> và <strong>không phải trả thù lao</strong>.
+                                Theo <strong>điểm m, khoản 1, Điều 25</strong> <a href="https://quochoi.vn/tintuc/Pages/tin-hoat-dong-cua-quoc-hoi.aspx?ItemID=72721" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">Luật Sở hữu trí tuệ Việt Nam</a>, việc chuyển đổi tác phẩm sang định dạng tiếp cận cho người khuyết tật về nhìn là ngoại lệ không xâm phạm quyền tác giả.
                             </p>
-                            <div class="rounded-lg border border-border/80 bg-card p-3 space-y-1.5 text-xs">
-                                <div class="font-bold text-foreground uppercase tracking-wider">Quyền riêng tư &amp; Bảo mật</div>
-                                <p>Zablind chỉ chỉnh sửa giao diện và <strong>KHÔNG THU THẬP DỮ LIỆU</strong> người dùng.</p>
-                                <p>Mã nguồn dự án minh bạch tại <a href="https://github.com/oceanondawave/zablind" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">GitHub Repository</a>.</p>
-                                <p class="text-muted-foreground/70">Zablind là dự án độc lập vì người khuyết tật, không liên quan đến Zalo Group hay VNG.</p>
+                            <div class="rounded-lg border border-border/80 bg-card p-3 space-y-1 text-xs">
+                                <div class="font-bold text-foreground">Bảo mật thông tin</div>
+                                <p>Zablind chỉ hỗ trợ đọc màn hình, <strong>không thu thập hay gửi bất kỳ dữ liệu cá nhân nào</strong>.</p>
+                                <p class="text-muted-foreground/70">Đây là dự án cộng đồng độc lập, không thuộc Zalo Group hay VNG.</p>
                             </div>
                         </div>
                     </div>
@@ -595,22 +532,22 @@
                         <h5 class="text-xs font-bold uppercase tracking-wider text-muted-foreground text-center">Bằng khen của Bộ trưởng Bộ Khoa học và Công nghệ</h5>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <figure class="rounded-lg border overflow-hidden bg-muted/20 flex flex-col">
-                                <img src="certificate-ocean.jpg" alt="Bằng khen Bộ trưởng Bộ KH&CN trao tặng Nguyễn Trí Minh" class="w-full h-auto object-contain max-h-[350px]" onerror="this.style.display='none';" />
+                                <img src="certificate-ocean.jpg" alt="Bằng khen Bộ trưởng Bộ KH&CN trao tặng Nguyễn Trí Minh" class="w-full h-auto object-contain max-h-[340px]" onerror="this.style.display='none';" />
                                 <figcaption class="text-xs text-center text-muted-foreground py-2 px-3 bg-card">
-                                    Bằng khen Bộ trưởng Bộ KH&amp;CN — Nguyễn Trí Minh
+                                    Bằng khen — Nguyễn Trí Minh
                                 </figcaption>
                             </figure>
                             <figure class="rounded-lg border overflow-hidden bg-muted/20 flex flex-col">
-                                <img src="certificate-girlfriend.jpg" alt="Bằng khen Bộ trưởng Bộ KH&CN trao tặng Ma Thị Phương" class="w-full h-auto object-contain max-h-[350px]" onerror="this.style.display='none';" />
+                                <img src="certificate-girlfriend.jpg" alt="Bằng khen Bộ trưởng Bộ KH&CN trao tặng Ma Thị Phương" class="w-full h-auto object-contain max-h-[340px]" onerror="this.style.display='none';" />
                                 <figcaption class="text-xs text-center text-muted-foreground py-2 px-3 bg-card">
-                                    Bằng khen Bộ trưởng Bộ KH&amp;CN — Ma Thị Phương
+                                    Bằng khen — Ma Thị Phương
                                 </figcaption>
                             </figure>
                         </div>
-                        <figure class="rounded-lg border overflow-hidden bg-muted/20 flex flex-col max-w-lg mx-auto mt-4">
-                            <img src="award-girlfriend.jpg" alt="Ma Thị Phương được vinh danh trên sân khấu Hội thi toàn quốc" class="w-full h-auto object-contain max-h-[350px]" onerror="this.style.display='none';" />
+                        <figure class="rounded-lg border overflow-hidden bg-muted/20 flex flex-col max-w-lg mx-auto mt-3">
+                            <img src="award-girlfriend.jpg" alt="Ma Thị Phương được vinh danh trên sân khấu Hội thi toàn quốc" class="w-full h-auto object-contain max-h-[340px]" onerror="this.style.display='none';" />
                             <figcaption class="text-xs text-center text-muted-foreground py-2 px-3 bg-card">
-                                Ma Thị Phương được vinh danh trên sân khấu Hội thi Tin học người mù toàn quốc
+                                Ma Thị Phương nhận giải tại Hội thi Tin học người mù toàn quốc
                             </figcaption>
                         </figure>
                     </div>
@@ -620,36 +557,35 @@
 
             <!-- 4. PODCAST & VIDEO GUIDE -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-video">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Video Hướng Dẫn Sử Dụng &amp; Podcast Zablind
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Video hướng dẫn &amp; Podcast
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Xem video thực tế và lắng nghe chia sẻ chi tiết về phần mềm</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-4">
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-3">
                     <div class="aspect-video w-full rounded-lg overflow-hidden border bg-muted shadow-inner">
                         <iframe 
                             class="w-full h-full"
                             src="https://www.youtube.com/embed/bSSvD66qby0" 
-                            title="Xem podcast và video hướng dẫn về Zablind" 
+                            title="Video hướng dẫn sử dụng và Podcast về Zablind" 
                             frameborder="0" 
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                             allowfullscreen>
                         </iframe>
                     </div>
-                    <div class="text-center pt-1">
+                    <div class="text-center">
                         <a href="https://youtu.be/bSSvD66qby0" target="_blank" rel="noopener noreferrer"
                            class="inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-card hover:bg-accent hover:text-accent-foreground px-4 py-2 text-xs font-semibold shadow-sm transition-colors">
                             <svg aria-hidden="true" class="h-4 w-4 text-red-500 fill-current" viewBox="0 0 24 24"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.108C19.52 3.5 12 3.5 12 3.5s-7.52 0-9.388.555a3.002 3.002 0 0 0-2.11 2.108C0 8.03 0 12 0 12s0 3.97.502 5.837a3.003 3.003 0 0 0 2.11 2.108C4.48 20.5 12 20.5 12 20.5s7.52 0 9.388-.555a3.002 3.002 0 0 0 2.11-2.108C24 15.97 24 12 24 12s0-3.97-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                            Mở xem trực tiếp trên YouTube
+                            Xem trực tiếp trên YouTube
                         </a>
                     </div>
                 </div>
@@ -657,23 +593,22 @@
 
             <!-- 5. DONATION & SUPPORT -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-donation">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Đồng Hành &amp; Ủng Hộ Tác Giả (Tùy tâm)
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Ủng hộ tác giả (Tùy tâm)
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Gửi tặng tác giả một ly cà phê động viên tinh thần (hoàn toàn không bắt buộc)</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-4 text-sm">
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-4 text-sm">
                     <p class="text-muted-foreground leading-relaxed">
-                        Nếu bạn muốn ủng hộ tác giả một ly cà phê nhỏ để động viên đóng góp và công sức của mình dành cho dự án, mình luôn vô cùng trân quý sự ủng hộ của các bạn (bạn vui lòng ghi nội dung chuyển khoản là <strong>ung ho Zablind</strong> để mình biết nhé):
+                        Hoàn toàn không bắt buộc. Nếu bạn muốn mời tác giả một ly cà phê động viên tinh thần, vui lòng ghi nội dung chuyển khoản là <strong>ung ho Zablind</strong>:
                     </p>
                     <div class="grid gap-4 md:grid-cols-2">
                         <!-- BVBank Account Card -->
@@ -708,66 +643,60 @@
 
             <!-- 6. RELEASE HISTORY -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-history">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Lịch Sử Tất Cả Các Phiên Bản Phát Hành
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Lịch sử các phiên bản trước
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Xem nhật ký thay đổi và các phiên bản đã phát hành trước đây</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-4">
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-3">
                     <div id="versions" class="space-y-3">
-                        <div class="h-20 w-full rounded-lg bg-muted/40 animate-pulse"></div>
+                        <div class="h-16 w-full rounded-lg bg-muted/40 animate-pulse"></div>
                     </div>
                 </div>
             </details>
 
             <!-- 7. STRICT PROPRIETARY LICENSE & LEGAL TERMS -->
             <details class="group rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden" id="section-license">
-                <summary class="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+                <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">
                     <div class="flex items-center gap-3">
-                        <svg aria-hidden="true" class="h-6 w-6 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <svg aria-hidden="true" class="h-5 w-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         <div>
-                            <h4 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                                Điều Khoản Bản Quyền &amp; Nghiêm Cấm Thương Mại Hóa
+                            <h4 class="text-base sm:text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                                Bản quyền &amp; Điều khoản sử dụng
                             </h4>
-                            <p class="text-xs text-muted-foreground mt-0.5">Zablind Proprietary Community License (All Rights Reserved)</p>
                         </div>
                     </div>
                     <svg aria-hidden="true" class="w-5 h-5 text-muted-foreground transition-transform duration-200 group-open:rotate-180 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </summary>
-                <div class="p-5 border-t border-border/50 bg-background/50 space-y-3 text-xs text-muted-foreground leading-relaxed font-mono">
-                    <p class="font-bold text-foreground">BẢN QUYỀN © 2026 NGUYỄN TRÍ MINH (OCEAN KID). TẤT CẢ CÁC QUYỀN ĐƯỢC BẢO LƯU.</p>
-                    <p>1. <strong>Nghiêm cấm sao chép / Forking / Re-upload:</strong> Mọi cá nhân, tổ chức không được phép sao chép, fork mã nguồn, mirror, đăng tải lại trên bất kỳ nền tảng, trang web hoặc kho lưu trữ nào khi chưa có văn bản đồng ý từ tác giả.</p>
-                    <p>2. <strong>Nghiêm cấm thương mại hóa:</strong> Tuyệt đối cấm mọi hành vi mua bán, thu phí, gắn quảng cáo, đóng gói kèm phần mềm thương mại hoặc kiếm tiền dưới mọi hình thức từ Zablind.</p>
-                    <p>3. <strong>Nghiêm cấm mạo nhận quyền tác giả:</strong> Nghiêm cấm gỡ bỏ thông tin tác giả, sửa đổi tên dự án hoặc tự nhận là tác giả của phần mềm.</p>
-                    <p>4. <strong>Chính sách không hỗ trợ:</strong> Tác giả trao tặng phần mềm hoàn toàn miễn phí theo nguyên trạng (AS-IS), không có nghĩa vụ bảo hành, không hỗ trợ kỹ thuật cá nhân và không nhận phát triển tính năng theo yêu cầu.</p>
-                    <p>5. <strong>Kênh tiếp nhận duy nhất:</strong> Chỉ tiếp nhận tố cáo hành vi lừa đảo, trục lợi hoặc thương mại hóa dự án tại: <a href="mailto:minh.ngntri@gmail.com" class="text-primary underline">minh.ngntri@gmail.com</a>.</p>
+                <div class="p-4 sm:p-5 border-t border-border/50 bg-background/50 space-y-2.5 text-xs text-muted-foreground leading-relaxed">
+                    <p class="font-bold text-foreground">BẢN QUYỀN &copy; 2026 NGUYỄN TRÍ MINH (OCEAN KID).</p>
+                    <p>1. <strong>Không sao chép và đăng lại:</strong> Không cá nhân hay tổ chức nào được phép sao chép hoặc đăng tải lại phần mềm ở nơi khác khi chưa được tác giả đồng ý.</p>
+                    <p>2. <strong>Nghiêm cấm mua bán:</strong> Nghiêm cấm mọi hình thức thu phí, bán phần mềm, gắn quảng cáo hoặc kiếm tiền từ Zablind.</p>
+                    <p>3. <strong>Tôn trọng tên tác giả:</strong> Không gỡ bỏ thông tin tác giả, đổi tên phần mềm hay nhận làm sản phẩm của mình.</p>
+                    <p>4. <strong>Chính sách chia sẻ:</strong> Phần mềm được tặng hoàn toàn miễn phí theo hiện trạng; tác giả không có nghĩa vụ bảo hành, hỗ trợ riêng từng máy hay làm thêm tính năng theo yêu cầu.</p>
+                    <p>5. <strong>Báo cáo vi phạm:</strong> Xin gửi thông tin về các trường hợp lừa đảo, bán phần mềm về email <a href="mailto:minh.ngntri@gmail.com" class="text-primary underline">minh.ngntri@gmail.com</a>.</p>
                 </div>
             </details>
 
         </div>
 
-        <!-- Footer -->
-        <footer class="border-t pt-8 text-center text-sm text-muted-foreground space-y-3">
-            <p>Được phát triển bởi <strong>Nguyễn Trí Minh (Ocean Kid)</strong></p>
-            <p class="text-xs text-muted-foreground/60 max-w-xl mx-auto">
-                Dành tặng cộng đồng người khiếm thị. Nghiêm cấm mọi hành vi sao chép, fork mã nguồn hoặc thương mại hóa.
+        <!-- Minimal Footer -->
+        <footer class="border-t pt-6 pb-2 text-center text-xs text-muted-foreground space-y-1.5">
+            <p>Phát triển bởi <strong>Nguyễn Trí Minh (Ocean Kid)</strong> &mdash; Tặng miễn phí cho cộng đồng người khiếm thị</p>
+            <p class="text-muted-foreground/70">
+                &copy; <span id="copyright-year">2026</span> Minh Tri Nguyen &middot;
+                <span aria-label="Số lượt truy cập trang web">Lượt truy cập: <strong id="page-views" class="text-foreground">...</strong></span>
             </p>
-            <div class="pt-2 text-xs font-mono flex items-center justify-center gap-2 flex-wrap text-muted-foreground/60">
-                <span>&copy; <span id="copyright-year">2026</span> Minh Tri Nguyen</span>
-                <span>|</span>
-                <span aria-label="Số lượt truy cập trang web">Lượt truy cập: <span id="page-views" class="font-bold text-foreground">...</span></span>
-            </div>
         </footer>
 
     </main>
@@ -868,9 +797,11 @@
                         const btnMirror = document.getElementById("btn-mirror-download");
                         if (btnPrimary) {
                             btnPrimary.href = exeAsset.browser_download_url;
+                            const labelVersion = release.tag_name ? ` (${release.tag_name})` : "";
+                            btnPrimary.setAttribute("aria-label", `Tải bộ cài đặt Zablind${labelVersion}`);
                             btnPrimary.innerHTML = `
                                 <svg aria-hidden="true" class="h-5 w-5 fill-current shrink-0" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                                <span>Tải ${exeAsset.name}</span>
+                                <span>Tải bộ cài đặt Zablind</span>
                             `;
                         }
                         if (btnMirror) {
@@ -882,10 +813,10 @@
                 // Render release notes drawer
                 if (release.body) {
                     installer.innerHTML = `
-                        <details class="group rounded-xl border border-border/60 bg-card/60 p-4 text-sm mt-4">
+                        <details class="group rounded-xl border border-border/60 bg-card/60 p-4 text-sm mt-2">
                             <summary class="cursor-pointer select-none list-none flex items-center gap-2 font-medium text-foreground hover:text-primary transition-colors py-1">
                                 <svg aria-hidden="true" class="w-4 h-4 transition-transform duration-200 group-open:rotate-90 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                                Xem Ghi chú phát hành chi tiết của ${release.name || release.tag_name}
+                                Xem chi tiết thay đổi của bản ${release.tag_name || release.name}
                             </summary>
                             <div class="mt-3 text-xs text-foreground/90 space-y-2 leading-relaxed markdown-content border-l-2 border-primary/40 pl-4">
                                 ${marked.parse(release.body)}
@@ -896,7 +827,7 @@
                 }
             })
             .catch(err => {
-                console.log("Using built-in v2.1.4 download defaults.");
+                console.log("Using built-in v2.1.5 download defaults.");
             });
 
         // Fetch Release History & Total Downloads
@@ -909,7 +840,7 @@
                 versions.innerHTML = "";
 
                 if (!Array.isArray(releases) || releases.length === 0) {
-                    versions.innerHTML = "<p class='text-xs text-muted-foreground'>Không có dữ liệu lịch sử trên GitHub.</p>";
+                    versions.innerHTML = "<p class='text-xs text-muted-foreground'>Chưa có dữ liệu các phiên bản trước.</p>";
                     return;
                 }
 
@@ -944,13 +875,12 @@
                                     <polyline points="9 18 15 12 9 6"/>
                                 </svg>
                                 <span class="font-bold text-foreground">${release.name || release.tag_name}</span>
-                                <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded">${release.tag_name}</span>
-                                ${relDownloads > 0 ? `<span class="text-[10px] text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded">${relDownloads.toLocaleString()} lượt tải</span>` : ''}
+                                ${relDownloads > 0 ? `<span class="text-[11px] text-primary font-medium">${relDownloads.toLocaleString()} lượt tải</span>` : ''}
                             </div>
                             <span class="text-[11px] text-muted-foreground shrink-0">${date}</span>
                         </summary>
                         <div id="${releasePanelId}" role="region" aria-labelledby="${releaseSummaryId}" class="p-4 space-y-2 markdown-content border-t border-border/40 text-muted-foreground leading-relaxed">
-                             ${release.body ? marked.parse(release.body) : "Không có mô tả chi tiết."}
+                             ${release.body ? marked.parse(release.body) : "Không có thông tin chi tiết."}
                         </div>
                     `;
                     versions.appendChild(details);
@@ -958,7 +888,7 @@
                 });
             })
             .catch(err => {
-                versions.innerHTML = `<div class="text-xs text-destructive">Không thể tải lịch sử phát hành từ GitHub.</div>`;
+                versions.innerHTML = `<div class="text-xs text-muted-foreground">Không thể tải lịch sử các phiên bản lúc này.</div>`;
             });
 
         // Set current copyright year dynamically

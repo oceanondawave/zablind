@@ -92,48 +92,7 @@ function isConversationMuted(title) {
 }
 
 function triggerNativeNotification(title, body, prefix) {
-  try {
-    const { state } = require('./state.js');
-    if (state && state.windowsNotificationsEnabled === false) {
-      return;
-    }
-    if (title && isConversationMuted(title)) {
-      console.log(`[NOTI-TRIGGER] Conversation "${title}" is muted. Suppressing notification.`);
-      return;
-    }
-
-    const fullTitle = prefix ? `${title} (${prefix})` : (title || "Zalo");
-
-    // 1. Trigger native Windows toast notification via Electron main process
-    try {
-      const { ipcRenderer } = require('electron');
-      if (ipcRenderer) {
-        ipcRenderer.send('zablind-show-notification', {
-          title: fullTitle,
-          body: body || ""
-        });
-      }
-    } catch (ipcErr) {}
-
-    // 2. Also write notification file for Python Call Handler (NVDA screen reader speech & fallback)
-    const fs = require('fs');
-    const path = require('path');
-    const { getZablindDir } = require('./utils.js');
-    const zablindDir = getZablindDir();
-    if (!fs.existsSync(zablindDir)) {
-      fs.mkdirSync(zablindDir, { recursive: true });
-    }
-    const tempFile = path.join(zablindDir, "zablind_notification.json");
-    const data = {
-      title: title || "",
-      titlePrefix: prefix || "",
-      body: body || "",
-      timestamp: Date.now()
-    };
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), "utf8");
-  } catch (err) {
-    console.error("[NOTI-TRIGGER] Error writing notification file:", err);
-  }
+  // Push notification feature removed as modern Zalo natively delivers official Windows toast notifications.
 }
 
 function checkConversationUnreads() {
@@ -168,16 +127,7 @@ function checkConversationUnreads() {
     const prevState = prevUnreadStates.get(title);
     
     if (prevState && !isMuted) {
-      const countIncreased = unreadCount > prevState.unreadCount;
-      const msgChanged = lastMsg !== prevState.lastMessageText && unreadCount > 0;
-      
-      if (countIncreased || msgChanged) {
-        if (lastMsg) {
-          triggerNativeNotification(title, lastMsg, "");
-        } else {
-          triggerNativeNotification("Tin nhắn mới", `Bạn có tin nhắn mới từ ${title}`, "");
-        }
-      }
+      // Modern Zalo handles native notifications for unread messages.
     }
     
     prevUnreadStates.set(title, {
